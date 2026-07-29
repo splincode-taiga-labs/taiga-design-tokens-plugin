@@ -1,0 +1,14 @@
+<idea-plugin>
+    <id>org.taigaui.designtokens</id>
+    <name>Taiga UI Design Tokens</name>
+    <vendor url="https://github.com/taiga-family-labs">Taiga Family</vendor>
+
+    <description><![CDATA[
+        <p>WebStorm support for Taiga UI design tokens.</p>
+        <p>The plugin reads the installed <code>@taiga-ui/design-tokens</code> package and will provide structured token documentation for CSS custom properties.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>JavaScript</depends>
+    <depends>com.intellij.css</depends>
+</idea-plugin>
