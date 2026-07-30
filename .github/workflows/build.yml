@@ -27,4 +27,10 @@ jobs:
               uses: gradle/actions/setup-gradle@v4
 
             - name: Test and build plugin
-              run: ./gradlew test buildPlugin verifyPlugin --stacktrace
+              run: >-
+                  ./gradlew
+                  test
+                  buildPlugin
+                  verifyPluginStructure
+                  verifyPluginProjectConfiguration
+                  --stacktrace
