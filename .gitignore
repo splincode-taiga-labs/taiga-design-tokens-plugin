@@ -8,3 +8,5 @@ out/
 
 # IntelliJ Platform sandbox
 .build/
+
+.intellijPlatform/
