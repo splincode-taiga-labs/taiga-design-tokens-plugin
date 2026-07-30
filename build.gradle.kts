@@ -35,13 +35,14 @@ dependencies {
     intellijPlatform {
         if (localIdePath == null) {
             webstorm(providers.gradleProperty("platformVersion"))
+            testFramework(TestFrameworkType.Platform)
         } else {
             local(localIdePath)
+            testFramework(TestFrameworkType.Platform.Bundled)
         }
 
         bundledPlugin("JavaScript")
         bundledPlugin("com.intellij.css")
-        testFramework(TestFrameworkType.Platform)
     }
 }
 
