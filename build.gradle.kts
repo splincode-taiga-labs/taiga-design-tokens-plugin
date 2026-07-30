@@ -28,9 +28,20 @@ kotlin {
 }
 
 val localIdePath = providers.gradleProperty("localIdePath").orNull
+val localTestFrameworkJar = localIdePath?.let { idePath ->
+    listOf(
+        file("$idePath/Contents/lib/testFramework.jar"),
+        file("$idePath/lib/testFramework.jar"),
+    ).firstOrNull { it.isFile }
+        ?: error("Could not find testFramework.jar inside local IDE: $idePath")
+}
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+
+    if (localTestFrameworkJar != null) {
+        testImplementation(files(localTestFrameworkJar))
+    }
 
     intellijPlatform {
         if (localIdePath == null) {
@@ -38,7 +49,6 @@ dependencies {
             testFramework(TestFrameworkType.Platform)
         } else {
             local(localIdePath)
-            testFramework(TestFrameworkType.Platform.Bundled)
         }
 
         bundledPlugin("JavaScript")
