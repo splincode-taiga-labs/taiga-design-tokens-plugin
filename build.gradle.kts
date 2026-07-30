@@ -9,6 +9,14 @@ plugins {
 group = providers.gradleProperty("pluginGroup").get()
 version = providers.gradleProperty("pluginVersion").get()
 
+repositories {
+    mavenCentral()
+
+    intellijPlatform {
+        defaultRepositories()
+    }
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
