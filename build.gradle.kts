@@ -27,11 +27,18 @@ kotlin {
     jvmToolchain(21)
 }
 
+val localIdePath = providers.gradleProperty("localIdePath").orNull
+
 dependencies {
     testImplementation("junit:junit:4.13.2")
 
     intellijPlatform {
-        webstorm(providers.gradleProperty("platformVersion"))
+        if (localIdePath == null) {
+            webstorm(providers.gradleProperty("platformVersion"))
+        } else {
+            local(localIdePath)
+        }
+
         bundledPlugin("JavaScript")
         bundledPlugin("com.intellij.css")
         testFramework(TestFrameworkType.Platform)
