@@ -46,6 +46,12 @@ dependencies {
 }
 
 intellijPlatform {
+    instrumentCode.set(
+        providers.gradleProperty("skipInstrumentation")
+            .map { !it.toBoolean() }
+            .orElse(true),
+    )
+
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "253"
