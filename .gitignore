@@ -1,0 +1,12 @@
+.gradle/
+.idea/
+build/
+out/
+*.iml
+
+.DS_Store
+
+# IntelliJ Platform sandbox
+.build/
+
+.intellijPlatform/
