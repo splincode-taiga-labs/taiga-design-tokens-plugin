@@ -57,7 +57,3 @@ intellijPlatform {
         }
     }
 }
-
-tasks.test {
-    testLogging.showStandardStreams = true
-}
