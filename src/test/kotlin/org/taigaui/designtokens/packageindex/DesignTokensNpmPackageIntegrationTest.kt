@@ -32,29 +32,20 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
-    fun `real package contains expected source layout`() {
+    fun `real package contains the pinned token source layout`() {
         val packageInfo = resolveInstalledPackage()
-        val expectedFiles = listOf(
-            "angular/desktop.less",
-            "angular/mobile.less",
-            "fonts/desktop.css",
-            "palette/animation.css",
-            "palette/dark.css",
-            "palette/gradient.css",
-            "palette/light.css",
-            "palette/shadow.css",
-            "palette/less/dark.less",
-            "palette/less/light.less",
-            "palette/scss/dark.scss",
-            "palette/scss/light.scss",
-        )
 
-        expectedFiles.forEach { relativePath ->
-            assertTrue(
-                "Expected the pinned npm package to contain $relativePath",
-                Files.isRegularFile(packageInfo.realRoot.resolve(relativePath)),
-            )
+        val actualFiles = Files.walk(packageInfo.realRoot).use { paths ->
+            paths
+                .filter(Files::isRegularFile)
+                .map(packageInfo.realRoot::relativize)
+                .map(Path::toString)
+                .filter(::isSupportedTokenSource)
+                .sorted()
+                .toList()
         }
+
+        assertEquals(EXPECTED_TOKEN_SOURCE_FILES, actualFiles)
     }
 
     @Test
@@ -147,7 +138,7 @@ class DesignTokensNpmPackageIntegrationTest {
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
 
         assertTrue(
-            "Expected CSS, Less, and SCSS representations to reduce the logical variant count.",
+            "Expected parallel source representations to reduce the logical variant count.",
             index.variants.size < declarations.size,
         )
         assertTrue(
@@ -157,46 +148,119 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
-    fun `groups real dark CSS Less and SCSS declarations into one variant`() {
+    fun `groups real dark CSS and SCSS declarations into one variant`() {
         val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
-        val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
+        val variant = realIndex(packageInfo)
+            .find("--tui-background-base")
+            .single { candidate ->
+                candidate.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.UNSPECIFIED,
+                    theme = DesignTokenTheme.DARK,
+                ) && candidate.rawValue == "var(--tui-const-black-lighter-13)"
+            }
 
-        val variant = index.find("--tui-background-base").single { candidate ->
-            candidate.context == DesignTokenContext(
-                platform = DesignTokenPlatform.UNSPECIFIED,
-                theme = DesignTokenTheme.DARK,
-            ) && candidate.rawValue == "var(--tui-const-black-lighter-13)"
-        }
-        val expectedOrigins = setOf(
-            packageInfo.realRoot.resolve("palette/dark.css"),
-            packageInfo.realRoot.resolve("palette/less/dark.less"),
-            packageInfo.realRoot.resolve("palette/scss/dark.scss"),
+        assertEquals(
+            setOf(
+                packageInfo.realRoot.resolve("palette/dark.css"),
+                packageInfo.realRoot.resolve("palette/scss/dark.scss"),
+            ),
+            variant.origins.map { it.sourceFile }.toSet(),
         )
+        assertEquals(
+            setOf(DesignTokenSourceFormat.CSS, DesignTokenSourceFormat.SCSS),
+            variant.origins.map { it.format }.toSet(),
+        )
+    }
 
-        assertTrue(variant.origins.map { it.sourceFile }.containsAll(expectedOrigins))
-        assertTrue(
-            variant.origins
-                .filter { it.sourceFile in expectedOrigins }
-                .map { it.format }
-                .toSet()
-                .containsAll(
-                    setOf(
-                        DesignTokenSourceFormat.CSS,
-                        DesignTokenSourceFormat.LESS,
-                        DesignTokenSourceFormat.SCSS,
-                    ),
-                ),
+    @Test
+    fun `groups real light CSS and SCSS declarations into one variant`() {
+        val packageInfo = resolveInstalledPackage()
+        val variant = realIndex(packageInfo)
+            .find("--tui-background-base")
+            .single { candidate ->
+                candidate.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.UNSPECIFIED,
+                    theme = DesignTokenTheme.LIGHT,
+                ) && candidate.rawValue == "var(--tui-const-white)"
+            }
+
+        assertEquals(
+            setOf(
+                packageInfo.realRoot.resolve("palette/light.css"),
+                packageInfo.realRoot.resolve("palette/scss/light.scss"),
+            ),
+            variant.origins.map { it.sourceFile }.toSet(),
+        )
+    }
+
+    @Test
+    fun `groups real mobile CSS and SCSS declarations into one variant`() {
+        val packageInfo = resolveInstalledPackage()
+        val variant = realIndex(packageInfo)
+            .find("--tui-background-base")
+            .single { candidate ->
+                candidate.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.MOBILE,
+                    theme = DesignTokenTheme.LIGHT,
+                ) && candidate.rawValue == "var(--tui-const-white)"
+            }
+
+        assertEquals(
+            setOf(
+                packageInfo.realRoot.resolve("palette/mobile/light.css"),
+                packageInfo.realRoot.resolve("palette/scss/mobile/light.scss"),
+            ),
+            variant.origins.map { it.sourceFile }.toSet(),
+        )
+    }
+
+    @Test
+    fun `groups public and mixin desktop Less declarations into one variant`() {
+        val packageInfo = resolveInstalledPackage()
+        val variant = realIndex(packageInfo)
+            .find("--tui-background-base")
+            .single { candidate ->
+                candidate.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.DESKTOP,
+                    theme = DesignTokenTheme.UNSPECIFIED,
+                ) && candidate.rawValue == "var(--tui-const-white)"
+            }
+
+        assertEquals(
+            setOf(
+                packageInfo.realRoot.resolve("angular/desktop.less"),
+                packageInfo.realRoot.resolve("angular/mixins/desktop.less"),
+            ),
+            variant.origins.map { it.sourceFile }.toSet(),
+        )
+        assertTrue(variant.origins.all { it.format == DesignTokenSourceFormat.LESS })
+    }
+
+    @Test
+    fun `groups public and mixin mobile Less declarations into one variant`() {
+        val packageInfo = resolveInstalledPackage()
+        val variant = realIndex(packageInfo)
+            .find("--tui-background-base")
+            .single { candidate ->
+                candidate.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.MOBILE,
+                    theme = DesignTokenTheme.UNSPECIFIED,
+                ) && candidate.rawValue == "var(--tui-const-black)"
+            }
+
+        assertEquals(
+            setOf(
+                packageInfo.realRoot.resolve("angular/mobile.less"),
+                packageInfo.realRoot.resolve("angular/mixins/mobile.less"),
+            ),
+            variant.origins.map { it.sourceFile }.toSet(),
         )
     }
 
     @Test
     fun `keeps real light and dark variants separate`() {
         val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
-        val variants = DesignTokenIndex
-            .build(packageInfo.realRoot, declarations)
-            .find("--tui-background-base")
+        val variants = realIndex(packageInfo).find("--tui-background-base")
 
         assertTrue(
             variants.any {
@@ -215,9 +279,7 @@ class DesignTokensNpmPackageIntegrationTest {
     @Test
     fun `keeps real desktop declaration separate from light theme duplicate`() {
         val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
-        val variants = DesignTokenIndex
-            .build(packageInfo.realRoot, declarations)
+        val variants = realIndex(packageInfo)
             .find("--tui-background-base")
             .filter { it.rawValue == "var(--tui-const-white)" }
 
@@ -244,10 +306,32 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
+    fun `keeps real mobile light and mobile dark variants separate`() {
+        val packageInfo = resolveInstalledPackage()
+        val variants = realIndex(packageInfo).find("--tui-background-base")
+
+        assertTrue(
+            variants.any {
+                it.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.MOBILE,
+                    theme = DesignTokenTheme.LIGHT,
+                ) && it.rawValue == "var(--tui-const-white)"
+            },
+        )
+        assertTrue(
+            variants.any {
+                it.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.MOBILE,
+                    theme = DesignTokenTheme.DARK,
+                ) && it.rawValue == "var(--tui-const-black)"
+            },
+        )
+    }
+
+    @Test
     fun `classifies known real desktop and mobile files`() {
         val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
-        val variants = DesignTokenIndex.build(packageInfo.realRoot, declarations).variants
+        val variants = realIndex(packageInfo).variants
 
         assertTrue(
             variants.any { variant ->
@@ -270,9 +354,7 @@ class DesignTokensNpmPackageIntegrationTest {
     @Test
     fun `real index contains no repeated physical origins`() {
         val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
-        val origins = DesignTokenIndex
-            .build(packageInfo.realRoot, declarations)
+        val origins = realIndex(packageInfo)
             .variants
             .flatMap { it.origins }
 
@@ -280,13 +362,29 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
+    fun `real index returns token names in stable order`() {
+        val packageInfo = resolveInstalledPackage()
+        val names = realIndex(packageInfo).names
+
+        assertEquals(names.sorted(), names)
+    }
+
+    @Test
     fun `real index returns empty result for unknown token`() {
         val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
-        val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
 
-        assertTrue(index.find("--tui-token-that-does-not-exist").isEmpty())
+        assertTrue(
+            realIndex(packageInfo)
+                .find("--tui-token-that-does-not-exist")
+                .isEmpty(),
+        )
     }
+
+    private fun realIndex(packageInfo: DesignTokensPackage): DesignTokenIndex =
+        DesignTokenIndex.build(
+            packageRoot = packageInfo.realRoot,
+            declarations = DesignTokensPackageScanner().scan(packageInfo),
+        )
 
     private fun resolveInstalledPackage(): DesignTokensPackage {
         assumeTrue(
@@ -303,7 +401,39 @@ class DesignTokensNpmPackageIntegrationTest {
         return result!!
     }
 
+    private fun isSupportedTokenSource(path: String): Boolean =
+        path.endsWith(".css") || path.endsWith(".less") || path.endsWith(".scss")
+
     private companion object {
         const val DESIGN_TOKENS_VERSION = "0.310.0"
+
+        val EXPECTED_TOKEN_SOURCE_FILES = listOf(
+            "angular/desktop.less",
+            "angular/fonts/desktop.less",
+            "angular/fonts/mobile.less",
+            "angular/mixins/animation.less",
+            "angular/mixins/desktop.less",
+            "angular/mixins/fonts/desktop.less",
+            "angular/mixins/fonts/mobile.less",
+            "angular/mixins/gradient.less",
+            "angular/mixins/mobile.less",
+            "angular/mixins/shadow.less",
+            "angular/mobile.less",
+            "fonts/desktop.css",
+            "fonts/mobile.css",
+            "palette/animation.css",
+            "palette/dark.css",
+            "palette/gradient.css",
+            "palette/less/animation.less",
+            "palette/light.css",
+            "palette/mobile/dark.css",
+            "palette/mobile/light.css",
+            "palette/scss/animation.scss",
+            "palette/scss/dark.scss",
+            "palette/scss/light.scss",
+            "palette/scss/mobile/dark.scss",
+            "palette/scss/mobile/light.scss",
+            "palette/shadow.css",
+        )
     }
 }
