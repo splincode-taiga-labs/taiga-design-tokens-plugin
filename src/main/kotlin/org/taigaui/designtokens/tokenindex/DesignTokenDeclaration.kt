@@ -1,0 +1,10 @@
+package org.taigaui.designtokens.tokenindex
+
+import java.nio.file.Path
+
+data class DesignTokenDeclaration(
+    val name: String,
+    val value: String,
+    val sourceFile: Path,
+    val line: Int,
+)
