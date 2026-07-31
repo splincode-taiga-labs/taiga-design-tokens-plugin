@@ -58,21 +58,19 @@ intellijPlatform {
     }
 }
 
-tasks.test {
-    filter {
-        excludeTestsMatching("*.DesignTokensNpmPackageIntegrationTest")
-    }
-}
+val integrationTestSourceSet = sourceSets.create("integrationTest")
 
-val integrationTest = tasks.register<Test>("integrationTest") {
+configurations[integrationTestSourceSet.implementationConfigurationName].extendsFrom(
+    configurations.testImplementation.get(),
+)
+configurations[integrationTestSourceSet.runtimeOnlyConfigurationName].extendsFrom(
+    configurations.testRuntimeOnly.get(),
+)
+
+tasks.register<Test>("integrationTest") {
     description = "Runs integration tests against packages installed from npm."
     group = "verification"
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
-
-    filter {
-        includeTestsMatching("*.DesignTokensNpmPackageIntegrationTest")
-    }
-
+    testClassesDirs = integrationTestSourceSet.output.classesDirs
+    classpath = integrationTestSourceSet.runtimeClasspath
     shouldRunAfter(tasks.test)
 }
