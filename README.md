@@ -31,24 +31,26 @@ Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 currently resol
 ## Requirements
 
 - JDK 21
-- Node.js 22 and npm for integration tests only
+- Node.js 22 and npm for the real-package test fixture only
 - the checked-in Gradle Wrapper
 
-The installed plugin itself does not require Node.js. The npm dependency in this repository is only a real-world fixture for integration tests.
+The installed plugin itself does not require Node.js. The npm dependency in this repository is only a real-world fixture for tests.
 
 ## Commands
 
-Run the pure Kotlin unit tests:
+Run the test suite without installing the npm fixture:
 
 ```bash
 ./gradlew test
 ```
 
-Install the pinned real package fixture and run integration tests:
+The real-package test is skipped when `node_modules/@taiga-ui/design-tokens` is absent.
+
+Install the pinned package fixture and run the complete test suite:
 
 ```bash
 npm ci
-./gradlew integrationTest
+./gradlew test
 ```
 
 Run the sandbox IDE or build the distributable plugin:
