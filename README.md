@@ -24,9 +24,61 @@ Quick documentation should show:
 
 The plugin will show all statically known candidates. It will not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
 
+## Architecture
+
+This sequence diagram is the architectural contract for the plugin. Pull requests that change the data flow or introduce a new architectural layer must update the diagram in the same change.
+
+```mermaid
+sequenceDiagram
+    actor User as Editor user
+    participant Docs as Documentation provider
+    participant Service as Project token service
+    participant Resolver as Package resolver
+    participant Scanner as Package scanner
+    participant Finder as Source-file finder
+    participant Parser as Declaration parser
+    participant FS as Project filesystem
+
+    User->>Docs: Request docs for var(--tui-*)
+    Docs->>Service: find(sourceFile, tokenName)
+    Service->>Resolver: resolve(sourceFile)
+    Resolver->>FS: Find nearest package.json
+    FS-->>Resolver: Package root and version
+    Resolver-->>Service: DesignTokensPackage
+
+    alt Index absent or invalid
+        Service->>Scanner: scan(package)
+        Scanner->>Finder: find(package.realRoot)
+        Finder->>FS: Walk CSS, SCSS and Less files
+        FS-->>Finder: Sorted source files
+        Finder-->>Scanner: Source files
+
+        loop Every source file
+            Scanner->>Parser: parse(sourceFile)
+            Parser->>FS: Read source
+            FS-->>Parser: Contents
+            Parser-->>Scanner: Raw --tui-* declarations
+        end
+
+        Scanner-->>Service: Declarations
+        Service->>Service: Build and cache index
+    end
+
+    Service-->>Docs: Matching declarations
+    Docs-->>User: Theme and platform grouped documentation
+```
+
+Architecture status:
+
+- implemented: package resolver, source-file finder, declaration parser, and package scanner;
+- next in Stage 2: project-level cached index and filesystem invalidation;
+- planned for Stage 3: documentation provider and editor integration.
+
+The filesystem and parsing classes remain independent from IntelliJ Platform APIs. IDE-specific code will depend on this layer rather than putting PSI, project services, or editor state into the scanner.
+
 ## Development status
 
-Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 currently resolves the nearest installed `@taiga-ui/design-tokens` package without invoking Node.js or a package manager. See [the implementation roadmap](docs/roadmap.md) for the following stages.
+Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 resolves the nearest installed `@taiga-ui/design-tokens` package and scans its CSS, SCSS, and Less files for raw `--tui-*` declarations without invoking Node.js or a package manager. See [the implementation roadmap](docs/roadmap.md) for the following stages.
 
 ## Requirements
 
@@ -44,7 +96,7 @@ Run the test suite without installing the npm fixture:
 ./gradlew test
 ```
 
-The real-package test is skipped when `node_modules/@taiga-ui/design-tokens` is absent.
+The real-package tests are skipped when `node_modules/@taiga-ui/design-tokens` is absent.
 
 Install the pinned package fixture and run the complete test suite:
 
