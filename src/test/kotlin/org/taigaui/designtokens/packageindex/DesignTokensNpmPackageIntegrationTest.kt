@@ -47,7 +47,7 @@ class DesignTokensNpmPackageIntegrationTest {
         val samples = declarations
             .groupBy { it.sourceFile.fileName.toString().substringAfterLast('.', missingDelimiterValue = "") }
             .mapValues { (_, values) ->
-                values.take(8).joinToString("\n") { declaration ->
+                values.take(12).joinToString("\n") { declaration ->
                     val relativePath = designTokensPackage.realRoot.relativize(declaration.sourceFile)
 
                     "$relativePath:${declaration.line} ${declaration.name} = ${declaration.value}"
@@ -57,7 +57,7 @@ class DesignTokensNpmPackageIntegrationTest {
             .sortedBy { it.key }
             .joinToString("\n\n") { (extension, values) -> "$extension:\n$values" }
 
-        throw AssertionError("Real package declaration samples:\n$samples")
+        println("REAL_PACKAGE_DECLARATION_SAMPLES\n$samples")
     }
 
     private fun resolveInstalledPackage(): DesignTokensPackage {
