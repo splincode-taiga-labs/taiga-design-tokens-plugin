@@ -2,7 +2,7 @@
 
 WebStorm plugin for exploring Taiga UI CSS custom properties directly in the editor.
 
-The plugin will read the version of `@taiga-ui/design-tokens` installed in the current project instead of shipping a hardcoded token catalog. Quick documentation will show the declarations available for desktop, mobile, light, and dark themes.
+The plugin reads the version of `@taiga-ui/design-tokens` installed in the current project instead of shipping a hardcoded token catalog. Quick documentation will show the declarations available for desktop, mobile, light, and dark themes.
 
 ## Planned experience
 
@@ -26,19 +26,38 @@ The plugin will show all statically known candidates. It will not claim to know 
 
 ## Development status
 
-Stage 1 creates the buildable WebStorm plugin scaffold. See [the implementation roadmap](docs/roadmap.md) for the following stages.
+Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 currently resolves the nearest installed `@taiga-ui/design-tokens` package without invoking Node.js or a package manager. See [the implementation roadmap](docs/roadmap.md) for the following stages.
 
 ## Requirements
 
 - JDK 21
-- Gradle 9.5.0
+- Node.js 22 and npm for the real-package test fixture only
+- the checked-in Gradle Wrapper
+
+The installed plugin itself does not require Node.js. The npm dependency in this repository is only a real-world fixture for tests.
 
 ## Commands
 
+Run the test suite without installing the npm fixture:
+
 ```bash
-gradle test
-gradle runIde
-gradle buildPlugin
+./gradlew test
+```
+
+The real-package test is skipped when `node_modules/@taiga-ui/design-tokens` is absent.
+
+Install the pinned package fixture and run the complete test suite:
+
+```bash
+npm ci
+./gradlew test
+```
+
+Run the sandbox IDE or build the distributable plugin:
+
+```bash
+./gradlew runIde
+./gradlew buildPlugin
 ```
 
 `runIde` starts an isolated WebStorm instance with the plugin installed. The distributable ZIP is generated under `build/distributions`.

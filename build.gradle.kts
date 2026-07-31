@@ -29,6 +29,7 @@ val localIdePath = providers.gradleProperty("localIdePath").orNull
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly(kotlin("stdlib"))
 
     intellijPlatform {
         if (localIdePath == null) {
