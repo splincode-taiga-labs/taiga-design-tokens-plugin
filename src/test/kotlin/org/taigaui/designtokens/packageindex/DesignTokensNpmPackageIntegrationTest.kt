@@ -5,6 +5,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import org.taigaui.designtokens.tokenindex.DesignTokenDeclaration
 import org.taigaui.designtokens.tokenindex.DesignTokensPackageScanner
 import java.nio.file.Files
 import java.nio.file.Path
@@ -40,24 +41,37 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
-    fun `diagnostic samples from real npm package`() {
+    fun `turns real CSS Less and SCSS declarations into models`() {
         val designTokensPackage = resolveInstalledPackage()
+
         val declarations = DesignTokensPackageScanner().scan(designTokensPackage)
+        val expectedDeclarations = listOf(
+            DesignTokenDeclaration(
+                name = "--tui-font-offset",
+                value = "0rem",
+                sourceFile = designTokensPackage.realRoot.resolve("fonts/desktop.css"),
+                line = 3,
+            ),
+            DesignTokenDeclaration(
+                name = "--tui-background-base",
+                value = "var(--tui-const-white)",
+                sourceFile = designTokensPackage.realRoot.resolve("angular/desktop.less"),
+                line = 5,
+            ),
+            DesignTokenDeclaration(
+                name = "--tui-background-base",
+                value = "var(--tui-const-black-lighter-13)",
+                sourceFile = designTokensPackage.realRoot.resolve("palette/scss/dark.scss"),
+                line = 2,
+            ),
+        )
 
-        val samples = declarations
-            .groupBy { it.sourceFile.fileName.toString().substringAfterLast('.', missingDelimiterValue = "") }
-            .mapValues { (_, values) ->
-                values.take(12).joinToString("\n") { declaration ->
-                    val relativePath = designTokensPackage.realRoot.relativize(declaration.sourceFile)
-
-                    "$relativePath:${declaration.line} ${declaration.name} = ${declaration.value}"
-                }
-            }
-            .entries
-            .sortedBy { it.key }
-            .joinToString("\n\n") { (extension, values) -> "$extension:\n$values" }
-
-        println("REAL_PACKAGE_DECLARATION_SAMPLES\n$samples")
+        expectedDeclarations.forEach { expected ->
+            assertTrue(
+                "Expected to parse the real declaration $expected",
+                expected in declarations,
+            )
+        }
     }
 
     private fun resolveInstalledPackage(): DesignTokensPackage {
