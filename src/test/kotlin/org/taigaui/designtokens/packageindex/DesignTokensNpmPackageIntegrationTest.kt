@@ -39,6 +39,27 @@ class DesignTokensNpmPackageIntegrationTest {
         assertTrue(declarations.all { it.sourceFile.startsWith(designTokensPackage.realRoot) })
     }
 
+    @Test
+    fun `diagnostic samples from real npm package`() {
+        val designTokensPackage = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(designTokensPackage)
+
+        val samples = declarations
+            .groupBy { it.sourceFile.fileName.toString().substringAfterLast('.', missingDelimiterValue = "") }
+            .mapValues { (_, values) ->
+                values.take(8).joinToString("\n") { declaration ->
+                    val relativePath = designTokensPackage.realRoot.relativize(declaration.sourceFile)
+
+                    "$relativePath:${declaration.line} ${declaration.name} = ${declaration.value}"
+                }
+            }
+            .entries
+            .sortedBy { it.key }
+            .joinToString("\n\n") { (extension, values) -> "$extension:\n$values" }
+
+        throw AssertionError("Real package declaration samples:\n$samples")
+    }
+
     private fun resolveInstalledPackage(): DesignTokensPackage {
         assumeTrue(
             "Run `npm ci` to execute the real-package integration tests.",
