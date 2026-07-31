@@ -9,109 +9,42 @@ class DesignTokenDeclarationParser {
         val content = runCatching { Files.readString(normalizedSourceFile) }
             .getOrNull()
             ?: return emptyList()
+        val searchableContent = maskCommentsAndStrings(content)
+        val lineStarts = findLineStarts(content)
 
-        return parseContent(content, normalizedSourceFile)
-    }
+        return DECLARATION.findAll(searchableContent)
+            .mapNotNull { match ->
+                val valueStart = match.range.last + 1
+                val valueEnd = findValueEnd(searchableContent, valueStart)
+                val value = content.substring(valueStart, valueEnd).trim()
 
-    private fun parseContent(
-        content: String,
-        sourceFile: Path,
-    ): List<DesignTokenDeclaration> {
-        val declarations = mutableListOf<DesignTokenDeclaration>()
-        var index = 0
-        var line = 1
-
-        while (index < content.length) {
-            when {
-                content.startsWith("/*", index) -> {
-                    val result = skipBlockComment(content, index, line)
-                    index = result.index
-                    line = result.line
-                }
-
-                content.startsWith("//", index) -> {
-                    val result = skipLineComment(content, index, line)
-                    index = result.index
-                    line = result.line
-                }
-
-                content[index] == '\'' || content[index] == '"' -> {
-                    val result = skipString(content, index, line)
-                    index = result.index
-                    line = result.line
-                }
-
-                content.startsWith(TOKEN_PREFIX, index) && isIdentifierBoundary(content, index) -> {
-                    val parsed = parseDeclaration(content, index, line, sourceFile)
-
-                    if (parsed == null) {
-                        index++
-                    } else {
-                        declarations += parsed.declaration
-                        index = parsed.index
-                        line = parsed.line
-                    }
-                }
-
-                else -> {
-                    if (content[index] == '\n') {
-                        line++
-                    }
-
-                    index++
+                value.takeIf(String::isNotEmpty)?.let {
+                    DesignTokenDeclaration(
+                        name = match.groupValues[1],
+                        value = it,
+                        sourceFile = normalizedSourceFile,
+                        line = lineNumber(lineStarts, match.range.first),
+                    )
                 }
             }
-        }
-
-        return declarations
+            .toList()
     }
 
-    private fun parseDeclaration(
-        content: String,
-        startIndex: Int,
-        startLine: Int,
-        sourceFile: Path,
-    ): ParsedDeclaration? {
-        var index = startIndex + TOKEN_PREFIX.length
-        var line = startLine
-
-        while (index < content.length && isIdentifierCharacter(content[index])) {
-            index++
-        }
-
-        val name = content.substring(startIndex, index)
-        val trivia = skipTrivia(content, index, line)
-        index = trivia.index
-        line = trivia.line
-
-        if (content.getOrNull(index) != ':') {
-            return null
-        }
-
-        index++
-        val valueStart = index
+    private fun maskCommentsAndStrings(content: String): String {
+        val masked = content.toCharArray()
+        var index = 0
         var parenthesesDepth = 0
-        var bracketsDepth = 0
 
         while (index < content.length) {
             when {
-                content.startsWith("/*", index) -> {
-                    val result = skipBlockComment(content, index, line)
-                    index = result.index
-                    line = result.line
-                }
+                content.startsWith("/*", index) ->
+                    index = maskUntil(masked, content, index, "*/")
 
-                content.startsWith("//", index) && parenthesesDepth == 0 && bracketsDepth == 0 -> {
-                    val result = skipLineComment(content, index, line)
-                    index = result.index
-                    line = result.line
-                }
+                content.startsWith("//", index) && parenthesesDepth == 0 ->
+                    index = maskLineComment(masked, content, index)
 
-                content[index] == '\'' || content[index] == '"' -> {
-                    val result = skipString(content, index, line)
-                    index = result.index
-                    line = result.line
-                }
+                content[index] == '\'' || content[index] == '"' ->
+                    index = maskString(masked, content, index)
 
                 content[index] == '(' -> {
                     parenthesesDepth++
@@ -123,195 +56,108 @@ class DesignTokenDeclarationParser {
                     index++
                 }
 
-                content[index] == '[' -> {
-                    bracketsDepth++
-                    index++
-                }
-
-                content[index] == ']' -> {
-                    bracketsDepth = (bracketsDepth - 1).coerceAtLeast(0)
-                    index++
-                }
-
-                content[index] == ';' && parenthesesDepth == 0 && bracketsDepth == 0 -> {
-                    return createParsedDeclaration(
-                        name = name,
-                        rawValue = content.substring(valueStart, index),
-                        sourceFile = sourceFile,
-                        line = startLine,
-                        nextIndex = index + 1,
-                        nextLine = line,
-                    )
-                }
-
-                content[index] == '}' && parenthesesDepth == 0 && bracketsDepth == 0 -> {
-                    return createParsedDeclaration(
-                        name = name,
-                        rawValue = content.substring(valueStart, index),
-                        sourceFile = sourceFile,
-                        line = startLine,
-                        nextIndex = index,
-                        nextLine = line,
-                    )
-                }
-
-                else -> {
-                    if (content[index] == '\n') {
-                        line++
-                    }
-
-                    index++
-                }
+                else -> index++
             }
         }
 
-        return createParsedDeclaration(
-            name = name,
-            rawValue = content.substring(valueStart),
-            sourceFile = sourceFile,
-            line = startLine,
-            nextIndex = content.length,
-            nextLine = line,
-        )
+        return String(masked)
     }
 
-    private fun createParsedDeclaration(
-        name: String,
-        rawValue: String,
-        sourceFile: Path,
-        line: Int,
-        nextIndex: Int,
-        nextLine: Int,
-    ): ParsedDeclaration? {
-        val value = rawValue.trim()
-
-        if (value.isEmpty()) {
-            return null
-        }
-
-        return ParsedDeclaration(
-            declaration = DesignTokenDeclaration(
-                name = name,
-                value = value,
-                sourceFile = sourceFile,
-                line = line,
-            ),
-            index = nextIndex,
-            line = nextLine,
-        )
-    }
-
-    private fun skipTrivia(
+    private fun maskUntil(
+        masked: CharArray,
         content: String,
         startIndex: Int,
-        startLine: Int,
-    ): Cursor {
-        var index = startIndex
-        var line = startLine
+        terminator: String,
+    ): Int {
+        val endIndex = content.indexOf(terminator, startIndex + 2)
+            .let { if (it == -1) content.length else it + terminator.length }
 
-        while (index < content.length) {
-            when {
-                content[index].isWhitespace() -> {
-                    if (content[index] == '\n') {
-                        line++
-                    }
+        maskRange(masked, startIndex, endIndex)
 
-                    index++
-                }
-
-                content.startsWith("/*", index) -> {
-                    val result = skipBlockComment(content, index, line)
-                    index = result.index
-                    line = result.line
-                }
-
-                else -> return Cursor(index, line)
-            }
-        }
-
-        return Cursor(index, line)
+        return endIndex
     }
 
-    private fun skipBlockComment(
+    private fun maskLineComment(
+        masked: CharArray,
         content: String,
         startIndex: Int,
-        startLine: Int,
-    ): Cursor {
-        var index = startIndex + 2
-        var line = startLine
+    ): Int {
+        val endIndex = content.indexOf('\n', startIndex + 2)
+            .let { if (it == -1) content.length else it }
 
-        while (index < content.length && !content.startsWith("*/", index)) {
-            if (content[index] == '\n') {
-                line++
-            }
+        maskRange(masked, startIndex, endIndex)
 
-            index++
-        }
-
-        return Cursor(
-            index = if (index < content.length) index + 2 else content.length,
-            line = line,
-        )
+        return endIndex
     }
 
-    private fun skipLineComment(
+    private fun maskString(
+        masked: CharArray,
         content: String,
         startIndex: Int,
-        startLine: Int,
-    ): Cursor {
-        var index = startIndex + 2
-
-        while (index < content.length && content[index] != '\n') {
-            index++
-        }
-
-        return Cursor(index, startLine)
-    }
-
-    private fun skipString(
-        content: String,
-        startIndex: Int,
-        startLine: Int,
-    ): Cursor {
+    ): Int {
         val quote = content[startIndex]
         var index = startIndex + 1
-        var line = startLine
 
         while (index < content.length) {
             when {
                 content[index] == '\\' -> index = (index + 2).coerceAtMost(content.length)
-                content[index] == quote -> return Cursor(index + 1, line)
-                else -> {
-                    if (content[index] == '\n') {
-                        line++
-                    }
-
+                content[index] == quote -> {
                     index++
+                    break
+                }
+                else -> index++
+            }
+        }
+
+        maskRange(masked, startIndex, index)
+
+        return index
+    }
+
+    private fun maskRange(masked: CharArray, startIndex: Int, endIndex: Int) {
+        for (index in startIndex until endIndex) {
+            if (masked[index] != '\n' && masked[index] != '\r') {
+                masked[index] = ' '
+            }
+        }
+    }
+
+    private fun findValueEnd(content: String, startIndex: Int): Int {
+        var parenthesesDepth = 0
+        var bracketsDepth = 0
+
+        for (index in startIndex until content.length) {
+            when (content[index]) {
+                '(' -> parenthesesDepth++
+                ')' -> parenthesesDepth = (parenthesesDepth - 1).coerceAtLeast(0)
+                '[' -> bracketsDepth++
+                ']' -> bracketsDepth = (bracketsDepth - 1).coerceAtLeast(0)
+                ';', '}' -> if (parenthesesDepth == 0 && bracketsDepth == 0) {
+                    return index
                 }
             }
         }
 
-        return Cursor(content.length, line)
+        return content.length
     }
 
-    private fun isIdentifierBoundary(content: String, index: Int): Boolean =
-        index == 0 || !isIdentifierCharacter(content[index - 1])
+    private fun findLineStarts(content: String): List<Int> = buildList {
+        add(0)
 
-    private fun isIdentifierCharacter(character: Char): Boolean =
-        character.isLetterOrDigit() || character == '-' || character == '_'
+        content.forEachIndexed { index, character ->
+            if (character == '\n') {
+                add(index + 1)
+            }
+        }
+    }
 
-    private data class Cursor(
-        val index: Int,
-        val line: Int,
-    )
+    private fun lineNumber(lineStarts: List<Int>, offset: Int): Int {
+        val index = lineStarts.binarySearch(offset)
 
-    private data class ParsedDeclaration(
-        val declaration: DesignTokenDeclaration,
-        val index: Int,
-        val line: Int,
-    )
+        return if (index >= 0) index + 1 else -index - 1
+    }
 
     private companion object {
-        const val TOKEN_PREFIX = "--tui-"
+        val DECLARATION = Regex("""(--tui-[A-Za-z0-9_-]+)\s*:""")
     }
 }
