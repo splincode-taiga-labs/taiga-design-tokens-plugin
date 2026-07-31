@@ -56,3 +56,22 @@ intellijPlatform {
         }
     }
 }
+
+tasks.test {
+    filter {
+        excludeTestsMatching("*.DesignTokensNpmPackageIntegrationTest")
+    }
+}
+
+val integrationTest by tasks.registering(Test::class) {
+    description = "Runs integration tests against packages installed from npm."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
+    filter {
+        includeTestsMatching("*.DesignTokensNpmPackageIntegrationTest")
+    }
+
+    shouldRunAfter(tasks.test)
+}
