@@ -19,8 +19,9 @@ Quick documentation should show:
 - the installed `@taiga-ui/design-tokens` version;
 - matching desktop and mobile declarations;
 - light and dark theme values;
-- source files and line numbers;
-- color previews when the value can be resolved.
+- both the raw declaration and its recursively resolved value;
+- the token-reference chain, source files, and line numbers;
+- color previews when the final value is a color.
 
 The plugin will show all statically known candidates. It will not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
 
@@ -37,6 +38,8 @@ sequenceDiagram
     participant Scanner as Package scanner
     participant Finder as Source-file finder
     participant Parser as Declaration parser
+    participant Index as Project token index
+    participant Values as Value resolver
     participant FS as Project filesystem
 
     User->>Docs: Request docs for var(--tui-*)
@@ -60,21 +63,39 @@ sequenceDiagram
             Parser-->>Scanner: Raw --tui-* declarations
         end
 
-        Scanner-->>Service: Declarations
-        Service->>Service: Build and cache index
+        Scanner-->>Service: Raw declarations
+        Service->>Index: Build index by name and context
     end
 
-    Service-->>Docs: Matching declarations
-    Docs-->>User: Theme and platform grouped documentation
+    Service->>Index: Find matching declarations
+    Index-->>Service: Theme and platform candidates
+
+    loop Every matching declaration
+        Service->>Values: resolve(declaration, index)
+
+        loop Every var(--tui-*) reference
+            Values->>Index: Find referenced token in context
+            Index-->>Values: Candidate declarations
+            Values->>Values: Resolve recursively with fallback and cycle detection
+        end
+
+        Values-->>Service: Raw value, final value, chain, or unresolved reason
+    end
+
+    Service-->>Docs: Context-grouped resolved candidates
+    Docs-->>User: Raw and final values, chain, sources, and color previews
 ```
 
 Architecture status:
 
 - implemented: package resolver, source-file finder, declaration parser, and package scanner;
-- next in Stage 2: project-level cached index and filesystem invalidation;
-- planned for Stage 3: documentation provider and editor integration.
+- next in Stage 2: context-aware project index, caching, and filesystem invalidation;
+- planned for Stage 3: recursive value resolution with fallbacks and cycle detection;
+- planned for Stage 4: documentation provider, editor integration, and navigation.
 
-The filesystem and parsing classes remain independent from IntelliJ Platform APIs. IDE-specific code will depend on this layer rather than putting PSI, project services, or editor state into the scanner.
+A `DesignTokenDeclaration` is an immutable source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. Recursive resolution produces a separate result containing the final value, reference chain, fallback usage, or an unresolved reason. This preserves source fidelity while allowing hover documentation to show the actual color or other terminal value.
+
+The filesystem, parsing, indexing, and value-resolution classes remain independent from IntelliJ Platform APIs. IDE-specific code will depend on these layers rather than putting PSI, project services, or editor state into the scanner or resolver.
 
 ## Development status
 
