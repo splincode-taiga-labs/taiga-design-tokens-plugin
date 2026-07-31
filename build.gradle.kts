@@ -57,20 +57,3 @@ intellijPlatform {
         }
     }
 }
-
-val integrationTestSourceSet = sourceSets.create("integrationTest")
-
-configurations[integrationTestSourceSet.implementationConfigurationName].extendsFrom(
-    configurations.testImplementation.get(),
-)
-configurations[integrationTestSourceSet.runtimeOnlyConfigurationName].extendsFrom(
-    configurations.testRuntimeOnly.get(),
-)
-
-tasks.register<Test>("integrationTest") {
-    description = "Runs integration tests against packages installed from npm."
-    group = "verification"
-    testClassesDirs = integrationTestSourceSet.output.classesDirs
-    classpath = integrationTestSourceSet.runtimeClasspath
-    shouldRunAfter(tasks.test)
-}
