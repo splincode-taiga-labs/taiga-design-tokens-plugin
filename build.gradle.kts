@@ -29,6 +29,7 @@ val localIdePath = providers.gradleProperty("localIdePath").orNull
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly(kotlin("stdlib"))
 
     intellijPlatform {
         if (localIdePath == null) {
@@ -63,7 +64,7 @@ tasks.test {
     }
 }
 
-val integrationTest by tasks.registering(Test::class) {
+val integrationTest = tasks.register<Test>("integrationTest") {
     description = "Runs integration tests against packages installed from npm."
     group = "verification"
     testClassesDirs = sourceSets.test.get().output.classesDirs
