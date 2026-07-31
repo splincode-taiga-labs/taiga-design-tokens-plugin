@@ -17,6 +17,15 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install npm fixtures
+              run: npm ci --ignore-scripts --no-audit --no-fund
+
             - name: Set up Java
               uses: actions/setup-java@v4
               with:
@@ -30,6 +39,7 @@ jobs:
               run: >-
                   ./gradlew
                   test
+                  integrationTest
                   buildPlugin
                   verifyPluginStructure
                   verifyPluginProjectConfiguration
