@@ -5,7 +5,12 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import org.taigaui.designtokens.tokenindex.DesignTokenContext
 import org.taigaui.designtokens.tokenindex.DesignTokenDeclaration
+import org.taigaui.designtokens.tokenindex.DesignTokenIndex
+import org.taigaui.designtokens.tokenindex.DesignTokenPlatform
+import org.taigaui.designtokens.tokenindex.DesignTokenSourceFormat
+import org.taigaui.designtokens.tokenindex.DesignTokenTheme
 import org.taigaui.designtokens.tokenindex.DesignTokensPackageScanner
 import java.nio.file.Files
 import java.nio.file.Path
@@ -24,6 +29,32 @@ class DesignTokensNpmPackageIntegrationTest {
         assertEquals(expectedRoot, result.root)
         assertEquals(expectedRoot.toRealPath(), result.realRoot)
         assertEquals(DESIGN_TOKENS_VERSION, result.version)
+    }
+
+    @Test
+    fun `real package contains expected source layout`() {
+        val packageInfo = resolveInstalledPackage()
+        val expectedFiles = listOf(
+            "angular/desktop.less",
+            "angular/mobile.less",
+            "fonts/desktop.css",
+            "palette/animation.css",
+            "palette/dark.css",
+            "palette/gradient.css",
+            "palette/light.css",
+            "palette/shadow.css",
+            "palette/less/dark.less",
+            "palette/less/light.less",
+            "palette/scss/dark.scss",
+            "palette/scss/light.scss",
+        )
+
+        expectedFiles.forEach { relativePath ->
+            assertTrue(
+                "Expected the pinned npm package to contain $relativePath",
+                Files.isRegularFile(packageInfo.realRoot.resolve(relativePath)),
+            )
+        }
     }
 
     @Test
@@ -72,6 +103,189 @@ class DesignTokensNpmPackageIntegrationTest {
                 expected in declarations,
             )
         }
+    }
+
+    @Test
+    fun `real package exposes CSS Less and SCSS declaration origins`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+
+        assertTrue(
+            declarations
+                .map { DesignTokenSourceFormat.from(it.sourceFile) }
+                .containsAll(
+                    listOf(
+                        DesignTokenSourceFormat.CSS,
+                        DesignTokenSourceFormat.LESS,
+                        DesignTokenSourceFormat.SCSS,
+                    ),
+                ),
+        )
+    }
+
+    @Test
+    fun `builds logical index without losing real declarations`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+
+        val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
+
+        assertEquals(
+            "Every scanned declaration must remain represented by one physical origin.",
+            declarations.size,
+            index.originCount,
+        )
+        assertTrue(index.names.isNotEmpty())
+        assertTrue(index.variants.isNotEmpty())
+    }
+
+    @Test
+    fun `real package contains exact duplicates that collapse into logical variants`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+
+        val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
+
+        assertTrue(
+            "Expected CSS, Less, and SCSS representations to reduce the logical variant count.",
+            index.variants.size < declarations.size,
+        )
+        assertTrue(
+            "Expected at least one logical variant to retain multiple source origins.",
+            index.variants.any { it.origins.size > 1 },
+        )
+    }
+
+    @Test
+    fun `groups real dark CSS Less and SCSS declarations into one variant`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
+
+        val variant = index.find("--tui-background-base").single { candidate ->
+            candidate.context == DesignTokenContext(
+                platform = DesignTokenPlatform.UNSPECIFIED,
+                theme = DesignTokenTheme.DARK,
+            ) && candidate.rawValue == "var(--tui-const-black-lighter-13)"
+        }
+        val expectedOrigins = setOf(
+            packageInfo.realRoot.resolve("palette/dark.css"),
+            packageInfo.realRoot.resolve("palette/less/dark.less"),
+            packageInfo.realRoot.resolve("palette/scss/dark.scss"),
+        )
+
+        assertTrue(variant.origins.map { it.sourceFile }.containsAll(expectedOrigins))
+        assertTrue(
+            variant.origins
+                .filter { it.sourceFile in expectedOrigins }
+                .map { it.format }
+                .toSet()
+                .containsAll(
+                    setOf(
+                        DesignTokenSourceFormat.CSS,
+                        DesignTokenSourceFormat.LESS,
+                        DesignTokenSourceFormat.SCSS,
+                    ),
+                ),
+        )
+    }
+
+    @Test
+    fun `keeps real light and dark variants separate`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val variants = DesignTokenIndex
+            .build(packageInfo.realRoot, declarations)
+            .find("--tui-background-base")
+
+        assertTrue(
+            variants.any {
+                it.context.theme == DesignTokenTheme.LIGHT &&
+                    it.rawValue == "var(--tui-const-white)"
+            },
+        )
+        assertTrue(
+            variants.any {
+                it.context.theme == DesignTokenTheme.DARK &&
+                    it.rawValue == "var(--tui-const-black-lighter-13)"
+            },
+        )
+    }
+
+    @Test
+    fun `keeps real desktop declaration separate from light theme duplicate`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val variants = DesignTokenIndex
+            .build(packageInfo.realRoot, declarations)
+            .find("--tui-background-base")
+            .filter { it.rawValue == "var(--tui-const-white)" }
+
+        assertTrue(
+            variants.any {
+                it.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.DESKTOP,
+                    theme = DesignTokenTheme.UNSPECIFIED,
+                ) && it.origins.any { origin ->
+                    origin.sourceFile == packageInfo.realRoot.resolve("angular/desktop.less")
+                }
+            },
+        )
+        assertTrue(
+            variants.any {
+                it.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.UNSPECIFIED,
+                    theme = DesignTokenTheme.LIGHT,
+                ) && it.origins.any { origin ->
+                    origin.sourceFile == packageInfo.realRoot.resolve("palette/light.css")
+                }
+            },
+        )
+    }
+
+    @Test
+    fun `classifies known real desktop and mobile files`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val variants = DesignTokenIndex.build(packageInfo.realRoot, declarations).variants
+
+        assertTrue(
+            variants.any { variant ->
+                variant.context.platform == DesignTokenPlatform.DESKTOP &&
+                    variant.origins.any {
+                        it.sourceFile == packageInfo.realRoot.resolve("fonts/desktop.css")
+                    }
+            },
+        )
+        assertTrue(
+            variants.any { variant ->
+                variant.context.platform == DesignTokenPlatform.MOBILE &&
+                    variant.origins.any {
+                        it.sourceFile == packageInfo.realRoot.resolve("angular/mobile.less")
+                    }
+            },
+        )
+    }
+
+    @Test
+    fun `real index contains no repeated physical origins`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val origins = DesignTokenIndex
+            .build(packageInfo.realRoot, declarations)
+            .variants
+            .flatMap { it.origins }
+
+        assertEquals(origins.size, origins.toSet().size)
+    }
+
+    @Test
+    fun `real index returns empty result for unknown token`() {
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
+
+        assertTrue(index.find("--tui-token-that-does-not-exist").isEmpty())
     }
 
     private fun resolveInstalledPackage(): DesignTokensPackage {
