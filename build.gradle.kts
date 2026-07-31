@@ -43,12 +43,6 @@ dependencies {
     }
 }
 
-tasks.test {
-    testLogging {
-        showStandardStreams = true
-    }
-}
-
 intellijPlatform {
     instrumentCode.set(
         providers.gradleProperty("skipInstrumentation")
