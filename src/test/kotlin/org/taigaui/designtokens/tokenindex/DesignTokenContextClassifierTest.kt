@@ -19,6 +19,15 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
+    fun `defaults files without mobile marker to desktop`() {
+        assertContext(
+            relativePath = "palette/light.css",
+            platform = DesignTokenPlatform.DESKTOP,
+            theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
     fun `classifies mobile from file name`() {
         assertContext(
             relativePath = "angular/mobile.less",
@@ -27,7 +36,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies platform from directory name`() {
+    fun `classifies mobile from directory name`() {
         assertContext(
             relativePath = "palette/mobile/light.css",
             platform = DesignTokenPlatform.MOBILE,
@@ -39,6 +48,7 @@ class DesignTokenContextClassifierTest {
     fun `classifies light theme from file name`() {
         assertContext(
             relativePath = "palette/scss/light.scss",
+            platform = DesignTokenPlatform.DESKTOP,
             theme = DesignTokenTheme.LIGHT,
         )
     }
@@ -47,6 +57,7 @@ class DesignTokenContextClassifierTest {
     fun `classifies dark theme from file name`() {
         assertContext(
             relativePath = "palette/less/dark.less",
+            platform = DesignTokenPlatform.DESKTOP,
             theme = DesignTokenTheme.DARK,
         )
     }
@@ -70,35 +81,43 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `does not classify marker substrings`() {
+    fun `does not classify marker substrings as mobile`() {
         assertContext(
-            relativePath = "palette/highlight.css",
+            relativePath = "palette/mobilestyle.css",
+            platform = DesignTokenPlatform.DESKTOP,
         )
     }
 
     @Test
-    fun `returns unspecified platform for conflicting markers`() {
+    fun `mobile marker takes precedence over desktop marker`() {
         assertContext(
             relativePath = "mobile/desktop.css",
-            theme = DesignTokenTheme.UNSPECIFIED,
+            platform = DesignTokenPlatform.MOBILE,
         )
     }
 
     @Test
-    fun `returns unspecified theme for conflicting markers`() {
+    fun `returns unspecified theme for conflicting theme markers`() {
         assertContext(
             relativePath = "light/dark.css",
+            platform = DesignTokenPlatform.DESKTOP,
         )
     }
 
     @Test
-    fun `returns unspecified context for source outside package`() {
+    fun `defaults source outside package to desktop`() {
         val context = classifier.classify(
             packageRoot = packageRoot,
-            sourceFile = packageRoot.parent.resolve("desktop/dark.css"),
+            sourceFile = packageRoot.parent.resolve("dark.css"),
         )
 
-        assertEquals(DesignTokenContext.UNSPECIFIED, context)
+        assertEquals(
+            DesignTokenContext(
+                platform = DesignTokenPlatform.DESKTOP,
+                theme = DesignTokenTheme.UNSPECIFIED,
+            ),
+            context,
+        )
     }
 
     @Test
@@ -119,7 +138,7 @@ class DesignTokenContextClassifierTest {
 
     private fun assertContext(
         relativePath: String,
-        platform: DesignTokenPlatform = DesignTokenPlatform.UNSPECIFIED,
+        platform: DesignTokenPlatform = DesignTokenPlatform.DESKTOP,
         theme: DesignTokenTheme = DesignTokenTheme.UNSPECIFIED,
     ) {
         val context = classifier.classify(
