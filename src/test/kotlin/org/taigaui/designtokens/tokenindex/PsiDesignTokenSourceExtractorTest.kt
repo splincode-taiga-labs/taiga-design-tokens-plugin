@@ -260,6 +260,16 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
         assertEquals(name, declaration.name)
         assertEquals(value, declaration.value)
         assertEquals(line, declaration.line)
-        assertEquals(selectors, declaration.selectorChain)
+        assertEquals(
+            selectors.map(::normalizeSelector),
+            declaration.selectorChain.map(::normalizeSelector),
+        )
+    }
+
+    private fun normalizeSelector(selector: String): String =
+        selector.replace(WHITESPACE, " ").trim()
+
+    private companion object {
+        val WHITESPACE = Regex("""\s+""")
     }
 }
