@@ -84,16 +84,16 @@ internal object VfsEventPaths {
         }
 
     private fun MutableSet<Path>.addRenamePaths(event: VFilePropertyChangeEvent) {
-        if (event.propertyName != VirtualFile.PROP_NAME) {
-            return
+        if (event.propertyName == VirtualFile.PROP_NAME) {
+            val parentPath = event.file.parent?.path
+            val oldName = event.oldValue as? String
+            val newName = event.newValue as? String
+
+            if (parentPath != null && oldName != null && newName != null) {
+                add(Path.of(parentPath, oldName))
+                add(Path.of(parentPath, newName))
+            }
         }
-
-        val parentPath = event.file.parent?.path ?: return
-        val oldName = event.oldValue as? String ?: return
-        val newName = event.newValue as? String ?: return
-
-        add(Path.of(parentPath, oldName))
-        add(Path.of(parentPath, newName))
     }
 
     private fun String.toPathOrNull(): Path? = runCatching(Path::of).getOrNull()
