@@ -1,7 +1,5 @@
 package org.taigaui.designtokens.documentation
 
-import org.taigaui.designtokens.index.DesignTokenContext
-import org.taigaui.designtokens.index.DesignTokenOrigin
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
@@ -43,55 +41,74 @@ internal object DesignTokenDocumentationHtmlRenderer {
             if (groups.isEmpty()) {
                 append("<p>No declarations were found in the installed @taiga-ui/design-tokens package.</p>")
             } else {
-                groups.forEachIndexed { index, group ->
-                    if (index > 0) {
-                        append("<hr>")
-                    }
-
-                    appendGroup(group)
-                }
+                appendSummaryTable(groups)
+                appendReferenceSections(groups)
             }
 
             append("</div>")
         }
 
-    private fun StringBuilder.appendGroup(group: DesignTokenResolutionGroup) {
+    private fun StringBuilder.appendSummaryTable(groups: List<DesignTokenResolutionGroup>) {
+        append("<table cellspacing='0' cellpadding='4'>")
+        append("<thead><tr>")
+        append("<th align='left'>Context</th>")
+        append("<th align='left'>Token value</th>")
+        append("<th align='left'>Final value</th>")
+        append("</tr></thead><tbody>")
+        groups.forEach(::appendSummaryRow)
+        append("</tbody></table>")
+    }
+
+    private fun StringBuilder.appendSummaryRow(group: DesignTokenResolutionGroup) {
         val contexts =
             group.resolutions
                 .map { resolution -> resolution.variant.context }
-                .distinct()
-                .joinToString(separator = ", ", transform = DesignTokenContext::documentationLabel)
-        val result = group.representative
-
-        append("<p><b>")
-        append(contexts.escapeHtml())
-        append("</b></p>")
-        append("<p>")
-        append(result.documentationSwatch())
-        append("<b>Resolved:</b> <code>")
-        append(result.documentationSummary().escapeHtml())
-        append("</code></p>")
-
+                .documentationContextsLabel()
         val rawValues =
             group.resolutions
                 .map { resolution -> resolution.variant.rawValue }
                 .distinct()
+        val result = group.representative
 
-        append("<p><b>Raw:</b> ")
+        append("<tr>")
+        append("<td valign='top'>")
+        append(contexts.escapeHtml())
+        append("</td>")
+        append("<td valign='top'>")
         append(
             rawValues.joinToString(separator = "<br>") { rawValue ->
                 "<code>${rawValue.escapeHtml()}</code>"
             },
         )
-        append("</p>")
-        appendReferences(result)
-        appendOrigins(group.allOrigins)
+        append("</td>")
+        append("<td valign='top'>")
+        append(result.documentationSwatch())
+        append("<code>")
+        append(result.documentationSummary().escapeHtml())
+        append("</code></td>")
+        append("</tr>")
     }
 
-    private fun StringBuilder.appendReferences(result: DesignTokenValueResolution) {
-        if (result.references.isNotEmpty()) {
-            append("<p><b>References:</b></p>")
-            appendReferenceList(result.references)
+    private fun StringBuilder.appendReferenceSections(groups: List<DesignTokenResolutionGroup>) {
+        groups.forEach { group ->
+            val references = group.representative.references
+
+            if (references.isNotEmpty()) {
+                val contexts =
+                    group.resolutions
+                        .map { resolution -> resolution.variant.context }
+                        .documentationContextsLabel()
+
+                append("<p><b>Reference chain")
+
+                if (groups.size > 1) {
+                    append(" · ")
+                    append(contexts.escapeHtml())
+                }
+
+                append(":</b></p>")
+                appendReferenceList(references)
+            }
         }
     }
 
@@ -117,29 +134,5 @@ internal object DesignTokenDocumentationHtmlRenderer {
         }
 
         append("</ul>")
-    }
-
-    private fun StringBuilder.appendOrigins(origins: List<DesignTokenOrigin>) {
-        if (origins.isNotEmpty()) {
-            append("<p><b>Sources:</b></p><ul>")
-
-            origins.forEach { origin ->
-                append("<li><code>")
-                append(origin.sourceFile.toString().escapeHtml())
-                append(':')
-                append(origin.line)
-                append("</code>")
-
-                if (origin.selectorChain.isNotEmpty()) {
-                    append("<br><small>")
-                    append(origin.selectorChain.joinToString(" → ").escapeHtml())
-                    append("</small>")
-                }
-
-                append("</li>")
-            }
-
-            append("</ul>")
-        }
     }
 }
