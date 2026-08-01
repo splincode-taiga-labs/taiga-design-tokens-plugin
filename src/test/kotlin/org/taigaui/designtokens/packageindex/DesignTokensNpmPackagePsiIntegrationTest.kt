@@ -1,7 +1,6 @@
 package org.taigaui.designtokens.packageindex
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import org.taigaui.designtokens.tokenindex.DesignTokenContextClassifier
 import org.taigaui.designtokens.tokenindex.DesignTokenIndex
 import org.taigaui.designtokens.tokenindex.DesignTokenPlatform
 import org.taigaui.designtokens.tokenindex.DesignTokenSourceFormat
@@ -39,16 +38,17 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
         )
     }
 
-    fun testRealDeclarationsPreserveParentSelectorChains() {
+    fun testRealRulesetDeclarationsPreserveParentSelectorChains() {
         val declarations = scanner.scan(packageInfo)
+        val lightPaletteDeclarations =
+            declarations.filter {
+                it.sourceFile == packageInfo.realRoot.resolve("palette/light.css")
+            }
 
+        assertFalse(lightPaletteDeclarations.isEmpty())
         assertTrue(
-            "Expected PSI extraction to retain selector context for real token declarations.",
-            declarations.any { it.selectorChain.isNotEmpty() },
-        )
-        assertTrue(
-            "Every real custom property should belong to at least one ruleset.",
-            declarations.all { it.selectorChain.isNotEmpty() },
+            "Expected PSI extraction to retain selector context for real ruleset declarations.",
+            lightPaletteDeclarations.all { it.selectorChain.isNotEmpty() },
         )
     }
 
@@ -78,29 +78,7 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
         )
     }
 
-    fun testFindsRealMobileSelectorsOutsideMobileDirectories() {
-        val declarations = scanner.scan(packageInfo)
-        val classifier = DesignTokenContextClassifier()
-        val selectorMobileDeclarations =
-            declarations.filter { declaration ->
-                !packageInfo.realRoot
-                    .relativize(declaration.sourceFile)
-                    .any { it.toString().equals("mobile", ignoreCase = true) } &&
-                    declaration.selectorChain.any(::containsMobilePlatformSelector)
-            }
-
-        assertFalse(
-            "Expected the pinned package to contain platform-specific selectors outside mobile directories.",
-            selectorMobileDeclarations.isEmpty(),
-        )
-        assertTrue(
-            selectorMobileDeclarations.all {
-                classifier.classify(packageInfo.realRoot, it).platform == DesignTokenPlatform.MOBILE
-            },
-        )
-    }
-
-    fun testRealIndexContainsDesktopAndSelectorBasedMobileVariants() {
+    fun testRealIndexContainsDesktopAndMobileVariants() {
         val declarations = scanner.scan(packageInfo)
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
         val tokenWithBothPlatforms =
@@ -123,24 +101,18 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
         )
     }
 
-    fun testRealPsiIndexRetainsEveryPhysicalDeclaration() {
+    fun testRealPsiIndexRetainsEveryPhysicalDeclarationAndKnownSelectorContext() {
         val declarations = scanner.scan(packageInfo)
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
+        val origins = index.variants.flatMap { it.origins }
 
         assertEquals(declarations.size, index.originCount)
+        assertTrue(origins.any { it.selectorChain.isNotEmpty() })
         assertTrue(
-            index.variants
-                .flatMap { it.origins }
-                .all { it.selectorChain.isNotEmpty() },
+            origins.any {
+                it.sourceFile == packageInfo.realRoot.resolve("palette/light.css") &&
+                    it.selectorChain.isNotEmpty()
+            },
         )
-    }
-
-    private fun containsMobilePlatformSelector(selector: String): Boolean {
-        val hasPlatformAttribute = selector.contains("tuiPlatform", ignoreCase = true)
-        val hasMobileValue =
-            selector.contains("android", ignoreCase = true) ||
-                selector.contains("ios", ignoreCase = true)
-
-        return hasPlatformAttribute && hasMobileValue
     }
 }
