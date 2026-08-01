@@ -11,8 +11,8 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.css.CssDeclaration
 import com.intellij.psi.css.CssRuleset
-import org.taigaui.designtokens.tokenindex.DesignTokenDeclaration
-import org.taigaui.designtokens.tokenindex.DesignTokenSourceExtractor
+import org.taigaui.designtokens.index.DesignTokenDeclaration
+import org.taigaui.designtokens.index.DesignTokenSourceExtractor
 import java.nio.file.Path
 
 class PsiDesignTokenSourceExtractor(

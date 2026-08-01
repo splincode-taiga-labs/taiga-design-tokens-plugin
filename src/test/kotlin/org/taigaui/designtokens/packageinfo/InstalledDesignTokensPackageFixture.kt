@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.packageindex
+package org.taigaui.designtokens.packageinfo
 
 import org.junit.Assert.assertNotNull
 import org.junit.Assume.assumeTrue

@@ -1,15 +1,15 @@
-package org.taigaui.designtokens.packageindex
+package org.taigaui.designtokens.packageinfo
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.taigaui.designtokens.tokenindex.DesignTokenContext
-import org.taigaui.designtokens.tokenindex.DesignTokenDeclaration
-import org.taigaui.designtokens.tokenindex.DesignTokenIndex
-import org.taigaui.designtokens.tokenindex.DesignTokenPlatform
-import org.taigaui.designtokens.tokenindex.DesignTokenSourceFormat
-import org.taigaui.designtokens.tokenindex.DesignTokenTheme
-import org.taigaui.designtokens.tokenindex.DesignTokensPackageScanner
+import org.taigaui.designtokens.index.DesignTokenContext
+import org.taigaui.designtokens.index.DesignTokenDeclaration
+import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenPlatform
+import org.taigaui.designtokens.index.DesignTokenSourceFormat
+import org.taigaui.designtokens.index.DesignTokenTheme
+import org.taigaui.designtokens.index.DesignTokensPackageScanner
 import java.nio.file.Files
 import java.nio.file.Path
 

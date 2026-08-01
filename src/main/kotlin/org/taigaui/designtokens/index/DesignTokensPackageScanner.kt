@@ -1,6 +1,6 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
-import org.taigaui.designtokens.packageindex.DesignTokensPackage
+import org.taigaui.designtokens.packageinfo.DesignTokensPackage
 
 class DesignTokensPackageScanner(
     private val sourceExtractor: DesignTokenSourceExtractor,

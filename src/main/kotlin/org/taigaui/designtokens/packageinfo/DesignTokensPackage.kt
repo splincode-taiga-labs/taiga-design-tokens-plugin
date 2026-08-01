@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.packageindex
+package org.taigaui.designtokens.packageinfo
 
 import java.nio.file.Path
 

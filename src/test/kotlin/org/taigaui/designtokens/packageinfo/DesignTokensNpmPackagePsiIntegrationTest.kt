@@ -1,11 +1,11 @@
-package org.taigaui.designtokens.packageindex
+package org.taigaui.designtokens.packageinfo
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
-import org.taigaui.designtokens.tokenindex.DesignTokenIndex
-import org.taigaui.designtokens.tokenindex.DesignTokenPlatform
-import org.taigaui.designtokens.tokenindex.DesignTokenSourceFormat
-import org.taigaui.designtokens.tokenindex.DesignTokensPackageScanner
+import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenPlatform
+import org.taigaui.designtokens.index.DesignTokenSourceFormat
+import org.taigaui.designtokens.index.DesignTokensPackageScanner
 
 class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
     private lateinit var fixture: InstalledDesignTokensPackageFixture

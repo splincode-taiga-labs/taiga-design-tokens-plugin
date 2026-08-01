@@ -4,9 +4,9 @@ import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import org.taigaui.designtokens.tokenindex.DesignTokenDeclaration
-import org.taigaui.designtokens.tokenindex.DesignTokenIndex
-import org.taigaui.designtokens.tokenindex.DesignTokenPlatform
+import org.taigaui.designtokens.index.DesignTokenDeclaration
+import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenPlatform
 import java.nio.file.Path
 
 class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {

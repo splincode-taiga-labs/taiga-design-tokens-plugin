@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 enum class DesignTokenPlatform {
     DESKTOP,

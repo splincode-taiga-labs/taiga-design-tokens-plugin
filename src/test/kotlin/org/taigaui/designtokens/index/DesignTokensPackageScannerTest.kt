@@ -1,10 +1,10 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import org.taigaui.designtokens.packageindex.DesignTokensPackage
+import org.taigaui.designtokens.packageinfo.DesignTokensPackage
 import java.nio.file.Files
 import java.nio.file.Path
 

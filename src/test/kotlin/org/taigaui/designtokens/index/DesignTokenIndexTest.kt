@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
