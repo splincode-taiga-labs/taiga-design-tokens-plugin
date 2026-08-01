@@ -226,8 +226,7 @@ class DesignTokenValueResolver(
             append(')')
         }
 
-    private fun DesignTokenValueResolution.Resolved.semanticKey(): String =
-        color?.canonicalValue ?: value.trim()
+    private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
 
     private data class ResolutionFrame(
         val variant: DesignTokenVariant,
