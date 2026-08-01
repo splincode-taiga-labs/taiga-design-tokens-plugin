@@ -135,7 +135,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies android selector as mobile`() {
+    fun `classifies android tui platform selector as mobile`() {
         assertContext(
             relativePath = "palette/light.css",
             selectors = listOf(":root", "[tuiPlatform='android'] &"),
@@ -145,10 +145,77 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies ios selector as mobile`() {
+    fun `classifies ios tui platform selector as mobile`() {
         assertContext(
             relativePath = "palette/dark.css",
             selectors = listOf("[tuiPlatform=\"ios\"]"),
+            platform = DesignTokenPlatform.MOBILE,
+            theme = DesignTokenTheme.DARK,
+        )
+    }
+
+    @Test
+    fun `classifies android data platform selector as mobile`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors = listOf("[data-platform='android']"),
+            platform = DesignTokenPlatform.MOBILE,
+        )
+    }
+
+    @Test
+    fun `classifies ios data platform selector as mobile`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors = listOf("[data-platform=\"ios\"]"),
+            platform = DesignTokenPlatform.MOBILE,
+        )
+    }
+
+    @Test
+    fun `classifies unquoted data platform value as mobile`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors = listOf("[data-platform=ios]"),
+            platform = DesignTokenPlatform.MOBILE,
+        )
+    }
+
+    @Test
+    fun `classifies dark theme from selector`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors = listOf("[tuiTheme='dark']"),
+            platform = DesignTokenPlatform.DESKTOP,
+            theme = DesignTokenTheme.DARK,
+        )
+    }
+
+    @Test
+    fun `classifies light theme from selector`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors = listOf("[tuiTheme=\"light\"]"),
+            platform = DesignTokenPlatform.DESKTOP,
+            theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `classifies combined selector list as mobile dark regardless of attribute order`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors =
+                listOf(
+                    """
+                    [data-platform='ios'][tuiTheme='dark'],
+                    [data-platform='android'][tuiTheme='dark'],
+                    [data-platform='ios'] [tuiTheme='dark'],
+                    [data-platform='android'] [tuiTheme='dark'],
+                    [tuiTheme='dark'] [data-platform='ios'],
+                    [tuiTheme='dark'] [data-platform='android']
+                    """.trimIndent(),
+                ),
             platform = DesignTokenPlatform.MOBILE,
             theme = DesignTokenTheme.DARK,
         )
@@ -181,12 +248,36 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `keeps web platform selector desktop`() {
+    fun `finds theme selector in any parent level`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors =
+                listOf(
+                    ":root",
+                    "[tuiTheme='dark']",
+                    ".component",
+                ),
+            platform = DesignTokenPlatform.DESKTOP,
+            theme = DesignTokenTheme.DARK,
+        )
+    }
+
+    @Test
+    fun `keeps web tui platform selector desktop`() {
         assertContext(
             relativePath = "palette/light.css",
             selectors = listOf("[tuiPlatform='web']"),
             platform = DesignTokenPlatform.DESKTOP,
             theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `keeps web data platform selector desktop`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors = listOf("[data-platform='web']"),
+            platform = DesignTokenPlatform.DESKTOP,
         )
     }
 
@@ -207,6 +298,15 @@ class DesignTokenContextClassifierTest {
             selectors = listOf("[tuiPlatform='android-tablet']"),
             platform = DesignTokenPlatform.DESKTOP,
             theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `returns unspecified theme for conflicting selector themes`() {
+        assertContext(
+            relativePath = "tokens.css",
+            selectors = listOf("[tuiTheme='light'], [tuiTheme='dark']"),
+            platform = DesignTokenPlatform.DESKTOP,
         )
     }
 
