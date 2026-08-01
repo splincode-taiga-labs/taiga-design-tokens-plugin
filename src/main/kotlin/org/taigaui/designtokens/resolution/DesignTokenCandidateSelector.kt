@@ -14,21 +14,19 @@ internal class DesignTokenCandidateSelector(
         requestedContext: DesignTokenContext,
     ): DesignTokenCandidateSelection {
         val variants = index.find(name)
+        val candidates =
+            contextPrecedence(requestedContext)
+                .asSequence()
+                .map { compatibleContext ->
+                    variants.filter { variant -> variant.context == compatibleContext }
+                }.firstOrNull(List<DesignTokenVariant>::isNotEmpty)
+                .orEmpty()
 
-        contextPrecedence(requestedContext).forEach { compatibleContext ->
-            val candidates =
-                variants.filter { variant ->
-                    variant.context == compatibleContext
-                }
-
-            when (candidates.size) {
-                0 -> Unit
-                1 -> return DesignTokenCandidateSelection.Selected(candidates.single())
-                else -> return DesignTokenCandidateSelection.Ambiguous(candidates.toList())
-            }
+        return when (candidates.size) {
+            0 -> DesignTokenCandidateSelection.Missing
+            1 -> DesignTokenCandidateSelection.Selected(candidates.single())
+            else -> DesignTokenCandidateSelection.Ambiguous(candidates.toList())
         }
-
-        return DesignTokenCandidateSelection.Missing
     }
 
     private fun contextPrecedence(context: DesignTokenContext): List<DesignTokenContext> =
