@@ -48,18 +48,20 @@ class DesignTokenIndexService(
             )
     }
 
-    fun getIndex(sourceFile: Path): DesignTokenIndex? {
-        val designTokensPackage = packageResolver.resolve(sourceFile) ?: return null
-
-        return runCatching {
-            cache.getOrBuild(designTokensPackage)
+    fun getIndex(sourceFile: Path): DesignTokenIndex? =
+        runCatching {
+            getIndexOrThrow(sourceFile)
         }.onFailure { error ->
             LOG.warn(
-                "Failed to build the @taiga-ui/design-tokens index from ${designTokensPackage.realRoot}",
+                "Failed to build the @taiga-ui/design-tokens index for $sourceFile",
                 error,
             )
         }.getOrNull()
-    }
+
+    internal fun getIndexOrThrow(sourceFile: Path): DesignTokenIndex? =
+        packageResolver
+            .resolve(sourceFile)
+            ?.let(cache::getOrBuild)
 
     internal fun invalidate(changedPaths: Collection<Path>): Int = cache.invalidate(changedPaths)
 
