@@ -53,8 +53,8 @@ internal fun Collection<DesignTokenContext>.documentationContextsLabel(): String
             .flatMap { platform ->
                 themes.map { theme -> DesignTokenContext(platform, theme) }
             }.toSet()
-    val platformLabel = platforms.documentationLabel()
-    val themeLabel = themes.documentationLabel()
+    val platformLabel = platforms.platformsDocumentationLabel()
+    val themeLabel = themes.themesDocumentationLabel()
     val canCompact =
         contexts.toSet() == expectedContexts &&
             platformLabel != null &&
@@ -99,7 +99,7 @@ internal fun String.escapeHtml(): String =
         }
     }
 
-private fun Set<DesignTokenPlatform>.documentationLabel(): String? =
+private fun Set<DesignTokenPlatform>.platformsDocumentationLabel(): String? =
     when (this) {
         setOf(DesignTokenPlatform.DESKTOP) -> "Desktop"
         setOf(DesignTokenPlatform.MOBILE) -> "Mobile"
@@ -107,7 +107,7 @@ private fun Set<DesignTokenPlatform>.documentationLabel(): String? =
         else -> null
     }
 
-private fun Set<DesignTokenTheme>.documentationLabel(): String? =
+private fun Set<DesignTokenTheme>.themesDocumentationLabel(): String? =
     when (this) {
         setOf(DesignTokenTheme.LIGHT) -> "Light"
         setOf(DesignTokenTheme.DARK) -> "Dark"
