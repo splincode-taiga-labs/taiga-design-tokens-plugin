@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     java
     id("org.jetbrains.kotlin.jvm")
@@ -40,6 +42,7 @@ dependencies {
 
         bundledPlugin("JavaScript")
         bundledPlugin("com.intellij.css")
+        testFramework(TestFrameworkType.Platform)
     }
 }
 
@@ -56,4 +59,8 @@ intellijPlatform {
             untilBuild = provider { null }
         }
     }
+}
+
+tasks.test {
+    testLogging.showStandardStreams = true
 }
