@@ -16,9 +16,19 @@ internal fun DesignTokenValueResolution.documentationSwatch(): String {
     val color = (this as? DesignTokenValueResolution.Resolved)?.color ?: return ""
     val cssColor = color.canonicalValue.escapeHtmlAttribute()
 
-    return """
-        <span style='display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px;border:1px solid #808080;border-radius:2px;background-color:$cssColor'></span>
-    """.trimIndent()
+    return buildString {
+        append("<span style='")
+        append("display:inline-block;")
+        append("width:12px;")
+        append("height:12px;")
+        append("margin-right:6px;")
+        append("vertical-align:-1px;")
+        append("border:1px solid #808080;")
+        append("border-radius:2px;")
+        append("background-color:")
+        append(cssColor)
+        append("'></span>")
+    }
 }
 
 internal fun DesignTokenUnresolvedReason.documentationSummary(): String =
