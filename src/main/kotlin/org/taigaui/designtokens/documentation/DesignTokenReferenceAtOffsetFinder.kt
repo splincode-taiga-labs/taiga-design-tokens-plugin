@@ -11,82 +11,108 @@ internal object DesignTokenReferenceAtOffsetFinder {
         text: CharSequence,
         offset: Int,
     ): DesignTokenReferenceAtOffset? {
-        if (offset !in 0..text.length) {
-            return null
-        }
+        var result: DesignTokenReferenceAtOffset? = null
 
-        var index = 0
+        if (offset in 0..text.length) {
+            var index = 0
 
-        while (index < text.length) {
-            when {
-                text[index].isQuote() -> index = text.findQuotedEnd(index) + 1
-                text.startsComment(index) -> index = text.findCommentEnd(index)
-                text.isVarFunctionAt(index) -> {
-                    val reference = text.parseReference(index)
+            while (index < text.length && result == null) {
+                index =
+                    when {
+                        text[index].isQuote() -> text.findQuotedEnd(index) + 1
+                        text.startsComment(index) -> text.findCommentEnd(index)
+                        text.isVarFunctionAt(index) -> {
+                            val reference = text.parseReference(index)
 
-                    if (reference != null && offset in reference.startOffset..reference.endOffset) {
-                        return reference
+                            if (reference != null && offset in reference.startOffset..reference.endOffset) {
+                                result = reference
+                            }
+
+                            index + 1
+                        }
+
+                        else -> index + 1
                     }
-
-                    index++
-                }
-
-                else -> index++
             }
         }
 
-        return null
+        return result
     }
 
     private fun CharSequence.parseReference(functionStart: Int): DesignTokenReferenceAtOffset? {
         val openParenthesis = functionStart + VAR_FUNCTION_NAME.length
+
+        return findFirstArgumentEnd(openParenthesis + 1)
+            ?.let { referenceEnd -> trimmedRange(openParenthesis + 1, referenceEnd) }
+            ?.let { range ->
+                subSequence(range.start, range.end)
+                    .toString()
+                    .takeIf(TAIGA_TOKEN_NAME::matches)
+                    ?.let { name ->
+                        DesignTokenReferenceAtOffset(
+                            name = name,
+                            startOffset = range.start,
+                            endOffset = range.end,
+                        )
+                    }
+            }
+    }
+
+    private fun CharSequence.findFirstArgumentEnd(start: Int): Int? {
         var depth = 0
         var end: Int? = null
-        var index = openParenthesis + 1
+        var index = start
 
         while (index < length && end == null) {
-            when {
-                this[index].isQuote() -> index = findQuotedEnd(index) + 1
-                startsComment(index) -> index = findCommentEnd(index)
-                this[index] == '(' -> {
-                    depth++
-                    index++
+            val character = this[index]
+
+            index =
+                when {
+                    character.isQuote() -> findQuotedEnd(index) + 1
+                    startsComment(index) -> findCommentEnd(index)
+                    character == '(' -> {
+                        depth++
+                        index + 1
+                    }
+
+                    character == ')' && depth == 0 -> {
+                        end = index
+                        index
+                    }
+
+                    character == ')' -> {
+                        depth--
+                        index + 1
+                    }
+
+                    character == ',' && depth == 0 -> {
+                        end = index
+                        index
+                    }
+
+                    else -> index + 1
                 }
-
-                this[index] == ')' && depth == 0 -> end = index
-                this[index] == ')' -> {
-                    depth--
-                    index++
-                }
-
-                this[index] == ',' && depth == 0 -> end = index
-                else -> index++
-            }
         }
 
-        val referenceEnd = end ?: return null
-        var nameStart = openParenthesis + 1
-        var nameEnd = referenceEnd
+        return end
+    }
 
-        while (nameStart < nameEnd && this[nameStart].isWhitespace()) {
-            nameStart++
+    private fun CharSequence.trimmedRange(
+        initialStart: Int,
+        initialEnd: Int,
+    ): OffsetRange {
+        var start = initialStart
+        var end = initialEnd
+
+        while (start < end && this[start].isWhitespace()) {
+            start++
         }
 
-        while (nameEnd > nameStart && this[nameEnd - 1].isWhitespace()) {
-            nameEnd--
+        while (end > start && this[end - 1].isWhitespace()) {
+            end--
         }
 
-        val name = subSequence(nameStart, nameEnd).toString()
-
-        return name
-            .takeIf(TAIGA_TOKEN_NAME::matches)
-            ?.let {
-                DesignTokenReferenceAtOffset(
-                    name = it,
-                    startOffset = nameStart,
-                    endOffset = nameEnd,
-                )
-            }
+        return OffsetRange(start, end)
     }
 
     private fun CharSequence.isVarFunctionAt(index: Int): Boolean {
@@ -108,48 +134,46 @@ internal object DesignTokenReferenceAtOffsetFinder {
         thisOffset: Int,
         other: String,
         ignoreCase: Boolean,
-    ): Boolean {
-        if (thisOffset + other.length > length) {
-            return false
-        }
-
-        return other.indices.all { otherIndex ->
-            this[thisOffset + otherIndex].equals(other[otherIndex], ignoreCase)
-        }
-    }
+    ): Boolean =
+        thisOffset + other.length <= length &&
+            other.indices.all { otherIndex ->
+                this[thisOffset + otherIndex].equals(other[otherIndex], ignoreCase)
+            }
 
     private fun CharSequence.findQuotedEnd(quoteStart: Int): Int {
         val quote = this[quoteStart]
         var escaped = false
+        var quotedEnd: Int? = null
         var index = quoteStart + 1
 
-        while (index < length) {
+        while (index < length && quotedEnd == null) {
             val character = this[index]
 
             when {
                 escaped -> escaped = false
                 character == '\\' -> escaped = true
-                character == quote -> return index
+                character == quote -> quotedEnd = index
             }
 
             index++
         }
 
-        return lastIndex
+        return quotedEnd ?: lastIndex
     }
 
     private fun CharSequence.findCommentEnd(commentStart: Int): Int {
+        var commentEnd: Int? = null
         var index = commentStart + 2
 
-        while (index + 1 < length) {
+        while (index + 1 < length && commentEnd == null) {
             if (this[index] == '*' && this[index + 1] == '/') {
-                return index + 2
+                commentEnd = index + 2
             }
 
             index++
         }
 
-        return length
+        return commentEnd ?: length
     }
 
     private fun CharSequence.startsComment(index: Int): Boolean =
@@ -158,6 +182,11 @@ internal object DesignTokenReferenceAtOffsetFinder {
     private fun Char.isQuote(): Boolean = this == '\'' || this == '"'
 
     private fun Char.isIdentifierCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_'
+
+    private data class OffsetRange(
+        val start: Int,
+        val end: Int,
+    )
 
     private const val VAR_FUNCTION_NAME = "var"
     private val TAIGA_TOKEN_NAME = Regex("--tui-[A-Za-z0-9_-]+")
