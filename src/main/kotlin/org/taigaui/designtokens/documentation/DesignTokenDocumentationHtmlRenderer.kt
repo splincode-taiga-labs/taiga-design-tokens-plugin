@@ -55,7 +55,7 @@ internal object DesignTokenDocumentationHtmlRenderer {
         append("<th align='left'>Token value</th>")
         append("<th align='left'>Final value</th>")
         append("</tr></thead><tbody>")
-        groups.forEach(::appendSummaryRow)
+        groups.forEach { group -> appendSummaryRow(group) }
         append("</tbody></table>")
     }
 
