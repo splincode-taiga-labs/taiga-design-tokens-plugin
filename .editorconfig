@@ -10,7 +10,7 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 max_line_length = 120
-ktlint_code_style = kotlin_official
+ktlint_code_style = ktlint_official
 ij_kotlin_allow_trailing_comma = true
 ij_kotlin_allow_trailing_comma_on_call_site = true
 
