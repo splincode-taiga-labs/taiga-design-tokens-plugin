@@ -266,8 +266,7 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
         )
     }
 
-    private fun normalizeSelector(selector: String): String =
-        selector.replace(WHITESPACE, " ").trim()
+    private fun normalizeSelector(selector: String): String = selector.replace(WHITESPACE, " ").trim()
 
     private companion object {
         val WHITESPACE = Regex("""\s+""")
