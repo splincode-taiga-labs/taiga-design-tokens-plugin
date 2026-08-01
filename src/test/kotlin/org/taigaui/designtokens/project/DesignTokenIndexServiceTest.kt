@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenPlatform
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -41,6 +42,8 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
 
         writeToken(fixture.tokenFile, "#000")
 
+        assertEquals(0, service.cachedPackageCount)
+
         val rebuilt = index(fixture)
 
         assertNotSame(first, rebuilt)
@@ -68,10 +71,33 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
             "[tuiTheme='dark'] { --tui-background-base: #000; }",
         )
 
+        assertEquals(0, service.cachedPackageCount)
+
         val rebuilt = index(fixture)
 
         assertNotSame(first, rebuilt)
         assertEquals(2, rebuilt.find(TOKEN_NAME).size)
+    }
+
+    fun testInvalidatesWhenLessFileChanges() {
+        val lessTokenName = "--tui-less-test"
+        val lessFile =
+            createVfsFile(
+                fixture.packageRoot.resolve("angular/desktop.less"),
+                ":root { $lessTokenName: #111; }",
+            )
+        val first = index(fixture)
+
+        assertEquals("#111", first.find(lessTokenName).single().rawValue)
+
+        writeFile(lessFile, ":root { $lessTokenName: #222; }")
+
+        assertEquals(0, service.cachedPackageCount)
+
+        val rebuilt = index(fixture)
+
+        assertNotSame(first, rebuilt)
+        assertEquals("#222", rebuilt.find(lessTokenName).single().rawValue)
     }
 
     fun testInvalidatesWhenStylesheetIsRenamedOrDeleted() {
@@ -87,6 +113,21 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
 
         assertNotSame(afterRename, afterDelete)
         assertTrue(afterDelete.find(TOKEN_NAME).isEmpty())
+    }
+
+    fun testInvalidatesWhenStylesheetMovesToAnotherContext() {
+        val mobileDirectory = createDirectory(fixture.packageRoot.resolve("mobile"))
+        val first = index(fixture)
+
+        move(fixture.tokenFile, mobileDirectory)
+
+        assertEquals(0, service.cachedPackageCount)
+
+        val rebuilt = index(fixture)
+        val variant = rebuilt.find(TOKEN_NAME).single()
+
+        assertNotSame(first, rebuilt)
+        assertEquals(DesignTokenPlatform.MOBILE, variant.context.platform)
     }
 
     fun testInvalidatesWhenPackageVersionChanges() {
@@ -113,6 +154,8 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         assertEquals(2, service.cachedPackageCount)
 
         writeToken(firstPackage.tokenFile, "#333")
+
+        assertEquals(1, service.cachedPackageCount)
 
         val rebuiltFirst = index(firstPackage)
         val cachedSecond = index(secondPackage)
@@ -194,6 +237,15 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         }
     }
 
+    private fun move(
+        file: VirtualFile,
+        directory: VirtualFile,
+    ) {
+        WriteCommandAction.runWriteCommandAction(project) {
+            file.move(this, directory)
+        }
+    }
+
     private fun delete(file: VirtualFile) {
         WriteCommandAction.runWriteCommandAction(project) {
             file.delete(this)
@@ -214,6 +266,14 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         writeFile(file, content)
 
         return file
+    }
+
+    private fun createDirectory(path: Path): VirtualFile {
+        Files.createDirectories(path)
+
+        return requireNotNull(
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path),
+        )
     }
 
     private fun createFile(
