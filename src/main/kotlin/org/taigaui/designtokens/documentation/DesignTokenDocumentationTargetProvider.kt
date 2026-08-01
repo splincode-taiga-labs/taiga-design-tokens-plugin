@@ -33,7 +33,7 @@ class DesignTokenDocumentationTargetProvider : DocumentationTargetProvider {
     }
 
     private fun PsiFile.documentationRequest(offset: Int): DocumentationRequest? =
-        takeIf(PsiFile::isSupportedStylesheet)
+        takeIf { psiFile -> psiFile.isSupportedStylesheet() }
             ?.let { psiFile ->
                 DesignTokenReferenceAtOffsetFinder
                     .find(psiFile.text, offset)
