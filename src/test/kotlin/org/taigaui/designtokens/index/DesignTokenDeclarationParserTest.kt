@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -11,25 +11,26 @@ class DesignTokenDeclarationParserTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
-    private val parser = DesignTokenDeclarationParser()
+    private val extractor: DesignTokenSourceExtractor = DesignTokenDeclarationParser()
 
     @Test
     fun `parses declarations with values and source locations`() {
-        val sourceFile = createSourceFile(
-            "tokens.scss",
-            """
-            :root {
-                --tui-text-primary: #000;
-                --tui-shadow:
-                    0 1px 2px rgb(0 0 0 / 10%);
-                --tui-data: url("data:image/svg+xml;utf8,<svg></svg>");
-                --tui-last: white
-            }
-            """.trimIndent(),
-        )
+        val sourceFile =
+            createSourceFile(
+                "tokens.scss",
+                """
+                :root {
+                    --tui-text-primary: #000;
+                    --tui-shadow:
+                        0 1px 2px rgb(0 0 0 / 10%);
+                    --tui-data: url("data:image/svg+xml;utf8,<svg></svg>");
+                    --tui-last: white
+                }
+                """.trimIndent(),
+            )
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
 
-        val result = parser.parse(sourceFile)
+        val result = extractor.extract(sourceFile)
 
         assertEquals(
             listOf(
@@ -64,30 +65,32 @@ class DesignTokenDeclarationParserTest {
 
     @Test
     fun `ignores references comments strings and unrelated properties`() {
-        val sourceFile = createSourceFile(
-            "ignored.less",
-            """
-            :root {
-                color: var(--tui-text-primary);
-                --company-token: red;
-                /* --tui-block-commented: red; */
-                // --tui-line-commented: blue;
-                content: "--tui-string-token: green;";
-            }
-            """.trimIndent(),
-        )
+        val sourceFile =
+            createSourceFile(
+                "ignored.less",
+                """
+                :root {
+                    color: var(--tui-text-primary);
+                    --company-token: red;
+                    /* --tui-block-commented: red; */
+                    // --tui-line-commented: blue;
+                    content: "--tui-string-token: green;";
+                }
+                """.trimIndent(),
+            )
 
-        assertEquals(emptyList<DesignTokenDeclaration>(), parser.parse(sourceFile))
+        assertEquals(emptyList<DesignTokenDeclaration>(), extractor.extract(sourceFile))
     }
 
     @Test
     fun `supports whitespace and comments before the colon`() {
-        val sourceFile = createSourceFile(
-            "spacing.css",
-            "--tui-text-warning /* generated */ : rgb(255 100 0);",
-        )
+        val sourceFile =
+            createSourceFile(
+                "spacing.css",
+                "--tui-text-warning /* generated */ : rgb(255 100 0);",
+            )
 
-        val result = parser.parse(sourceFile)
+        val result = extractor.extract(sourceFile)
 
         assertEquals(1, result.size)
         assertEquals("--tui-text-warning", result.single().name)
@@ -99,10 +102,13 @@ class DesignTokenDeclarationParserTest {
     fun `returns empty list when source file cannot be read`() {
         val missingFile = temporaryFolder.root.toPath().resolve("missing.css")
 
-        assertEquals(emptyList<DesignTokenDeclaration>(), parser.parse(missingFile))
+        assertEquals(emptyList<DesignTokenDeclaration>(), extractor.extract(missingFile))
     }
 
-    private fun createSourceFile(name: String, content: String): Path {
+    private fun createSourceFile(
+        name: String,
+        content: String,
+    ): Path {
         val sourceFile = temporaryFolder.root.toPath().resolve(name)
         Files.writeString(sourceFile, content)
 

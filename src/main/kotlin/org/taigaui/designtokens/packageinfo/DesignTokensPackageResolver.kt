@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.packageindex
+package org.taigaui.designtokens.packageinfo
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -8,11 +8,12 @@ class DesignTokensPackageResolver(
 ) {
     fun resolve(start: Path): DesignTokensPackage? {
         val normalizedStart = start.toAbsolutePath().normalize()
-        val startDirectory = when {
-            Files.isDirectory(normalizedStart) -> normalizedStart
-            Files.isRegularFile(normalizedStart) -> normalizedStart.parent
-            else -> normalizedStart
-        }
+        val startDirectory =
+            when {
+                Files.isDirectory(normalizedStart) -> normalizedStart
+                Files.isRegularFile(normalizedStart) -> normalizedStart.parent
+                else -> normalizedStart
+            }
 
         return generateSequence(startDirectory) { it.parent }
             .map { it.resolve(PACKAGE_JSON) }
@@ -33,11 +34,12 @@ class DesignTokensPackageResolver(
     }
 
     private companion object {
-        val PACKAGE_JSON = Path.of(
-            "node_modules",
-            "@taiga-ui",
-            "design-tokens",
-            "package.json",
-        )
+        val PACKAGE_JSON =
+            Path.of(
+                "node_modules",
+                "@taiga-ui",
+                "design-tokens",
+                "package.json",
+            )
     }
 }

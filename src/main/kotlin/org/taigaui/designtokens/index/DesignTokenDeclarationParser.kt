@@ -1,18 +1,20 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 import java.nio.file.Files
 import java.nio.file.Path
 
-class DesignTokenDeclarationParser {
-    fun parse(sourceFile: Path): List<DesignTokenDeclaration> {
+class DesignTokenDeclarationParser : DesignTokenSourceExtractor {
+    override fun extract(sourceFile: Path): List<DesignTokenDeclaration> {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
-        val content = runCatching { Files.readString(normalizedSourceFile) }
-            .getOrNull()
-            ?: return emptyList()
+        val content =
+            runCatching { Files.readString(normalizedSourceFile) }
+                .getOrNull()
+                ?: return emptyList()
         val searchableContent = maskCommentsAndStrings(content)
         val lineStarts = findLineStarts(content)
 
-        return DECLARATION.findAll(searchableContent)
+        return DECLARATION
+            .findAll(searchableContent)
             .mapNotNull { match ->
                 val valueStart = match.range.last + 1
                 val valueEnd = findValueEnd(searchableContent, valueStart)
@@ -26,8 +28,7 @@ class DesignTokenDeclarationParser {
                         line = lineNumber(lineStarts, match.range.first),
                     )
                 }
-            }
-            .toList()
+            }.toList()
     }
 
     private fun maskCommentsAndStrings(content: String): String {
@@ -69,8 +70,10 @@ class DesignTokenDeclarationParser {
         startIndex: Int,
         terminator: String,
     ): Int {
-        val endIndex = content.indexOf(terminator, startIndex + 2)
-            .let { if (it == -1) content.length else it + terminator.length }
+        val endIndex =
+            content
+                .indexOf(terminator, startIndex + 2)
+                .let { if (it == -1) content.length else it + terminator.length }
 
         maskRange(masked, startIndex, endIndex)
 
@@ -82,8 +85,10 @@ class DesignTokenDeclarationParser {
         content: String,
         startIndex: Int,
     ): Int {
-        val endIndex = content.indexOf('\n', startIndex + 2)
-            .let { if (it == -1) content.length else it }
+        val endIndex =
+            content
+                .indexOf('\n', startIndex + 2)
+                .let { if (it == -1) content.length else it }
 
         maskRange(masked, startIndex, endIndex)
 
@@ -114,7 +119,11 @@ class DesignTokenDeclarationParser {
         return index
     }
 
-    private fun maskRange(masked: CharArray, startIndex: Int, endIndex: Int) {
+    private fun maskRange(
+        masked: CharArray,
+        startIndex: Int,
+        endIndex: Int,
+    ) {
         for (index in startIndex until endIndex) {
             if (masked[index] != '\n' && masked[index] != '\r') {
                 masked[index] = ' '
@@ -122,7 +131,10 @@ class DesignTokenDeclarationParser {
         }
     }
 
-    private fun findValueEnd(content: String, startIndex: Int): Int {
+    private fun findValueEnd(
+        content: String,
+        startIndex: Int,
+    ): Int {
         var parenthesesDepth = 0
         var bracketsDepth = 0
 
@@ -132,26 +144,31 @@ class DesignTokenDeclarationParser {
                 ')' -> parenthesesDepth = (parenthesesDepth - 1).coerceAtLeast(0)
                 '[' -> bracketsDepth++
                 ']' -> bracketsDepth = (bracketsDepth - 1).coerceAtLeast(0)
-                ';', '}' -> if (parenthesesDepth == 0 && bracketsDepth == 0) {
-                    return index
-                }
+                ';', '}' ->
+                    if (parenthesesDepth == 0 && bracketsDepth == 0) {
+                        return index
+                    }
             }
         }
 
         return content.length
     }
 
-    private fun findLineStarts(content: String): List<Int> = buildList {
-        add(0)
+    private fun findLineStarts(content: String): List<Int> =
+        buildList {
+            add(0)
 
-        content.forEachIndexed { index, character ->
-            if (character == '\n') {
-                add(index + 1)
+            content.forEachIndexed { index, character ->
+                if (character == '\n') {
+                    add(index + 1)
+                }
             }
         }
-    }
 
-    private fun lineNumber(lineStarts: List<Int>, offset: Int): Int {
+    private fun lineNumber(
+        lineStarts: List<Int>,
+        offset: Int,
+    ): Int {
         val index = lineStarts.binarySearch(offset)
 
         return if (index >= 0) index + 1 else -index - 1

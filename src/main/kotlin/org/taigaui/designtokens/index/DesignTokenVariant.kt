@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 data class DesignTokenVariant(
     val name: String,

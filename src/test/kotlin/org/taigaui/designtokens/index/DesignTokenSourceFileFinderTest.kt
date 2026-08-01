@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -24,9 +24,10 @@ class DesignTokenSourceFileFinderTest {
 
         val result = finder.find(packageRoot)
 
-        val expected = listOf(css, scss, less)
-            .map { it.toAbsolutePath().normalize() }
-            .sortedBy(Path::toString)
+        val expected =
+            listOf(css, scss, less)
+                .map { it.toAbsolutePath().normalize() }
+                .sortedBy(Path::toString)
 
         assertEquals(expected, result)
     }

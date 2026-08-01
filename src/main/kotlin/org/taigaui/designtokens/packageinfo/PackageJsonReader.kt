@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.packageindex
+package org.taigaui.designtokens.packageinfo
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -7,7 +7,8 @@ class PackageJsonReader {
     fun readVersion(packageJson: Path): String? {
         val content = runCatching { Files.readString(packageJson) }.getOrNull() ?: return null
 
-        return VERSION_PROPERTY.find(content)
+        return VERSION_PROPERTY
+            .find(content)
             ?.groupValues
             ?.get(1)
             ?.trim()

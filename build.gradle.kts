@@ -1,7 +1,11 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     java
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.intellij.platform")
+    id("org.jlleitschuh.gradle.ktlint")
+    id("io.gitlab.arturbosch.detekt")
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -25,6 +29,19 @@ kotlin {
     jvmToolchain(21)
 }
 
+ktlint {
+    verbose.set(true)
+    outputToConsole.set(true)
+    ignoreFailures.set(false)
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    parallel = true
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+}
+
 val localIdePath = providers.gradleProperty("localIdePath").orNull
 
 dependencies {
@@ -40,12 +57,14 @@ dependencies {
 
         bundledPlugin("JavaScript")
         bundledPlugin("com.intellij.css")
+        testFramework(TestFrameworkType.Platform)
     }
 }
 
 intellijPlatform {
     instrumentCode.set(
-        providers.gradleProperty("skipInstrumentation")
+        providers
+            .gradleProperty("skipInstrumentation")
             .map { !it.toBoolean() }
             .orElse(true),
     )

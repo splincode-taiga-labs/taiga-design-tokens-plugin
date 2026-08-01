@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.packageindex
+package org.taigaui.designtokens.packageinfo
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -33,8 +33,10 @@ class DesignTokensPackageResolverTest {
     fun `resolves package relative to a source file`() {
         val projectRoot = temporaryFolder.newFolder("file-project").toPath()
         val packageRoot = createPackage(projectRoot, version = "4.3.0")
-        val sourceFile = Files.createDirectories(projectRoot.resolve("src/styles"))
-            .resolve("theme.css")
+        val sourceFile =
+            Files
+                .createDirectories(projectRoot.resolve("src/styles"))
+                .resolve("theme.css")
         Files.writeString(sourceFile, ":root {}")
 
         val result = resolver.resolve(sourceFile)
@@ -88,7 +90,10 @@ class DesignTokensPackageResolverTest {
         assertNull(resolver.resolve(applicationRoot))
     }
 
-    private fun createPackage(projectRoot: Path, version: String): Path {
+    private fun createPackage(
+        projectRoot: Path,
+        version: String,
+    ): Path {
         val packageRoot = designTokensPackageRoot(projectRoot)
         Files.createDirectories(packageRoot)
         Files.writeString(
@@ -104,7 +109,8 @@ class DesignTokensPackageResolverTest {
         return packageRoot
     }
 
-    private fun designTokensPackageRoot(projectRoot: Path): Path = projectRoot.resolve(
-        Path.of("node_modules", "@taiga-ui", "design-tokens"),
-    )
+    private fun designTokensPackageRoot(projectRoot: Path): Path =
+        projectRoot.resolve(
+            Path.of("node_modules", "@taiga-ui", "design-tokens"),
+        )
 }

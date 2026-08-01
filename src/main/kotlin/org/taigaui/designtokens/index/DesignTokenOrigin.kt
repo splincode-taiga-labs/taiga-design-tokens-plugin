@@ -1,4 +1,4 @@
-package org.taigaui.designtokens.tokenindex
+package org.taigaui.designtokens.index
 
 import java.nio.file.Path
 
@@ -29,4 +29,5 @@ data class DesignTokenOrigin(
     val sourceFile: Path,
     val line: Int,
     val format: DesignTokenSourceFormat,
+    val selectorChain: List<String> = emptyList(),
 )
