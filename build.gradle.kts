@@ -63,7 +63,8 @@ dependencies {
 
 intellijPlatform {
     instrumentCode.set(
-        providers.gradleProperty("skipInstrumentation")
+        providers
+            .gradleProperty("skipInstrumentation")
             .map { !it.toBoolean() }
             .orElse(true),
     )
