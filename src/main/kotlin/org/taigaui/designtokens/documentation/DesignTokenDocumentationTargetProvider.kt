@@ -50,7 +50,8 @@ class DesignTokenDocumentationTargetProvider : DocumentationTargetProvider {
     private fun PsiFile.isSupportedStylesheet(): Boolean =
         virtualFile
             ?.extension
-            ?.lowercase() in SUPPORTED_EXTENSIONS
+            ?.lowercase()
+            ?.let(SUPPORTED_EXTENSIONS::contains) == true
 
     private fun String.toPathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull()
 
