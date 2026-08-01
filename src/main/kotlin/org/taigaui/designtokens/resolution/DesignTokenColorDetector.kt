@@ -48,39 +48,32 @@ internal object DesignTokenColorDetector {
     private fun isColorFunction(value: String): Boolean {
         val functionName = value.substringBefore('(', missingDelimiterValue = "").lowercase()
 
-        if (functionName !in COLOR_FUNCTIONS || !value.endsWith(')')) {
-            return false
-        }
+        return functionName in COLOR_FUNCTIONS &&
+            value.endsWith(')') &&
+            hasBalancedOuterFunction(value)
+    }
 
+    private fun hasBalancedOuterFunction(value: String): Boolean {
         var depth = 0
-        var quote: Char? = null
-        var escaped = false
+        var valid = true
 
         value.forEachIndexed { index, character ->
-            when {
-                escaped -> escaped = false
-                character == '\\' && quote != null -> escaped = true
-                quote != null && character == quote -> quote = null
-                quote != null -> Unit
-                character == '\'' || character == '"' -> quote = character
-                character == '(' -> depth++
-                character == ')' -> {
+            when (character) {
+                '(' -> depth++
+                ')' -> {
                     depth--
-
-                    if (depth < 0 || depth == 0 && index != value.lastIndex) {
-                        return false
-                    }
+                    valid = valid && depth >= 0 && (depth > 0 || index == value.lastIndex)
                 }
             }
         }
 
-        return depth == 0 && quote == null
+        return valid && depth == 0
     }
 
     private fun canonicalFunction(value: String): String =
         WHITESPACE
             .replace(value.trim(), " ")
-            .replace(WHITESPACE_AROUND_PUNCTUATION, "$1")
+            .replace(WHITESPACE_AROUND_PUNCTUATION, "\$1")
             .lowercase()
 
     private val HEX_COLOR = Regex("#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{1}|[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?")
