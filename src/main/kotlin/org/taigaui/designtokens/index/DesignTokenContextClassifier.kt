@@ -15,7 +15,7 @@ class DesignTokenContextClassifier {
 
         return DesignTokenContext(
             platform = classifyPlatform(markers, declaration.selectorChain),
-            theme = classifyTheme(markers),
+            theme = classifyTheme(markers, declaration.selectorChain),
         )
     }
 
@@ -51,15 +51,18 @@ class DesignTokenContextClassifier {
         markers: Set<String>,
         selectorChain: List<String>,
     ): DesignTokenPlatform =
-        if (MOBILE_MARKER in markers || selectorChain.any(MOBILE_PLATFORM_SELECTOR::containsMatchIn)) {
+        if (MOBILE_MARKER in markers || selectorChain.containsMatch(MOBILE_PLATFORM_SELECTOR)) {
             DesignTokenPlatform.MOBILE
         } else {
             DesignTokenPlatform.DESKTOP
         }
 
-    private fun classifyTheme(markers: Set<String>): DesignTokenTheme {
-        val hasLight = LIGHT_MARKER in markers
-        val hasDark = DARK_MARKER in markers
+    private fun classifyTheme(
+        markers: Set<String>,
+        selectorChain: List<String>,
+    ): DesignTokenTheme {
+        val hasLight = LIGHT_MARKER in markers || selectorChain.containsMatch(LIGHT_THEME_SELECTOR)
+        val hasDark = DARK_MARKER in markers || selectorChain.containsMatch(DARK_THEME_SELECTOR)
 
         return when {
             hasLight && !hasDark -> DesignTokenTheme.LIGHT
@@ -68,14 +71,27 @@ class DesignTokenContextClassifier {
         }
     }
 
+    private fun List<String>.containsMatch(pattern: Regex): Boolean = any(pattern::containsMatchIn)
+
     private companion object {
         const val MOBILE_MARKER = "mobile"
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
 
         val MOBILE_PLATFORM_SELECTOR =
+            attributeSelector(
+                attribute = "(?:tuiPlatform|data-platform)",
+                value = "(?:android|ios)",
+            )
+        val LIGHT_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "light")
+        val DARK_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "dark")
+
+        fun attributeSelector(
+            attribute: String,
+            value: String,
+        ): Regex =
             Regex(
-                pattern = """\[\s*tuiPlatform\s*=\s*(['"])(?:android|ios)\1\s*]""",
+                pattern = """\[\s*$attribute\s*=\s*(?:['"]$value['"]|$value)\s*]""",
                 option = RegexOption.IGNORE_CASE,
             )
     }
