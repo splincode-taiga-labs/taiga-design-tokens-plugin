@@ -20,7 +20,7 @@ Quick documentation should show:
 - matching desktop and mobile declarations;
 - light and dark theme values;
 - both the raw declaration and its recursively resolved value;
-- the token-reference chain, source files, and line numbers;
+- the token-reference tree, source files, and line numbers;
 - color previews when the final value is a color.
 
 The plugin will show all statically known candidates. It will not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
@@ -42,11 +42,13 @@ sequenceDiagram
     participant Classifier as Context classifier
     participant Index as Token index
     participant Values as Value resolver
+    participant Parser as var() value parser
+    participant Colors as Color detector
     participant VFS as VFS change listener
     participant FS as Project filesystem
 
     User->>Docs: Request docs for var(--tui-*)
-    Docs->>Service: find(sourceFile, tokenName)
+    Docs->>Service: resolveToken(sourceFile, tokenName)
     Service->>Resolver: resolve(sourceFile)
     Resolver->>FS: Find nearest package.json
     FS-->>Resolver: Logical root, real root, and version
@@ -89,18 +91,26 @@ sequenceDiagram
 
     loop Every matching logical variant
         Service->>Values: resolve(variant, index)
+        Values->>Parser: Parse raw value
+        Parser-->>Values: Text and reference AST or invalid expression
 
         loop Every var(--tui-*) reference
-            Values->>Index: Find referenced token in context
-            Index-->>Values: Candidate logical variants
-            Values->>Values: Resolve recursively with fallback and cycle detection
+            Values->>Index: Find candidate in active context
+            Index-->>Values: Selected, missing, or ambiguous candidates
+            Values->>Values: Resolve selected value recursively
+            Values->>Values: Apply fallback when statically valid
+            Values->>Values: Detect cycles in declaration plus active context
         end
 
-        Values-->>Service: Raw value, final value, chain, or unresolved reason
+        Values->>Colors: Detect terminal color
+        Colors-->>Values: Canonical color metadata or none
+        Values-->>Service: Final value, reference tree, or unresolved reason
     end
 
+    Service->>Values: Group equivalent terminal results
+    Values-->>Service: Resolution groups with root and complete-tree origins
     Service-->>Docs: Context-grouped resolved candidates
-    Docs-->>User: Raw and final values, chain, origins, and color previews
+    Docs-->>User: Raw and final values, references, origins, and color previews
 
     FS-->>VFS: Relevant package path changed
     VFS->>Cache: Invalidate affected package entries
@@ -110,22 +120,23 @@ sequenceDiagram
 
 Architecture status:
 
-- implemented: package resolver, stylesheet PSI extraction, parent selector chains, package scanner, selector-aware context classifier, immutable token index, project-level cache, and targeted VFS invalidation;
-- Stage 2 is complete once cache and invalidation integration tests are merged;
-- planned for Stage 3: recursive value resolution with fallbacks and cycle detection;
-- planned for Stage 4: documentation provider, editor integration, and navigation.
+- implemented: package discovery, PSI extraction, context classification, immutable indexing, project-level caching, and targeted VFS invalidation;
+- implemented in Stage 3: balanced `var(...)` parsing, context-aware recursive resolution, structured fallback and cycle results, color detection, and equivalent-result grouping;
+- Stage 3 is complete once the recursive resolution change is merged;
+- next in Stage 4: documentation provider, caret detection, rendering, and navigation.
 
 Package boundaries:
 
 ```text
 org.taigaui.designtokens
 ├── packageinfo  package discovery and installed-package metadata
-├── index        pure domain models, scanning, classification, and indexing
+├── index        physical declarations, logical variants, classification, and indexing
+├── resolution   pure var parsing, candidate selection, recursive resolution, and grouping
 ├── psi          IntelliJ PSI adapter for CSS, SCSS, and Less
-└── project      project service, package cache, and VFS invalidation
+└── project      project service, package cache, VFS invalidation, and resolution entry point
 ```
 
-Dependencies point inward: `project` orchestrates `packageinfo`, `index`, and `psi`; `psi` depends on contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. `packageinfo` and the cache core remain independent from PSI types.
+Dependencies point inward: `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` depends on extraction contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. Package discovery, the cache core, and recursive resolution remain independent from PSI types.
 
 The project cache is keyed by normalized real package root and installed version. Multiple logical npm or pnpm paths that point to the same physical package reuse one immutable index. A version change or a logical package pointing to a different real target replaces the old entry.
 
@@ -135,11 +146,19 @@ Platform classification has no unknown state. A declaration under a `mobile` pac
 
 A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate hover entries.
 
-Different raw values are never merged at index time, even when they may later resolve to the same terminal value. Recursive resolution produces a separate result containing the final value, reference chain, fallback usage, or an unresolved reason. This preserves source fidelity while allowing hover documentation to show the actual color or other terminal value.
+The value parser scans balanced functions and emits text/reference parts. It resolves several references inside compound values, nested fallbacks, and empty fallbacks without replacing `var(...)` text inside quoted strings or comments. Raw variant values are never mutated.
+
+Reference selection is deterministic. Mobile light/dark first uses the matching mobile theme, then mobile unspecified, then the matching desktop theme, and finally desktop unspecified. Desktop references stay on desktop. Unspecified themes never guess between light and dark. Several distinct variants at the first compatible precedence produce an explicit ambiguity.
+
+The active resolution context is separate from the selected declaration context. When a mobile lookup uses a compatible desktop declaration, references inside that declaration continue to resolve against the original mobile context, matching how default custom-property declarations and mobile overrides interact.
+
+A `DesignTokenValueResolution` is either resolved or unresolved. Resolved results contain the final value, nested reference tree, fallback decisions, and optional canonical color metadata. Unresolved results retain explicit missing, ambiguous, circular, or invalid-expression reasons. Cycle nodes include both the declaration context and active resolution context. A fallback inside a cyclic token cannot hide its own cycle, while an outer consumer fallback may recover from an invalid cyclic referenced value.
+
+`DesignTokenResolutionGroup` collapses equal terminal values for presentation. Hex colors such as `#fff` and `#FFFFFF` share a canonical key. Each group retains root origins separately from all origins reachable through selected references and evaluated fallbacks.
 
 ## Development status
 
-Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 resolves the nearest installed `@taiga-ui/design-tokens` package, extracts declarations and selector chains through PSI, classifies them by platform and theme, groups parallel source formats into logical token variants, and caches the resulting index per installed package without invoking Node.js or a package manager at plugin runtime. See [the implementation roadmap](docs/roadmap.md) for the following stages.
+Stages 1 and 2 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, and VFS invalidation. Stage 3 adds pure recursive value resolution and exposes grouped results through `DesignTokenIndexService.resolveToken`. The next stage connects these results to WebStorm quick documentation and navigation. See [the implementation roadmap](docs/roadmap.md) for the remaining work.
 
 ## Requirements
 
