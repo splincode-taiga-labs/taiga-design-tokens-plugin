@@ -1,0 +1,131 @@
+package org.taigaui.designtokens.project
+
+import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.packageinfo.DesignTokensPackage
+import java.nio.file.Path
+
+internal fun interface DesignTokenIndexBuilder {
+    fun build(designTokensPackage: DesignTokensPackage): DesignTokenIndex
+}
+
+internal data class DesignTokensPackageIdentity(
+    val realRoot: Path,
+    val version: String,
+) {
+    companion object {
+        fun from(designTokensPackage: DesignTokensPackage): DesignTokensPackageIdentity =
+            DesignTokensPackageIdentity(
+                realRoot = designTokensPackage.realRoot.toAbsolutePath().normalize(),
+                version = designTokensPackage.version,
+            )
+    }
+}
+
+internal class DesignTokenIndexCache(
+    private val indexBuilder: DesignTokenIndexBuilder,
+) {
+    private val lock = Any()
+    private val entries = linkedMapOf<DesignTokensPackageIdentity, CacheEntry>()
+
+    val size: Int
+        get() = synchronized(lock) { entries.size }
+
+    fun getOrBuild(designTokensPackage: DesignTokensPackage): DesignTokenIndex =
+        synchronized(lock) {
+            val normalizedPackage = designTokensPackage.normalized()
+            val identity = DesignTokensPackageIdentity.from(normalizedPackage)
+
+            removeReplacedPackages(
+                identity = identity,
+                logicalRoot = normalizedPackage.root,
+            )
+
+            entries[identity]?.let { entry ->
+                entry.logicalRoots += normalizedPackage.root
+
+                return@synchronized entry.index
+            }
+
+            val index = indexBuilder.build(normalizedPackage)
+
+            entries[identity] =
+                CacheEntry(
+                    index = index,
+                    logicalRoots = linkedSetOf(normalizedPackage.root),
+                )
+
+            index
+        }
+
+    fun invalidate(changedPaths: Collection<Path>): Int =
+        synchronized(lock) {
+            val normalizedPaths =
+                changedPaths
+                    .map(Path::toAbsolutePath)
+                    .map(Path::normalize)
+                    .distinct()
+
+            val sizeBefore = entries.size
+
+            entries.entries.removeIf { (identity, entry) ->
+                normalizedPaths.any { changedPath ->
+                    entry.isAffectedBy(
+                        changedPath = changedPath,
+                        realRoot = identity.realRoot,
+                    )
+                }
+            }
+
+            sizeBefore - entries.size
+        }
+
+    private fun removeReplacedPackages(
+        identity: DesignTokensPackageIdentity,
+        logicalRoot: Path,
+    ) {
+        entries.entries.removeIf { (cachedIdentity, entry) ->
+            val replacedVersion =
+                cachedIdentity.realRoot == identity.realRoot &&
+                    cachedIdentity.version != identity.version
+            val replacedTarget =
+                logicalRoot in entry.logicalRoots &&
+                    cachedIdentity != identity
+
+            replacedVersion || replacedTarget
+        }
+    }
+
+    private data class CacheEntry(
+        val index: DesignTokenIndex,
+        val logicalRoots: MutableSet<Path>,
+    ) {
+        fun isAffectedBy(
+            changedPath: Path,
+            realRoot: Path,
+        ): Boolean =
+            (logicalRoots + realRoot).any { packageRoot ->
+                changedPath == packageRoot ||
+                    packageRoot.startsWith(changedPath) ||
+                    changedPath.startsWith(packageRoot) && changedPath.isRelevantPackagePath()
+            }
+    }
+
+    private companion object {
+        val STYLESHEET_EXTENSIONS = setOf("css", "less", "scss")
+
+        fun DesignTokensPackage.normalized(): DesignTokensPackage =
+            copy(
+                root = root.toAbsolutePath().normalize(),
+                realRoot = realRoot.toAbsolutePath().normalize(),
+            )
+
+        fun Path.isRelevantPackagePath(): Boolean {
+            val fileName = fileName?.toString()?.lowercase() ?: return true
+            val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
+
+            return fileName == "package.json" ||
+                extension in STYLESHEET_EXTENSIONS ||
+                '.' !in fileName
+        }
+    }
+}
