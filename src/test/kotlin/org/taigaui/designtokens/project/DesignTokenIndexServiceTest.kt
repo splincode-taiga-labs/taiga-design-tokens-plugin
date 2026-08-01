@@ -1,21 +1,33 @@
 package org.taigaui.designtokens.project
 
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.taigaui.designtokens.index.DesignTokenIndex
+import java.nio.file.Files
 import java.nio.file.Path
 
 class DesignTokenIndexServiceTest : BasePlatformTestCase() {
+    private lateinit var tempRoot: Path
     private lateinit var service: DesignTokenIndexService
     private lateinit var fixture: PackageFixture
 
     override fun setUp() {
         super.setUp()
+        tempRoot = Files.createTempDirectory("design-token-index-service")
         fixture = createPackage("workspace", "#fff")
         service = project.getService(DesignTokenIndexService::class.java)
+    }
+
+    override fun tearDown() {
+        try {
+            tempRoot.toFile().deleteRecursively()
+        } finally {
+            super.tearDown()
+        }
     }
 
     fun testCachesRepeatedRequestsUntilTokenFileChanges() {
@@ -38,8 +50,8 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
     fun testKeepsCachedIndexForUnrelatedProjectAndPackageFiles() {
         val first = index(fixture)
 
-        writeFile(fixture.sourceFile, "Application source")
-        val readme = createFile("workspace/node_modules/@taiga-ui/design-tokens/README.md", "Docs")
+        writeFile(fixture.sourceFile, "Application source updated")
+        val readme = createFile(fixture.packageRoot.resolve("README.md"), "Docs")
         writeFile(readme, "Updated docs")
 
         assertSame(first, index(fixture))
@@ -50,7 +62,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         val first = index(fixture)
 
         createFile(
-            "workspace/node_modules/@taiga-ui/design-tokens/palette/dark.scss",
+            fixture.packageRoot.resolve("palette/dark.scss"),
             "[tuiTheme='dark'] { --tui-background-base: #000; }",
         )
 
@@ -111,9 +123,10 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
     }
 
     fun testServiceReturnsNullWhenNoInstalledPackageCanBeResolved() {
-        val sourceFile = createFile("standalone/app.txt", "Application source")
+        val sourcePath = tempRoot.resolve("standalone/app.txt")
+        createFile(sourcePath, "Application source")
 
-        assertNull(service.getIndex(Path.of(sourceFile.path)))
+        assertNull(service.getIndex(sourcePath))
         assertEquals(0, service.cachedPackageCount)
     }
 
@@ -121,18 +134,22 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         workspace: String,
         tokenValue: String,
     ): PackageFixture {
-        val packagePath = "$workspace/node_modules/@taiga-ui/design-tokens"
+        val workspaceRoot = tempRoot.resolve(workspace)
+        val packageRoot = workspaceRoot.resolve("node_modules/@taiga-ui/design-tokens")
+        val sourcePath = workspaceRoot.resolve("src/app.txt")
 
         return PackageFixture(
-            sourceFile = createFile("$workspace/src/app.txt", "Application source"),
+            packageRoot = packageRoot,
+            sourcePath = sourcePath,
+            sourceFile = createFile(sourcePath, "Application source"),
             packageJson =
                 createFile(
-                    "$packagePath/package.json",
+                    packageRoot.resolve("package.json"),
                     """{"name":"@taiga-ui/design-tokens","version":"0.310.0"}""",
                 ),
             tokenFile =
                 createFile(
-                    "$packagePath/palette/light.css",
+                    packageRoot.resolve("palette/light.css"),
                     ":root { --tui-background-base: $tokenValue; }",
                 ),
         )
@@ -140,7 +157,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
 
     private fun index(packageFixture: PackageFixture): DesignTokenIndex =
         requireNotNull(
-            service.getIndexOrThrow(Path.of(packageFixture.sourceFile.path)),
+            service.getIndexOrThrow(packageFixture.sourcePath),
         )
 
     private fun tokenValue(index: DesignTokenIndex): String =
@@ -182,11 +199,20 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
     }
 
     private fun createFile(
-        relativePath: String,
+        path: Path,
         content: String,
-    ): VirtualFile = myFixture.tempDirFixture.createFile(relativePath, content)
+    ): VirtualFile {
+        Files.createDirectories(path.parent)
+        Files.writeString(path, content)
+
+        return requireNotNull(
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path),
+        )
+    }
 
     private data class PackageFixture(
+        val packageRoot: Path,
+        val sourcePath: Path,
         val sourceFile: VirtualFile,
         val packageJson: VirtualFile,
         val tokenFile: VirtualFile,
