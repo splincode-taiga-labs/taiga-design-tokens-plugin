@@ -9,12 +9,11 @@ class DesignTokenContextClassifier {
     ): DesignTokenContext {
         val normalizedRoot = packageRoot.toAbsolutePath().normalize()
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
-
-        if (!normalizedSourceFile.startsWith(normalizedRoot)) {
-            return DesignTokenContext.UNSPECIFIED
+        val markers = if (normalizedSourceFile.startsWith(normalizedRoot)) {
+            markersFrom(normalizedRoot.relativize(normalizedSourceFile))
+        } else {
+            emptySet()
         }
-
-        val markers = markersFrom(normalizedRoot.relativize(normalizedSourceFile))
 
         return DesignTokenContext(
             platform = classifyPlatform(markers),
@@ -35,16 +34,12 @@ class DesignTokenContextClassifier {
             }
     }
 
-    private fun classifyPlatform(markers: Set<String>): DesignTokenPlatform {
-        val hasDesktop = DESKTOP_MARKER in markers
-        val hasMobile = MOBILE_MARKER in markers
-
-        return when {
-            hasDesktop && !hasMobile -> DesignTokenPlatform.DESKTOP
-            hasMobile && !hasDesktop -> DesignTokenPlatform.MOBILE
-            else -> DesignTokenPlatform.UNSPECIFIED
+    private fun classifyPlatform(markers: Set<String>): DesignTokenPlatform =
+        if (MOBILE_MARKER in markers) {
+            DesignTokenPlatform.MOBILE
+        } else {
+            DesignTokenPlatform.DESKTOP
         }
-    }
 
     private fun classifyTheme(markers: Set<String>): DesignTokenTheme {
         val hasLight = LIGHT_MARKER in markers
@@ -58,7 +53,6 @@ class DesignTokenContextClassifier {
     }
 
     private companion object {
-        const val DESKTOP_MARKER = "desktop"
         const val MOBILE_MARKER = "mobile"
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
