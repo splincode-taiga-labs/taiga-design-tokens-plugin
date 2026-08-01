@@ -79,6 +79,12 @@ internal class DesignTokenIndexCache(
             sizeBefore - entries.size
         }
 
+    fun clear() {
+        synchronized(lock) {
+            entries.clear()
+        }
+    }
+
     private fun removeReplacedPackages(
         identity: DesignTokensPackageIdentity,
         logicalRoot: Path,
