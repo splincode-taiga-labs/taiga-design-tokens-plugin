@@ -69,9 +69,9 @@ sequenceDiagram
 
         loop Every physical declaration
             Index->>Classifier: classify(packageRoot, declaration)
-            Classifier-->>Index: Mobile by path/selector, otherwise desktop; light/dark theme
-            Index->>Index: Group by name + context + raw value
-            Index->>Index: Retain every CSS/Less/SCSS origin
+            Classifier-->>Index: Platform and theme context
+            Index->>Index: Group by name, context, and raw value
+            Index->>Index: Retain every CSS, Less, and SCSS origin
         end
 
         Index-->>Service: Logical token variants
