@@ -27,13 +27,14 @@ class DesignTokenIndex private constructor(
                     val normalizedSourceFile = declaration.sourceFile.toAbsolutePath().normalize()
                     val key = VariantKey(
                         name = declaration.name,
-                        context = contextClassifier.classify(packageRoot, normalizedSourceFile),
+                        context = contextClassifier.classify(packageRoot, declaration),
                         rawValue = declaration.value,
                     )
                     val origin = DesignTokenOrigin(
                         sourceFile = normalizedSourceFile,
                         line = declaration.line,
                         format = DesignTokenSourceFormat.from(normalizedSourceFile),
+                        selectorChain = declaration.selectorChain,
                     )
 
                     groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
@@ -69,12 +70,14 @@ class DesignTokenIndex private constructor(
             { it.sourceFile.toString() },
             { it.line },
             { it.value },
+            { it.selectorChain.joinToString() },
         )
 
         private val ORIGIN_COMPARATOR = compareBy<DesignTokenOrigin>(
             { sourceFormatRank(it.format) },
             { it.sourceFile.toString() },
             { it.line },
+            { it.selectorChain.joinToString() },
         )
 
         private val VARIANT_COMPARATOR = compareBy<DesignTokenVariant>(
