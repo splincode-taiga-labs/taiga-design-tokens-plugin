@@ -13,7 +13,7 @@ Status: implemented.
 
 ## Stage 2 — Package discovery and token index
 
-Status: implemented after the project cache and VFS invalidation change is merged.
+Status: implemented.
 
 - Locate the nearest `node_modules/@taiga-ui/design-tokens` package for the current project module.
 - Read the installed package version from `package.json`.
@@ -38,27 +38,38 @@ Status: implemented after the project cache and VFS invalidation change is merge
 
 ## Stage 3 — Recursive value resolution
 
-Status: next.
+Status: implemented after the recursive value resolution change is merged.
 
-- Resolve token-to-token references such as `var(--tui-status-warning)` recursively until a terminal value is reached.
-- Resolve references within a deterministic compatible context rather than selecting an arbitrary declaration.
+- Parse nested and compound `var(...)` expressions with a balanced scanner rather than regex replacement.
+- Ignore `var(...)` text inside quoted strings and comments.
+- Resolve multiple references inside one value while preserving all non-reference text.
+- Resolve token-to-token references recursively until a terminal value is reached.
+- Preserve the active resolution context when a mobile lookup selects a compatible desktop declaration.
 - For a mobile dark reference, prefer candidates in this order: mobile/dark, mobile/unspecified, desktop/dark, desktop/unspecified.
 - For a mobile light reference, use the equivalent light order and never fall back to a conflicting theme.
 - For a desktop reference, stay on desktop and prefer the exact theme before an unspecified theme.
+- For an unspecified theme, use only unspecified-theme candidates and never guess between light and dark.
 - Treat multiple distinct candidates at the same precedence as ambiguous instead of silently choosing one.
 - Keep raw declaration values unchanged and return resolved values as separate structured results.
-- Preserve the complete reference chain for documentation and diagnostics.
-- Support `var(...)` fallbacks, missing references, and cycle detection.
-- Return an explicit unresolved or ambiguous result when static analysis cannot determine one value.
-- Detect resolvable terminal color values for later previews.
-- Collapse semantically equivalent resolved results for presentation without losing any physical origins.
+- Preserve the complete nested reference tree, selected variants, declaration contexts, active contexts, and fallback usage.
+- Support nested and empty `var(...)` fallbacks.
+- Use a fallback for missing or invalid referenced values, while keeping static ambiguity explicit.
+- Detect cycles with the active context included in the resolution node.
+- Do not allow a fallback inside a cyclic token definition to hide its own cycle; allow an outer consumer fallback to recover from an invalid cyclic token.
+- Return explicit missing, ambiguous, circular, and invalid-expression reasons.
+- Detect terminal hex, named, and standard CSS color-function values for later previews.
+- Collapse equivalent resolved terminal values for presentation, including canonical color equivalence, without losing root or reference-tree origins.
+- Expose grouped resolution results through the project service.
+- Cover pure parser and resolver semantics, project-service cache invalidation, and the pinned real npm package with tests.
 
 ## Stage 4 — Quick documentation and navigation
+
+Status: next.
 
 - Detect a CSS custom property under the caret inside `var(...)`.
 - Implement the IntelliJ Documentation Target API.
 - Render all matching logical variants grouped by platform and theme.
-- Show the raw expression, recursively resolved terminal value, and reference chain.
+- Show the raw expression, recursively resolved terminal value, and reference tree.
 - Show every relevant source file, line number, and selector context without duplicating equivalent hover entries.
 - Add color previews for resolved color values.
 - Add navigation from documentation entries to declarations.
