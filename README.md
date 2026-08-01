@@ -37,7 +37,7 @@ sequenceDiagram
     participant Resolver as Package resolver
     participant Scanner as Package scanner
     participant Finder as Source-file finder
-    participant Extractor as CSS/SCSS/Less source adapter
+    participant Extractor as CSS/SCSS/Less PSI adapter
     participant Classifier as Context classifier
     participant Index as Project token index
     participant Values as Value resolver
@@ -59,9 +59,9 @@ sequenceDiagram
 
         loop Every source file
             Scanner->>Extractor: extract(sourceFile)
-            Extractor->>FS: Read source or PSI
+            Extractor->>FS: Resolve VirtualFile and PSI
             FS-->>Extractor: Syntax tree and source ranges
-            Extractor-->>Scanner: Raw declarations with selector context
+            Extractor-->>Scanner: Raw declarations with selector chains
         end
 
         Scanner-->>Service: Physical declarations
@@ -98,22 +98,22 @@ sequenceDiagram
 
 Architecture status:
 
-- implemented: package resolver, source-file finder, declaration parser, package scanner, path-based context classifier, and immutable in-memory token index;
-- next in Stage 2: selector-aware source extraction for `[tuiPlatform='android']` and `[tuiPlatform='ios']`, followed by project-level caching and filesystem invalidation;
+- implemented: package resolver, source-file finder, CSS/SCSS/Less PSI extraction, parent selector chains, package scanner, selector-aware context classifier, and immutable in-memory token index;
+- next in Stage 2: project-level caching and filesystem invalidation;
 - planned for Stage 3: recursive value resolution with fallbacks and cycle detection;
 - planned for Stage 4: documentation provider, editor integration, and navigation.
 
 Platform classification has no unknown state. A declaration under a `mobile` package path or a mobile `tuiPlatform` selector is mobile; every other declaration is desktop. Theme may remain unspecified when neither light nor dark context is encoded by the source.
 
-A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate hover entries.
+A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate hover entries.
 
 Different raw values are never merged at index time, even when they may later resolve to the same terminal value. Recursive resolution produces a separate result containing the final value, reference chain, fallback usage, or an unresolved reason. This preserves source fidelity while allowing hover documentation to show the actual color or other terminal value.
 
-The package discovery, domain models, classification, indexing, and value-resolution layers remain independent from IntelliJ Platform APIs. Source extraction may use a narrow adapter over the bundled CSS/SCSS/Less PSI so the rest of the architecture does not depend on PSI types.
+Package discovery, domain models, classification, indexing, and value resolution remain independent from PSI types. `PsiDesignTokenSourceExtractor` is the narrow adapter over the bundled CSS, SCSS, and Less PSI and converts IDE syntax trees into immutable domain declarations.
 
 ## Development status
 
-Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 resolves the nearest installed `@taiga-ui/design-tokens` package, scans CSS, SCSS, and Less files, classifies declarations by platform and theme, and groups parallel source formats into logical token variants without invoking Node.js or a package manager at plugin runtime. See [the implementation roadmap](docs/roadmap.md) for the following stages.
+Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 resolves the nearest installed `@taiga-ui/design-tokens` package, extracts declarations and selector chains through PSI, classifies them by platform and theme, and groups parallel source formats into logical token variants without invoking Node.js or a package manager at plugin runtime. See [the implementation roadmap](docs/roadmap.md) for the following stages.
 
 ## Requirements
 
@@ -125,7 +125,7 @@ The installed plugin itself does not require Node.js. The npm dependency in this
 
 ## Commands
 
-Run the test suite without installing the npm fixture:
+Run tests without installing the npm fixture:
 
 ```bash
 ./gradlew test
@@ -133,11 +133,17 @@ Run the test suite without installing the npm fixture:
 
 The real-package tests are skipped when `node_modules/@taiga-ui/design-tokens` is absent.
 
-Install the pinned package fixture and run the complete test suite:
+Install the pinned package fixture and run the complete quality gate:
 
 ```bash
 npm ci
-./gradlew test
+./gradlew check
+```
+
+`check` runs tests, ktlint formatting checks, and detekt static analysis. Apply safe formatting fixes with:
+
+```bash
+./gradlew ktlintFormat
 ```
 
 Run the sandbox IDE or build the distributable plugin:
