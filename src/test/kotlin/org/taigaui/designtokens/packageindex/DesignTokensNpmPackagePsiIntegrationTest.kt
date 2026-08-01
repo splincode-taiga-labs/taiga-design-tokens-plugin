@@ -5,6 +5,7 @@ import org.taigaui.designtokens.tokenindex.DesignTokenIndex
 import org.taigaui.designtokens.tokenindex.DesignTokenPlatform
 import org.taigaui.designtokens.tokenindex.DesignTokenSourceFormat
 import org.taigaui.designtokens.tokenindex.DesignTokensPackageScanner
+import org.taigaui.designtokens.tokenindex.PsiDesignTokenSourceExtractor
 
 class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
     private lateinit var fixture: InstalledDesignTokensPackageFixture
@@ -15,7 +16,10 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
         super.setUp()
         fixture = InstalledDesignTokensPackageFixture()
         packageInfo = fixture.resolve()
-        scanner = DesignTokensPackageScanner(project)
+        scanner =
+            DesignTokensPackageScanner(
+                sourceExtractor = PsiDesignTokenSourceExtractor(project),
+            )
     }
 
     fun testScansRealCssScssAndLessFilesThroughPsi() {
