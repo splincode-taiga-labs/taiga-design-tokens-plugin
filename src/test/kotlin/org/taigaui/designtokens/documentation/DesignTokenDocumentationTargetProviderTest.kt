@@ -87,10 +87,11 @@ class DesignTokenDocumentationTargetProviderTest : BasePlatformTestCase() {
         val content = ".x { color: var(--tui-missing, var($TOKEN)); }"
         val psiFile = createPsiFile("src/fallback.scss", content)
         val target =
-            provider.documentationTargets(
-                psiFile,
-                content.indexOf(TOKEN) + 4,
-            ).single()
+            provider
+                .documentationTargets(
+                    psiFile,
+                    content.indexOf(TOKEN) + 4,
+                ).single()
 
         assertTrue(requireNotNull(target.computeDocumentationHint()).contains("#fff"))
     }
