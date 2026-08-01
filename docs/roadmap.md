@@ -1,6 +1,6 @@
 # Implementation roadmap
 
-The plugin will be developed in small reviewable stages. Each stage should leave the project in a buildable state.
+The plugin will be developed in small reviewable stages. Each stage should leave the project in a buildable state and pass tests, ktlint, detekt, and plugin structure checks.
 
 ## Stage 1 — Project scaffold
 
@@ -13,17 +13,17 @@ The plugin will be developed in small reviewable stages. Each stage should leave
 
 - Locate the nearest `node_modules/@taiga-ui/design-tokens` package for the current project module.
 - Read the installed package version from `package.json`.
-- Extract CSS, SCSS, and Less custom-property declarations through a source adapter.
-- Preserve each physical declaration's raw value, source file, line number, and enclosing selector context.
+- Extract CSS, SCSS, and Less custom-property declarations through the bundled stylesheet PSI.
+- Preserve each physical declaration's raw value, source file, line number, and outer-to-inner selector chain.
 - Classify declarations as mobile when they are published under a `mobile` path or enclosed by a `[tuiPlatform='android']` / `[tuiPlatform='ios']` selector; classify every other declaration as desktop.
 - Classify declarations by light/dark theme context while retaining an unspecified theme when neither theme is encoded by the source.
 - Treat CSS, Less, and SCSS as parallel source representations rather than separate semantic variants.
 - Group only exact duplicates with the same token name, context, and raw value into one logical variant.
-- Retain every physical CSS, Less, and SCSS origin on the logical variant.
+- Retain every physical CSS, Less, and SCSS origin together with its selector chain on the logical variant.
 - Keep different raw values separate until recursive resolution, even when they may resolve to the same terminal value.
 - Store logical variants in a project-level cached index grouped by token name.
 - Invalidate the cache when token files or package metadata change.
-- Cover npm, pnpm symlinks, monorepo layouts, selectors, and the pinned real npm package with tests.
+- Cover npm, pnpm symlinks, monorepo layouts, selector nesting, and the pinned real npm package with tests.
 
 ## Stage 3 — Recursive value resolution
 
@@ -42,7 +42,7 @@ The plugin will be developed in small reviewable stages. Each stage should leave
 - Implement the IntelliJ Documentation Target API.
 - Render all matching logical variants grouped by platform and theme.
 - Show the raw expression, recursively resolved terminal value, and reference chain.
-- Show every relevant source file and line number without duplicating equivalent hover entries.
+- Show every relevant source file, line number, and selector context without duplicating equivalent hover entries.
 - Add color previews for resolved color values.
 - Add navigation from documentation entries to declarations.
 - Explain ambiguous values instead of pretending that one runtime value is known.
