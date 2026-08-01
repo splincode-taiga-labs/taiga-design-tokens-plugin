@@ -96,5 +96,5 @@ internal object VfsEventPaths {
         }
     }
 
-    private fun String.toPathOrNull(): Path? = runCatching(Path::of).getOrNull()
+    private fun String.toPathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull()
 }
