@@ -33,7 +33,7 @@ class DesignTokenDocumentationHtmlRendererTest {
     }
 
     @Test
-    fun `renders contexts raw value references selectors and all origins`() {
+    fun `renders context token value final value and reference chain as a table`() {
         val terminalVariant = variant("--tui-white", "#fff", line = 2)
         val terminalResult = resolved("#fff", "#fff")
         val rootResult =
@@ -56,12 +56,46 @@ class DesignTokenDocumentationHtmlRendererTest {
             )
         val html = DesignTokenDocumentationHtmlRenderer.render(TOKEN, listOf(group(rootResult)))
 
-        assertTrue(html.contains("Desktop · Light"))
-        assertTrue(html.contains("<b>Raw:</b> <code>var(--tui-white)</code>"))
+        assertTrue(html.contains("<th align='left'>Context</th>"))
+        assertTrue(html.contains("<th align='left'>Token value</th>"))
+        assertTrue(html.contains("<th align='left'>Final value</th>"))
+        assertTrue(html.contains("<td valign='top'>Desktop · Light</td>"))
+        assertTrue(html.contains("<code>var(--tui-white)</code>"))
+        assertTrue(html.contains("<code>#fff</code>"))
+        assertTrue(html.contains("<b>Reference chain:</b>"))
         assertTrue(html.contains("<code>--tui-white</code> → <code>#fff</code>"))
-        assertTrue(html.contains("palette/light.css:1"))
-        assertTrue(html.contains("palette/light.css:2"))
-        assertTrue(html.contains(":root → [tuiTheme=&#39;light&#39;]"))
+        assertFalse(html.contains("Sources:"))
+        assertFalse(html.contains("palette/light.css"))
+        assertFalse(html.contains("tuiTheme"))
+    }
+
+    @Test
+    fun `collapses all equivalent platform and theme contexts into one label`() {
+        val html =
+            DesignTokenDocumentationHtmlRenderer.render(
+                TOKEN,
+                listOf(group(resolved("var(--tui-white)", "#fff"), ALL_CONTEXTS)),
+            )
+
+        assertTrue(html.contains("<td valign='top'>All platforms · Light and dark</td>"))
+        assertFalse(html.contains("Desktop · Light, Desktop · Dark"))
+    }
+
+    @Test
+    fun `keeps incomplete context combinations explicit`() {
+        val html =
+            DesignTokenDocumentationHtmlRenderer.render(
+                TOKEN,
+                listOf(
+                    group(
+                        resolved("var(--tui-white)", "#fff"),
+                        listOf(LIGHT_DESKTOP, DARK_MOBILE),
+                    ),
+                ),
+            )
+
+        assertTrue(html.contains("Desktop · Light, Mobile · Dark"))
+        assertFalse(html.contains("All platforms · Light and dark"))
     }
 
     @Test
@@ -82,12 +116,11 @@ class DesignTokenDocumentationHtmlRendererTest {
     }
 
     @Test
-    fun `escapes token values and selector text`() {
+    fun `escapes token names and values`() {
         val unsafeVariant =
             variant(
                 name = "--tui-unsafe",
                 rawValue = "<script>alert('x')</script>",
-                selectorChain = listOf("[data-value='<unsafe>']"),
             )
         val group =
             DesignTokenResolutionGroup(
@@ -107,17 +140,19 @@ class DesignTokenDocumentationHtmlRendererTest {
         assertFalse(html.contains("<script>"))
         assertTrue(html.contains("&lt;script&gt;"))
         assertTrue(html.contains("--tui-&lt;unsafe&gt;"))
-        assertTrue(html.contains("&lt;unsafe&gt;"))
     }
 
-    private fun group(result: DesignTokenValueResolution): DesignTokenResolutionGroup =
+    private fun group(
+        result: DesignTokenValueResolution,
+        contexts: List<DesignTokenContext> = listOf(LIGHT_DESKTOP),
+    ): DesignTokenResolutionGroup =
         DesignTokenResolutionGroup(
-            listOf(
+            contexts.map { context ->
                 DesignTokenVariantResolution(
-                    variant = variant(TOKEN, result.rawValue),
+                    variant = variant(TOKEN, result.rawValue, context = context),
                     result = result,
-                ),
-            ),
+                )
+            },
         )
 
     private fun resolved(
@@ -140,10 +175,11 @@ class DesignTokenDocumentationHtmlRendererTest {
         rawValue: String,
         line: Int = 1,
         selectorChain: List<String> = listOf(":root", "[tuiTheme='light']"),
+        context: DesignTokenContext = LIGHT_DESKTOP,
     ): DesignTokenVariant =
         DesignTokenVariant(
             name = name,
-            context = LIGHT_DESKTOP,
+            context = context,
             rawValue = rawValue,
             origins =
                 listOf(
@@ -158,10 +194,10 @@ class DesignTokenDocumentationHtmlRendererTest {
 
     private companion object {
         const val TOKEN = "--tui-background-base"
-        val LIGHT_DESKTOP =
-            DesignTokenContext(
-                platform = DesignTokenPlatform.DESKTOP,
-                theme = DesignTokenTheme.LIGHT,
-            )
+        val LIGHT_DESKTOP = DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.LIGHT)
+        val DARK_DESKTOP = DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.DARK)
+        val LIGHT_MOBILE = DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.LIGHT)
+        val DARK_MOBILE = DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.DARK)
+        val ALL_CONTEXTS = listOf(LIGHT_DESKTOP, DARK_DESKTOP, LIGHT_MOBILE, DARK_MOBILE)
     }
 }
