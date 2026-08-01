@@ -38,7 +38,7 @@ Status: implemented.
 
 ## Stage 3 — Recursive value resolution
 
-Status: implemented after the recursive value resolution change is merged.
+Status: implemented.
 
 - Parse nested and compound `var(...)` expressions with a balanced scanner rather than regex replacement.
 - Ignore `var(...)` text inside quoted strings and comments.
@@ -64,16 +64,30 @@ Status: implemented after the recursive value resolution change is merged.
 
 ## Stage 4 — Quick documentation and navigation
 
-Status: next.
+Status: partially implemented.
 
-- Detect a CSS custom property under the caret inside `var(...)`.
-- Implement the IntelliJ Documentation Target API.
-- Render all matching logical variants grouped by platform and theme.
-- Show the raw expression, recursively resolved terminal value, and reference tree.
-- Show every relevant source file, line number, and selector context without duplicating equivalent hover entries.
-- Add color previews for resolved color values.
-- Add navigation from documentation entries to declarations.
-- Explain ambiguous values instead of pretending that one runtime value is known.
+Implemented:
+
+- Detect a `--tui-*` custom property under the caret only when it is the first argument of `var(...)`.
+- Support CSS, SCSS, and Less source files.
+- Support caret positions at the beginning, middle, end, and immediately after a token name.
+- Support several `var(...)` references in one value and token references nested inside fallbacks.
+- Ignore declarations, comments, strings, unrelated custom properties, unsupported files, and unknown Taiga UI tokens.
+- Register the IntelliJ Documentation Target API provider.
+- Render matching logical variants grouped by platform and theme.
+- Show raw expressions, recursively resolved terminal values, and nested reference trees.
+- Show source files, line numbers, and selector contexts without duplicating equivalent CSS/SCSS/Less variants.
+- Show a color swatch for terminal hex, named, and CSS color-function values.
+- Explain missing, ambiguous, circular, and invalid values instead of pretending that one runtime value is known.
+- Cover offset detection and HTML rendering with pure tests.
+- Cover the complete real-filesystem-to-PSI-to-project-service-to-documentation-target path with IntelliJ Platform tests.
+- Document sandbox launch and debugger attachment against a real local project.
+
+Remaining:
+
+- Add clickable navigation from documentation source entries to declarations.
+- Add richer color presentation and accessibility checks for swatches.
+- Test the packaged plugin manually against representative real monorepos and pnpm layouts.
 
 ## Stage 5 — Production features
 
