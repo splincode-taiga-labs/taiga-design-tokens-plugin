@@ -34,6 +34,7 @@ class DesignTokenDocumentationTargetProviderTest : BasePlatformTestCase() {
             :root {
                 --tui-const-white: #fff;
                 --tui-background-base: var(--tui-const-white);
+                $NEUTRAL_HOVER_TOKEN: var(--tui-const-white);
             }
             """.trimIndent(),
         )
@@ -63,6 +64,21 @@ class DesignTokenDocumentationTargetProviderTest : BasePlatformTestCase() {
         }
 
         assertEquals(1, service.cachedPackageCount)
+    }
+
+    fun testProvidesDocumentationForNeutralHoverTokenWithNumericSegment() {
+        val content = ".button { background: var($NEUTRAL_HOVER_TOKEN); }"
+        val psiFile = createPsiFile("src/neutral-hover.less", content)
+        val target =
+            provider
+                .documentationTargets(
+                    psiFile,
+                    content.indexOf(NEUTRAL_HOVER_TOKEN) + NEUTRAL_HOVER_TOKEN.length / 2,
+                ).single()
+        val hint = requireNotNull(target.computeDocumentationHint())
+
+        assertTrue(hint.contains(NEUTRAL_HOVER_TOKEN))
+        assertTrue(hint.contains("#fff"))
     }
 
     fun testDoesNotProvideDocumentationOutsideVarOrForUnknownToken() {
@@ -119,5 +135,6 @@ class DesignTokenDocumentationTargetProviderTest : BasePlatformTestCase() {
 
     private companion object {
         const val TOKEN = "--tui-background-base"
+        const val NEUTRAL_HOVER_TOKEN = "--tui-background-neutral-1-hover"
     }
 }
