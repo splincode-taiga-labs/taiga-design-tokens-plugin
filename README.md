@@ -18,9 +18,13 @@ Quick documentation shows:
 
 - matching desktop and mobile declarations;
 - light and dark theme values;
-- both the raw declaration and its recursively resolved value;
-- the token-reference tree, source files, and line numbers;
+- a comparison table with the token value and its recursively resolved final value;
+- the token-reference tree;
 - a color swatch when the final value is a color.
+
+Equivalent values across all four platform/theme combinations are shown as one row labeled `All platforms · Light and dark`. Incomplete combinations stay explicit, so the UI never implies that a value applies to contexts that were not resolved.
+
+Source files, line numbers, and selector chains remain available in the internal resolution model but are not displayed by default. They will be exposed later through an optional setting together with source navigation.
 
 The plugin shows all statically known candidates. It does not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
 
@@ -114,7 +118,7 @@ sequenceDiagram
     Values-->>Service: Resolution groups with root and complete-tree origins
     Service-->>Docs: Context-grouped resolved candidates
     Docs->>Renderer: Render hint or full documentation
-    Renderer-->>User: Raw and final values, references, origins, and color swatches
+    Renderer-->>User: Context table, token and final values, references, and color swatches
 
     FS-->>VFS: Relevant package path changed
     VFS->>Cache: Invalidate affected package entries
@@ -126,8 +130,8 @@ Architecture status:
 
 - implemented: package discovery, PSI extraction, context classification, immutable indexing, project-level caching, and targeted VFS invalidation;
 - implemented in Stage 3: balanced `var(...)` parsing, context-aware recursive resolution, structured fallback and cycle results, color detection, and equivalent-result grouping;
-- implemented in Stage 4: caret-offset token detection, Documentation Target API integration, CSS/SCSS/Less support, resolved values, reference trees, source metadata, and color swatches;
-- remaining in Stage 4: clickable navigation from documentation entries to source declarations and richer color presentation.
+- implemented in Stage 4: caret-offset token detection, Documentation Target API integration, CSS/SCSS/Less support, context comparison tables, resolved values, reference trees, and color swatches;
+- remaining in Stage 4: optional source details with clickable navigation and richer color presentation.
 
 Package boundaries:
 
@@ -163,9 +167,11 @@ A `DesignTokenValueResolution` is either resolved or unresolved. Resolved result
 
 The documentation provider only creates a target when the editor offset is inside a `--tui-*` name used as the first argument of `var(...)`. It ignores declarations, comments, strings, unrelated custom properties, unknown tokens, and unsupported file types. Nested fallback references and several references in one value are resolved independently.
 
+Documentation renders one table row per distinct terminal result. A row has explicit `Context`, `Token value`, and `Final value` columns. Contexts are compacted only when the available resolutions form a complete platform/theme product; mixed partial combinations remain listed individually. Reference chains are shown below the table. Origins stay in the model for future optional source details and navigation.
+
 ## Development status
 
-Stages 1 through 3 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, VFS invalidation, and pure recursive value resolution. Stage 4 now connects those results to WebStorm Quick Documentation with color swatches. See [the implementation roadmap](docs/roadmap.md) for the remaining navigation and production work.
+Stages 1 through 3 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, VFS invalidation, and pure recursive value resolution. Stage 4 now connects those results to WebStorm Quick Documentation with a context comparison table and color swatches. See [the implementation roadmap](docs/roadmap.md) for the remaining navigation and production work.
 
 ## Requirements
 
