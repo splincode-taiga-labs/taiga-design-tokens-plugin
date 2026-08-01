@@ -4,12 +4,16 @@ The plugin will be developed in small reviewable stages. Each stage should leave
 
 ## Stage 1 — Project scaffold
 
+Status: implemented.
+
 - Configure Kotlin and IntelliJ Platform Gradle Plugin 2.x.
 - Target WebStorm with bundled JavaScript and CSS plugins.
 - Add plugin metadata, a smoke test, and CI.
 - Document the intended architecture and local development commands.
 
 ## Stage 2 — Package discovery and token index
+
+Status: implemented after the project cache and VFS invalidation change is merged.
 
 - Locate the nearest `node_modules/@taiga-ui/design-tokens` package for the current project module.
 - Read the installed package version from `package.json`.
@@ -22,11 +26,19 @@ The plugin will be developed in small reviewable stages. Each stage should leave
 - Group only exact duplicates with the same token name, context, and raw value into one logical variant.
 - Retain every physical CSS, Less, and SCSS origin together with its selector chain on the logical variant.
 - Keep different raw values separate until recursive resolution, even when they may resolve to the same terminal value.
-- Store logical variants in a project-level cached index grouped by token name.
-- Invalidate the cache when token files or package metadata change.
-- Cover npm, pnpm symlinks, monorepo layouts, selector nesting, selector lists, and the pinned real npm package with tests.
+- Cache immutable indexes by normalized real package root and installed version.
+- Share one cache entry between logical npm or pnpm aliases that resolve to the same real package.
+- Replace stale entries when the installed version changes or one logical package path resolves to another real target.
+- Invalidate only the package affected by CSS, SCSS, Less, `package.json`, package-root, or relevant directory changes.
+- Keep unrelated project files, package documentation, and other monorepo packages cached.
+- Remove affected entries on VFS events and rebuild lazily on the next request instead of scanning during the write action.
+- Serialize concurrent cache misses so one installed package is scanned only once.
+- Do not retain a failed build as a permanent cache result.
+- Cover npm, pnpm symlinks, monorepo layouts, selector nesting, selector lists, VFS changes, concurrent requests, and the pinned real npm package with tests.
 
 ## Stage 3 — Recursive value resolution
+
+Status: next.
 
 - Resolve token-to-token references such as `var(--tui-status-warning)` recursively until a terminal value is reached.
 - Resolve references within a deterministic compatible context rather than selecting an arbitrary declaration.

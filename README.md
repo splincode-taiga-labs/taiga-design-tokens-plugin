@@ -34,24 +34,27 @@ sequenceDiagram
     actor User as Editor user
     participant Docs as Documentation provider
     participant Service as Project token service
+    participant Cache as Project index cache
     participant Resolver as Package resolver
     participant Scanner as Package scanner
     participant Finder as Source-file finder
     participant Extractor as CSS/SCSS/Less PSI adapter
     participant Classifier as Context classifier
-    participant Index as Project token index
+    participant Index as Token index
     participant Values as Value resolver
+    participant VFS as VFS change listener
     participant FS as Project filesystem
 
     User->>Docs: Request docs for var(--tui-*)
     Docs->>Service: find(sourceFile, tokenName)
     Service->>Resolver: resolve(sourceFile)
     Resolver->>FS: Find nearest package.json
-    FS-->>Resolver: Package root and version
+    FS-->>Resolver: Logical root, real root, and version
     Resolver-->>Service: DesignTokensPackage
+    Service->>Cache: getOrBuild(package identity)
 
-    alt Index absent or invalid
-        Service->>Scanner: scan(package)
+    alt Cache miss
+        Cache->>Scanner: scan(package)
         Scanner->>Finder: find(package.realRoot)
         Finder->>FS: Walk CSS, SCSS and Less files
         FS-->>Finder: Sorted source files
@@ -64,8 +67,8 @@ sequenceDiagram
             Extractor-->>Scanner: Raw declarations with selector chains
         end
 
-        Scanner-->>Service: Physical declarations
-        Service->>Index: build(package.realRoot, declarations)
+        Scanner-->>Cache: Physical declarations
+        Cache->>Index: build(package.realRoot, declarations)
 
         loop Every physical declaration
             Index->>Classifier: classify(packageRoot, declaration)
@@ -74,9 +77,13 @@ sequenceDiagram
             Index->>Index: Retain every CSS, Less, and SCSS origin
         end
 
-        Index-->>Service: Logical token variants
+        Index-->>Cache: Logical token variants
+        Cache->>Cache: Store by real root and version
+    else Cache hit
+        Cache->>Cache: Reuse immutable index
     end
 
+    Cache-->>Service: DesignTokenIndex
     Service->>Index: Find variants by token name
     Index-->>Service: Context-grouped logical variants
 
@@ -94,12 +101,17 @@ sequenceDiagram
 
     Service-->>Docs: Context-grouped resolved candidates
     Docs-->>User: Raw and final values, chain, origins, and color previews
+
+    FS-->>VFS: Relevant package path changed
+    VFS->>Cache: Invalidate affected package entries
+    Cache->>Cache: Remove entries without rebuilding
+    Note over Cache: Rebuild lazily on the next request
 ```
 
 Architecture status:
 
-- implemented: package resolver, source-file finder, CSS/SCSS/Less PSI extraction, parent selector chains, package scanner, selector-aware context classifier, and immutable in-memory token index;
-- next in Stage 2: project-level caching and filesystem invalidation;
+- implemented: package resolver, stylesheet PSI extraction, parent selector chains, package scanner, selector-aware context classifier, immutable token index, project-level cache, and targeted VFS invalidation;
+- Stage 2 is complete once cache and invalidation integration tests are merged;
 - planned for Stage 3: recursive value resolution with fallbacks and cycle detection;
 - planned for Stage 4: documentation provider, editor integration, and navigation.
 
@@ -109,22 +121,25 @@ Package boundaries:
 org.taigaui.designtokens
 ├── packageinfo  package discovery and installed-package metadata
 ├── index        pure domain models, scanning, classification, and indexing
-└── psi          IntelliJ PSI adapter for CSS, SCSS, and Less
+├── psi          IntelliJ PSI adapter for CSS, SCSS, and Less
+└── project      project service, package cache, and VFS invalidation
 ```
 
-Dependencies point inward: `psi` depends on contracts from `index`, while `index` depends only on `packageinfo` where installed-package information is required. `packageinfo` remains pure Kotlin.
+Dependencies point inward: `project` orchestrates `packageinfo`, `index`, and `psi`; `psi` depends on contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. `packageinfo` and the cache core remain independent from PSI types.
 
-Platform classification has no unknown state. A declaration under a `mobile` package path or a mobile `tuiPlatform` selector is mobile; every other declaration is desktop. Theme may remain unspecified when neither light nor dark context is encoded by the source.
+The project cache is keyed by normalized real package root and installed version. Multiple logical npm or pnpm paths that point to the same physical package reuse one immutable index. A version change or a logical package pointing to a different real target replaces the old entry.
+
+VFS events only remove affected cache entries. CSS, SCSS, Less, `package.json`, package-root replacement, and relevant directory changes invalidate the matching package. Unrelated project files and documentation files inside the package do not rebuild the index. Rebuilding is lazy, so a burst of package-manager events produces at most one scan on the next request.
+
+Platform classification has no unknown state. A declaration under a `mobile` package path or a mobile `tuiPlatform` or `data-platform` selector is mobile; every other declaration is desktop. Theme may remain unspecified when neither light nor dark context is encoded by the source.
 
 A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate hover entries.
 
 Different raw values are never merged at index time, even when they may later resolve to the same terminal value. Recursive resolution produces a separate result containing the final value, reference chain, fallback usage, or an unresolved reason. This preserves source fidelity while allowing hover documentation to show the actual color or other terminal value.
 
-Package discovery, domain models, classification, indexing, and value resolution remain independent from PSI types. `PsiDesignTokenSourceExtractor` is the narrow adapter over the bundled CSS, SCSS, and Less PSI and converts IDE syntax trees into immutable domain declarations.
-
 ## Development status
 
-Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 resolves the nearest installed `@taiga-ui/design-tokens` package, extracts declarations and selector chains through PSI, classifies them by platform and theme, and groups parallel source formats into logical token variants without invoking Node.js or a package manager at plugin runtime. See [the implementation roadmap](docs/roadmap.md) for the following stages.
+Stage 1 provides the buildable WebStorm plugin scaffold. Stage 2 resolves the nearest installed `@taiga-ui/design-tokens` package, extracts declarations and selector chains through PSI, classifies them by platform and theme, groups parallel source formats into logical token variants, and caches the resulting index per installed package without invoking Node.js or a package manager at plugin runtime. See [the implementation roadmap](docs/roadmap.md) for the following stages.
 
 ## Requirements
 
