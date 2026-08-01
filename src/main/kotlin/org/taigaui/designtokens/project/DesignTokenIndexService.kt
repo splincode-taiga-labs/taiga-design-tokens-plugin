@@ -65,6 +65,10 @@ class DesignTokenIndexService(
 
     internal fun invalidate(changedPaths: Collection<Path>): Int = cache.invalidate(changedPaths)
 
+    internal fun clear() {
+        cache.clear()
+    }
+
     private companion object {
         val LOG = Logger.getInstance(DesignTokenIndexService::class.java)
     }
