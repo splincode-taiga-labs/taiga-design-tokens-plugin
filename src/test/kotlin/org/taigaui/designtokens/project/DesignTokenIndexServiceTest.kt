@@ -256,6 +256,8 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         path: Path,
         content: String,
     ): VirtualFile {
+        Files.createDirectories(path.parent)
+
         val parent = requireNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path.parent))
         val file =
             WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
