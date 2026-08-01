@@ -30,9 +30,10 @@ class DesignTokensPackageScannerTest {
             )
         val scanner =
             DesignTokensPackageScanner(
-                sourceExtractor = DesignTokenSourceExtractor { sourceFile ->
-                    declarationsByFile[sourceFile].orEmpty()
-                },
+                sourceExtractor =
+                    DesignTokenSourceExtractor { sourceFile ->
+                        declarationsByFile[sourceFile].orEmpty()
+                    },
             )
         val designTokensPackage =
             DesignTokensPackage(
