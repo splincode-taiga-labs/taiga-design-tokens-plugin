@@ -26,11 +26,7 @@ class DesignTokensNpmPackageResolutionIntegrationTest : BasePlatformTestCase() {
     }
 
     fun testResolvesKnownLightBackgroundTokenToTerminalColor() {
-        val index =
-            DesignTokenIndex.build(
-                packageRoot = packageInfo.realRoot,
-                declarations = scanner.scan(packageInfo),
-            )
+        val index = buildIndex()
         val variant =
             index
                 .find("--tui-background-base")
@@ -53,7 +49,31 @@ class DesignTokensNpmPackageResolutionIntegrationTest : BasePlatformTestCase() {
         )
     }
 
+    fun testIndexesAndResolvesNeutralHoverTokenFromPalette() {
+        val index = buildIndex()
+        val variants = index.find(NEUTRAL_HOVER_TOKEN)
+
+        assertTrue(
+            "$NEUTRAL_HOVER_TOKEN must be indexed from the installed npm palette",
+            variants.isNotEmpty(),
+        )
+
+        val resolutions = DesignTokenValueResolver(index).resolveGrouped(NEUTRAL_HOVER_TOKEN)
+
+        assertTrue(
+            "$NEUTRAL_HOVER_TOKEN must produce documentation resolution groups",
+            resolutions.isNotEmpty(),
+        )
+    }
+
+    private fun buildIndex(): DesignTokenIndex =
+        DesignTokenIndex.build(
+            packageRoot = packageInfo.realRoot,
+            declarations = scanner.scan(packageInfo),
+        )
+
     private companion object {
+        const val NEUTRAL_HOVER_TOKEN = "--tui-background-neutral-1-hover"
         val LIGHT_DESKTOP =
             DesignTokenContext(
                 platform = DesignTokenPlatform.DESKTOP,
