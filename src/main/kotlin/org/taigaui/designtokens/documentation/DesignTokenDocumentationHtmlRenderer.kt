@@ -2,7 +2,6 @@ package org.taigaui.designtokens.documentation
 
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
-import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 
 internal object DesignTokenDocumentationHtmlRenderer {
     fun renderHint(
