@@ -131,10 +131,12 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
         )
     }
 
-    private fun containsMobilePlatformSelector(selector: String): Boolean =
-        selector.contains("tuiPlatform", ignoreCase = true) &&
-            (
-                selector.contains("android", ignoreCase = true) ||
-                    selector.contains("ios", ignoreCase = true)
-            )
+    private fun containsMobilePlatformSelector(selector: String): Boolean {
+        val hasPlatformAttribute = selector.contains("tuiPlatform", ignoreCase = true)
+        val hasMobileValue =
+            selector.contains("android", ignoreCase = true) ||
+                selector.contains("ios", ignoreCase = true)
+
+        return hasPlatformAttribute && hasMobileValue
+    }
 }
