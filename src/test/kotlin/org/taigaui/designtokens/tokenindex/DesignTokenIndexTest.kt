@@ -6,17 +6,20 @@ import org.junit.Test
 import java.nio.file.Path
 
 class DesignTokenIndexTest {
-    private val packageRoot = Path.of("build", "fixtures", "design-tokens")
-        .toAbsolutePath()
-        .normalize()
+    private val packageRoot =
+        Path
+            .of("build", "fixtures", "design-tokens")
+            .toAbsolutePath()
+            .normalize()
 
     @Test
     fun `finds variants by token name`() {
-        val index = buildIndex(
-            declaration("palette/light.css", "--tui-background-base", "#fff", 2),
-            declaration("palette/dark.css", "--tui-background-base", "#111", 2),
-            declaration("palette/light.css", "--tui-text-primary", "#222", 3),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/light.css", "--tui-background-base", "#fff", 2),
+                declaration("palette/dark.css", "--tui-background-base", "#111", 2),
+                declaration("palette/light.css", "--tui-text-primary", "#222", 3),
+            )
 
         assertEquals(2, index.find("--tui-background-base").size)
         assertEquals(1, index.find("--tui-text-primary").size)
@@ -24,20 +27,22 @@ class DesignTokenIndexTest {
 
     @Test
     fun `returns empty list for unknown token`() {
-        val index = buildIndex(
-            declaration("palette/light.css", "--tui-background-base", "#fff", 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/light.css", "--tui-background-base", "#fff", 2),
+            )
 
         assertTrue(index.find("--tui-unknown").isEmpty())
     }
 
     @Test
     fun `groups exact CSS Less and SCSS duplicates into one logical variant`() {
-        val index = buildIndex(
-            declaration("palette/dark.css", "--tui-background-base", "#111", 2),
-            declaration("palette/less/dark.less", "--tui-background-base", "#111", 2),
-            declaration("palette/scss/dark.scss", "--tui-background-base", "#111", 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/dark.css", "--tui-background-base", "#111", 2),
+                declaration("palette/less/dark.less", "--tui-background-base", "#111", 2),
+                declaration("palette/scss/dark.scss", "--tui-background-base", "#111", 2),
+            )
 
         val variant = index.find("--tui-background-base").single()
 
@@ -69,10 +74,11 @@ class DesignTokenIndexTest {
 
     @Test
     fun `does not merge declarations with different raw values`() {
-        val index = buildIndex(
-            declaration("palette/dark.css", "--tui-background-base", "#111", 2),
-            declaration("palette/scss/dark.scss", "--tui-background-base", "var(--tui-black)", 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/dark.css", "--tui-background-base", "#111", 2),
+                declaration("palette/scss/dark.scss", "--tui-background-base", "var(--tui-black)", 2),
+            )
 
         assertEquals(
             listOf("#111", "var(--tui-black)"),
@@ -82,10 +88,11 @@ class DesignTokenIndexTest {
 
     @Test
     fun `does not merge declarations from different themes`() {
-        val index = buildIndex(
-            declaration("palette/light.css", "--tui-background-base", "#fff", 2),
-            declaration("palette/dark.css", "--tui-background-base", "#fff", 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/light.css", "--tui-background-base", "#fff", 2),
+                declaration("palette/dark.css", "--tui-background-base", "#fff", 2),
+            )
 
         assertEquals(
             listOf(DesignTokenTheme.LIGHT, DesignTokenTheme.DARK),
@@ -95,10 +102,11 @@ class DesignTokenIndexTest {
 
     @Test
     fun `does not merge declarations from different platforms`() {
-        val index = buildIndex(
-            declaration("fonts/desktop.css", "--tui-font-offset", "0rem", 3),
-            declaration("fonts/mobile.css", "--tui-font-offset", "0rem", 3),
-        )
+        val index =
+            buildIndex(
+                declaration("fonts/desktop.css", "--tui-font-offset", "0rem", 3),
+                declaration("fonts/mobile.css", "--tui-font-offset", "0rem", 3),
+            )
 
         assertEquals(
             listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
@@ -108,10 +116,11 @@ class DesignTokenIndexTest {
 
     @Test
     fun `defaults unmarked declarations to desktop and keeps mobile separate`() {
-        val index = buildIndex(
-            declaration("palette/animation.css", "--tui-duration", "300ms", 2),
-            declaration("palette/mobile/animation.css", "--tui-duration", "300ms", 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/animation.css", "--tui-duration", "300ms", 2),
+                declaration("palette/mobile/animation.css", "--tui-duration", "300ms", 2),
+            )
 
         assertEquals(
             listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
@@ -121,45 +130,59 @@ class DesignTokenIndexTest {
 
     @Test
     fun `deduplicates repeated physical origin`() {
-        val declaration = declaration(
-            "palette/dark.css",
-            "--tui-background-base",
-            "#111",
-            2,
-        )
+        val declaration =
+            declaration(
+                "palette/dark.css",
+                "--tui-background-base",
+                "#111",
+                2,
+            )
         val index = buildIndex(declaration, declaration)
 
-        assertEquals(1, index.find("--tui-background-base").single().origins.size)
+        assertEquals(
+            1,
+            index
+                .find("--tui-background-base")
+                .single()
+                .origins.size,
+        )
         assertEquals(1, index.originCount)
     }
 
     @Test
     fun `keeps declarations on different lines as separate origins`() {
-        val index = buildIndex(
-            declaration("palette/dark.css", "--tui-background-base", "#111", 2),
-            declaration("palette/dark.css", "--tui-background-base", "#111", 20),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/dark.css", "--tui-background-base", "#111", 2),
+                declaration("palette/dark.css", "--tui-background-base", "#111", 20),
+            )
 
         assertEquals(
             listOf(2, 20),
-            index.find("--tui-background-base").single().origins.map(DesignTokenOrigin::line),
+            index
+                .find("--tui-background-base")
+                .single()
+                .origins
+                .map(DesignTokenOrigin::line),
         )
     }
 
     @Test
     fun `normalizes source paths stored in origins`() {
-        val declaration = DesignTokenDeclaration(
-            name = "--tui-background-base",
-            value = "#fff",
-            sourceFile = packageRoot.resolve("palette/../palette/light.css"),
-            line = 2,
-        )
+        val declaration =
+            DesignTokenDeclaration(
+                name = "--tui-background-base",
+                value = "#fff",
+                sourceFile = packageRoot.resolve("palette/../palette/light.css"),
+                line = 2,
+            )
 
-        val origin = buildIndex(declaration)
-            .find("--tui-background-base")
-            .single()
-            .origins
-            .single()
+        val origin =
+            buildIndex(declaration)
+                .find("--tui-background-base")
+                .single()
+                .origins
+                .single()
 
         assertEquals(packageRoot.resolve("palette/light.css"), origin.sourceFile)
     }
@@ -167,56 +190,66 @@ class DesignTokenIndexTest {
     @Test
     fun `preserves raw declaration value unchanged`() {
         val rawValue = "var(--tui-const-white, rgb(255 255 255 / 90%))"
-        val index = buildIndex(
-            declaration("palette/light.css", "--tui-background-base", rawValue, 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/light.css", "--tui-background-base", rawValue, 2),
+            )
 
         assertEquals(rawValue, index.find("--tui-background-base").single().rawValue)
     }
 
     @Test
     fun `retains unsupported source format as unknown`() {
-        val index = buildIndex(
-            declaration("palette/light.tokens", "--tui-background-base", "#fff", 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/light.tokens", "--tui-background-base", "#fff", 2),
+            )
 
         assertEquals(
             DesignTokenSourceFormat.UNKNOWN,
-            index.find("--tui-background-base").single().origins.single().format,
+            index
+                .find("--tui-background-base")
+                .single()
+                .origins
+                .single()
+                .format,
         )
     }
 
     @Test
     fun `reports number of retained unique origins`() {
-        val index = buildIndex(
-            declaration("palette/light.css", "--tui-background-base", "#fff", 2),
-            declaration("palette/scss/light.scss", "--tui-background-base", "#fff", 2),
-            declaration("palette/dark.css", "--tui-background-base", "#111", 2),
-            declaration("fonts/desktop.css", "--tui-font-offset", "0rem", 3),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/light.css", "--tui-background-base", "#fff", 2),
+                declaration("palette/scss/light.scss", "--tui-background-base", "#fff", 2),
+                declaration("palette/dark.css", "--tui-background-base", "#111", 2),
+                declaration("fonts/desktop.css", "--tui-font-offset", "0rem", 3),
+            )
 
         assertEquals(4, index.originCount)
     }
 
     @Test
     fun `exposes token names in stable sorted order`() {
-        val index = buildIndex(
-            declaration("palette/light.css", "--tui-z", "1", 2),
-            declaration("palette/light.css", "--tui-a", "2", 3),
-            declaration("palette/light.css", "--tui-m", "3", 4),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/light.css", "--tui-z", "1", 2),
+                declaration("palette/light.css", "--tui-a", "2", 3),
+                declaration("palette/light.css", "--tui-m", "3", 4),
+            )
 
         assertEquals(listOf("--tui-a", "--tui-m", "--tui-z"), index.names)
     }
 
     @Test
     fun `build result is independent from declaration input order`() {
-        val declarations = listOf(
-            declaration("palette/light.css", "--tui-background-base", "#fff", 2),
-            declaration("palette/scss/light.scss", "--tui-background-base", "#fff", 2),
-            declaration("palette/dark.css", "--tui-background-base", "#111", 2),
-            declaration("fonts/desktop.css", "--tui-font-offset", "0rem", 3),
-        )
+        val declarations =
+            listOf(
+                declaration("palette/light.css", "--tui-background-base", "#fff", 2),
+                declaration("palette/scss/light.scss", "--tui-background-base", "#fff", 2),
+                declaration("palette/dark.css", "--tui-background-base", "#111", 2),
+                declaration("fonts/desktop.css", "--tui-font-offset", "0rem", 3),
+            )
 
         val forward = DesignTokenIndex.build(packageRoot, declarations)
         val reversed = DesignTokenIndex.build(packageRoot, declarations.reversed())
@@ -227,12 +260,13 @@ class DesignTokenIndexTest {
 
     @Test
     fun `orders physical origins by CSS Less SCSS and then unknown`() {
-        val index = buildIndex(
-            declaration("palette/dark.tokens", "--tui-background-base", "#111", 2),
-            declaration("palette/scss/dark.scss", "--tui-background-base", "#111", 2),
-            declaration("palette/less/dark.less", "--tui-background-base", "#111", 2),
-            declaration("palette/dark.css", "--tui-background-base", "#111", 2),
-        )
+        val index =
+            buildIndex(
+                declaration("palette/dark.tokens", "--tui-background-base", "#111", 2),
+                declaration("palette/scss/dark.scss", "--tui-background-base", "#111", 2),
+                declaration("palette/less/dark.less", "--tui-background-base", "#111", 2),
+                declaration("palette/dark.css", "--tui-background-base", "#111", 2),
+            )
 
         assertEquals(
             listOf(
@@ -241,7 +275,11 @@ class DesignTokenIndexTest {
                 DesignTokenSourceFormat.SCSS,
                 DesignTokenSourceFormat.UNKNOWN,
             ),
-            index.find("--tui-background-base").single().origins.map(DesignTokenOrigin::format),
+            index
+                .find("--tui-background-base")
+                .single()
+                .origins
+                .map(DesignTokenOrigin::format),
         )
     }
 
@@ -256,10 +294,11 @@ class DesignTokenIndexTest {
         name: String,
         value: String,
         line: Int,
-    ): DesignTokenDeclaration = DesignTokenDeclaration(
-        name = name,
-        value = value,
-        sourceFile = packageRoot.resolve(relativePath),
-        line = line,
-    )
+    ): DesignTokenDeclaration =
+        DesignTokenDeclaration(
+            name = name,
+            value = value,
+            sourceFile = packageRoot.resolve(relativePath),
+            line = line,
+        )
 }

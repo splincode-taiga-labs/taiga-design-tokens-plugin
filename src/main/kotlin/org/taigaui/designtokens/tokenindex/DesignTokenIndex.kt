@@ -10,8 +10,7 @@ class DesignTokenIndex private constructor(
 
     val originCount: Int = variants.sumOf { it.origins.size }
 
-    fun find(name: String): List<DesignTokenVariant> =
-        variantsByName[name].orEmpty()
+    fun find(name: String): List<DesignTokenVariant> = variantsByName[name].orEmpty()
 
     companion object {
         fun build(
@@ -25,33 +24,36 @@ class DesignTokenIndex private constructor(
                 .sortedWith(DECLARATION_COMPARATOR)
                 .forEach { declaration ->
                     val normalizedSourceFile = declaration.sourceFile.toAbsolutePath().normalize()
-                    val key = VariantKey(
-                        name = declaration.name,
-                        context = contextClassifier.classify(packageRoot, declaration),
-                        rawValue = declaration.value,
-                    )
-                    val origin = DesignTokenOrigin(
-                        sourceFile = normalizedSourceFile,
-                        line = declaration.line,
-                        format = DesignTokenSourceFormat.from(normalizedSourceFile),
-                        selectorChain = declaration.selectorChain,
-                    )
+                    val key =
+                        VariantKey(
+                            name = declaration.name,
+                            context = contextClassifier.classify(packageRoot, declaration),
+                            rawValue = declaration.value,
+                        )
+                    val origin =
+                        DesignTokenOrigin(
+                            sourceFile = normalizedSourceFile,
+                            line = declaration.line,
+                            format = DesignTokenSourceFormat.from(normalizedSourceFile),
+                            selectorChain = declaration.selectorChain,
+                        )
 
                     groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
                 }
 
-            val variants = groupedOrigins
-                .map { (key, origins) ->
-                    DesignTokenVariant(
-                        name = key.name,
-                        context = key.context,
-                        rawValue = key.rawValue,
-                        origins = origins
-                            .distinct()
-                            .sortedWith(ORIGIN_COMPARATOR),
-                    )
-                }
-                .sortedWith(VARIANT_COMPARATOR)
+            val variants =
+                groupedOrigins
+                    .map { (key, origins) ->
+                        DesignTokenVariant(
+                            name = key.name,
+                            context = key.context,
+                            rawValue = key.rawValue,
+                            origins =
+                                origins
+                                    .distinct()
+                                    .sortedWith(ORIGIN_COMPARATOR),
+                        )
+                    }.sortedWith(VARIANT_COMPARATOR)
 
             val variantsByName = linkedMapOf<String, MutableList<DesignTokenVariant>>()
 
@@ -65,29 +67,37 @@ class DesignTokenIndex private constructor(
             )
         }
 
-        private val DECLARATION_COMPARATOR = compareBy<DesignTokenDeclaration>(
-            { it.name },
-            { it.sourceFile.toString() },
-            { it.line },
-            { it.value },
-            { it.selectorChain.joinToString() },
-        )
+        private val DECLARATION_COMPARATOR =
+            compareBy<DesignTokenDeclaration>(
+                { it.name },
+                { it.sourceFile.toString() },
+                { it.line },
+                { it.value },
+                { it.selectorChain.joinToString() },
+            )
 
-        private val ORIGIN_COMPARATOR = compareBy<DesignTokenOrigin>(
-            { sourceFormatRank(it.format) },
-            { it.sourceFile.toString() },
-            { it.line },
-            { it.selectorChain.joinToString() },
-        )
+        private val ORIGIN_COMPARATOR =
+            compareBy<DesignTokenOrigin>(
+                { sourceFormatRank(it.format) },
+                { it.sourceFile.toString() },
+                { it.line },
+                { it.selectorChain.joinToString() },
+            )
 
-        private val VARIANT_COMPARATOR = compareBy<DesignTokenVariant>(
-            { it.name },
-            { platformRank(it.context.platform) },
-            { themeRank(it.context.theme) },
-            { it.rawValue },
-            { it.origins.first().sourceFile.toString() },
-            { it.origins.first().line },
-        )
+        private val VARIANT_COMPARATOR =
+            compareBy<DesignTokenVariant>(
+                { it.name },
+                { platformRank(it.context.platform) },
+                { themeRank(it.context.theme) },
+                { it.rawValue },
+                {
+                    it.origins
+                        .first()
+                        .sourceFile
+                        .toString()
+                },
+                { it.origins.first().line },
+            )
 
         private fun sourceFormatRank(format: DesignTokenSourceFormat): Int =
             when (format) {

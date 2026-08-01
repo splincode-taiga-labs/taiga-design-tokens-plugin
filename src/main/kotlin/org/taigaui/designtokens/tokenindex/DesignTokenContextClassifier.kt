@@ -7,10 +7,11 @@ class DesignTokenContextClassifier {
         packageRoot: Path,
         declaration: DesignTokenDeclaration,
     ): DesignTokenContext {
-        val markers = pathMarkers(
-            packageRoot = packageRoot,
-            sourceFile = declaration.sourceFile,
-        )
+        val markers =
+            pathMarkers(
+                packageRoot = packageRoot,
+                sourceFile = declaration.sourceFile,
+            )
 
         return DesignTokenContext(
             platform = classifyPlatform(markers, declaration.selectorChain),
@@ -32,18 +33,19 @@ class DesignTokenContextClassifier {
         }
     }
 
-    private fun markersFrom(relativePath: Path): Set<String> = buildSet {
-        relativePath.forEach { segment ->
-            add(segment.toString().lowercase())
-        }
-
-        relativePath.fileName
-            ?.toString()
-            ?.lowercase()
-            ?.let { fileName ->
-                add(fileName.substringBeforeLast('.', missingDelimiterValue = fileName))
+    private fun markersFrom(relativePath: Path): Set<String> =
+        buildSet {
+            relativePath.forEach { segment ->
+                add(segment.toString().lowercase())
             }
-    }
+
+            relativePath.fileName
+                ?.toString()
+                ?.lowercase()
+                ?.let { fileName ->
+                    add(fileName.substringBeforeLast('.', missingDelimiterValue = fileName))
+                }
+        }
 
     private fun classifyPlatform(
         markers: Set<String>,
@@ -71,9 +73,10 @@ class DesignTokenContextClassifier {
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
 
-        val MOBILE_PLATFORM_SELECTOR = Regex(
-            pattern = """\[\s*tuiPlatform\s*=\s*(['"])(?:android|ios)\1\s*]""",
-            option = RegexOption.IGNORE_CASE,
-        )
+        val MOBILE_PLATFORM_SELECTOR =
+            Regex(
+                pattern = """\[\s*tuiPlatform\s*=\s*(['"])(?:android|ios)\1\s*]""",
+                option = RegexOption.IGNORE_CASE,
+            )
     }
 }

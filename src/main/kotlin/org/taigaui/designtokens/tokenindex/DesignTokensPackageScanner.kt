@@ -16,6 +16,7 @@ class DesignTokensPackageScanner(
     )
 
     fun scan(designTokensPackage: DesignTokensPackage): List<DesignTokenDeclaration> =
-        sourceFileFinder.find(designTokensPackage.realRoot)
+        sourceFileFinder
+            .find(designTokensPackage.realRoot)
             .flatMap(sourceExtractor::extract)
 }

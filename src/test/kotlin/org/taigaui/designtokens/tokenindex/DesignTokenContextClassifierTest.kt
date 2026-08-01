@@ -5,9 +5,11 @@ import org.junit.Test
 import java.nio.file.Path
 
 class DesignTokenContextClassifierTest {
-    private val packageRoot = Path.of("build", "fixtures", "design-tokens")
-        .toAbsolutePath()
-        .normalize()
+    private val packageRoot =
+        Path
+            .of("build", "fixtures", "design-tokens")
+            .toAbsolutePath()
+            .normalize()
     private val classifier = DesignTokenContextClassifier()
 
     @Test
@@ -106,24 +108,28 @@ class DesignTokenContextClassifierTest {
 
     @Test
     fun `defaults source outside package to desktop unspecified`() {
-        val context = classifier.classify(
-            packageRoot = packageRoot,
-            declaration = declaration(
-                sourceFile = packageRoot.parent.resolve("tokens.css"),
-            ),
-        )
+        val context =
+            classifier.classify(
+                packageRoot = packageRoot,
+                declaration =
+                    declaration(
+                        sourceFile = packageRoot.parent.resolve("tokens.css"),
+                    ),
+            )
 
         assertEquals(DesignTokenContext.DEFAULT, context)
     }
 
     @Test
     fun `normalizes package and source paths before classification`() {
-        val context = classifier.classify(
-            packageRoot = packageRoot.resolve("nested/.."),
-            declaration = declaration(
-                sourceFile = packageRoot.resolve("palette/../fonts/desktop.css"),
-            ),
-        )
+        val context =
+            classifier.classify(
+                packageRoot = packageRoot.resolve("nested/.."),
+                declaration =
+                    declaration(
+                        sourceFile = packageRoot.resolve("palette/../fonts/desktop.css"),
+                    ),
+            )
 
         assertEquals(DesignTokenContext.DEFAULT, context)
     }
@@ -162,12 +168,13 @@ class DesignTokenContextClassifierTest {
     fun `finds mobile selector in any parent level`() {
         assertContext(
             relativePath = "palette/light.css",
-            selectors = listOf(
-                ":root",
-                ".theme",
-                "[tuiPlatform='ios'] &",
-                ".component",
-            ),
+            selectors =
+                listOf(
+                    ":root",
+                    ".theme",
+                    "[tuiPlatform='ios'] &",
+                    ".component",
+                ),
             platform = DesignTokenPlatform.MOBILE,
             theme = DesignTokenTheme.LIGHT,
         )
@@ -209,13 +216,15 @@ class DesignTokenContextClassifierTest {
         platform: DesignTokenPlatform,
         theme: DesignTokenTheme = DesignTokenTheme.UNSPECIFIED,
     ) {
-        val context = classifier.classify(
-            packageRoot = packageRoot,
-            declaration = declaration(
-                sourceFile = packageRoot.resolve(relativePath),
-                selectors = selectors,
-            ),
-        )
+        val context =
+            classifier.classify(
+                packageRoot = packageRoot,
+                declaration =
+                    declaration(
+                        sourceFile = packageRoot.resolve(relativePath),
+                        selectors = selectors,
+                    ),
+            )
 
         assertEquals(
             DesignTokenContext(platform = platform, theme = theme),
@@ -226,11 +235,12 @@ class DesignTokenContextClassifierTest {
     private fun declaration(
         sourceFile: Path,
         selectors: List<String> = emptyList(),
-    ): DesignTokenDeclaration = DesignTokenDeclaration(
-        name = "--tui-test",
-        value = "test",
-        sourceFile = sourceFile,
-        line = 1,
-        selectorChain = selectors,
-    )
+    ): DesignTokenDeclaration =
+        DesignTokenDeclaration(
+            name = "--tui-test",
+            value = "test",
+            sourceFile = sourceFile,
+            line = 1,
+            selectorChain = selectors,
+        )
 }

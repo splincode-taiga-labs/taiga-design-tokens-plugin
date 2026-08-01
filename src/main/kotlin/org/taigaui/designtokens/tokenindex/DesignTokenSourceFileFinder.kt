@@ -24,10 +24,11 @@ class DesignTokenSourceFileFinder {
     }
 
     private fun isSupportedSourceFile(path: Path): Boolean {
-        val extension = path.fileName
-            .toString()
-            .substringAfterLast('.', missingDelimiterValue = "")
-            .lowercase()
+        val extension =
+            path.fileName
+                .toString()
+                .substringAfterLast('.', missingDelimiterValue = "")
+                .lowercase()
 
         return extension in SUPPORTED_EXTENSIONS
     }

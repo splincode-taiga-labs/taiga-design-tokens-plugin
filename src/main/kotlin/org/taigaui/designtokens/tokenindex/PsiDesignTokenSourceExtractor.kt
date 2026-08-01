@@ -18,14 +18,17 @@ class PsiDesignTokenSourceExtractor(
 ) : DesignTokenSourceExtractor {
     override fun extract(sourceFile: Path): List<DesignTokenDeclaration> {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
-        val virtualFile = LocalFileSystem.getInstance()
-            .refreshAndFindFileByNioFile(normalizedSourceFile)
-            ?: return emptyList()
+        val virtualFile =
+            LocalFileSystem
+                .getInstance()
+                .refreshAndFindFileByNioFile(normalizedSourceFile)
+                ?: return emptyList()
 
         return ApplicationManager.getApplication().runReadAction(
             Computable {
-                val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
-                    ?: return@Computable emptyList()
+                val psiFile =
+                    PsiManager.getInstance(project).findFile(virtualFile)
+                        ?: return@Computable emptyList()
 
                 extract(psiFile, normalizedSourceFile)
             },
@@ -44,13 +47,15 @@ class PsiDesignTokenSourceExtractor(
             object : PsiRecursiveElementWalkingVisitor() {
                 override fun visitElement(element: PsiElement) {
                     if (element is CssDeclaration) {
-                        element.toDesignTokenDeclaration(
-                            sourceFile = normalizedSourceFile,
-                            line = document
-                                ?.getLineNumber(element.textOffset)
-                                ?.plus(1)
-                                ?: lineNumber(psiFile.text, element.textOffset),
-                        )?.let(declarations::add)
+                        element
+                            .toDesignTokenDeclaration(
+                                sourceFile = normalizedSourceFile,
+                                line =
+                                    document
+                                        ?.getLineNumber(element.textOffset)
+                                        ?.plus(1)
+                                        ?: lineNumber(psiFile.text, element.textOffset),
+                            )?.let(declarations::add)
                     }
 
                     super.visitElement(element)
@@ -96,12 +101,13 @@ class PsiDesignTokenSourceExtractor(
                     ?.text
                     ?.trim()
                     ?.takeIf(String::isNotEmpty)
-            }
-            .toList()
+            }.toList()
             .asReversed()
 
-    private fun lineNumber(content: String, offset: Int): Int =
-        content.take(offset).count { it == '\n' } + 1
+    private fun lineNumber(
+        content: String,
+        offset: Int,
+    ): Int = content.take(offset).count { it == '\n' } + 1
 
     private companion object {
         const val TOKEN_PREFIX = "--tui-"

@@ -29,11 +29,12 @@ class DesignTokensPackageScannerTest {
             packageRoot.resolve("index.js"),
             "export const ignored = true;",
         )
-        val designTokensPackage = DesignTokensPackage(
-            root = packageRoot,
-            realRoot = packageRoot,
-            version = "1.0.0",
-        )
+        val designTokensPackage =
+            DesignTokensPackage(
+                root = packageRoot,
+                realRoot = packageRoot,
+                version = "1.0.0",
+            )
 
         val result = scanner.scan(designTokensPackage)
 

@@ -16,9 +16,10 @@ data class DesignTokenContext(
     val theme: DesignTokenTheme,
 ) {
     companion object {
-        val DEFAULT = DesignTokenContext(
-            platform = DesignTokenPlatform.DESKTOP,
-            theme = DesignTokenTheme.UNSPECIFIED,
-        )
+        val DEFAULT =
+            DesignTokenContext(
+                platform = DesignTokenPlatform.DESKTOP,
+                theme = DesignTokenTheme.UNSPECIFIED,
+            )
     }
 }

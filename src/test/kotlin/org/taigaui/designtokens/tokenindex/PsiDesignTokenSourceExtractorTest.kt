@@ -13,25 +13,29 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
     override fun setUp() {
         super.setUp()
         extractor = PsiDesignTokenSourceExtractor(project)
-        packageRoot = Path.of("build", "psi-fixtures", "design-tokens")
-            .toAbsolutePath()
-            .normalize()
+        packageRoot =
+            Path
+                .of("build", "psi-fixtures", "design-tokens")
+                .toAbsolutePath()
+                .normalize()
     }
 
     fun testExtractsCssDeclarationsWithSelectorChains() {
-        val declarations = extract(
-            fileName = "tokens.css",
-            content = """
-                :root {
-                    --tui-desktop: #fff;
-                }
+        val declarations =
+            extract(
+                fileName = "tokens.css",
+                content =
+                    """
+                    :root {
+                        --tui-desktop: #fff;
+                    }
 
-                [tuiPlatform='android'],
-                [tuiPlatform='ios'] {
-                    --tui-mobile: #000;
-                }
-            """.trimIndent(),
-        )
+                    [tuiPlatform='android'],
+                    [tuiPlatform='ios'] {
+                        --tui-mobile: #000;
+                    }
+                    """.trimIndent(),
+            )
 
         assertEquals(2, declarations.size)
         assertDeclaration(
@@ -51,71 +55,79 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
     }
 
     fun testExtractsNestedScssSelectorChainFromOuterToInner() {
-        val declaration = extract(
-            fileName = "tokens.scss",
-            content = """
-                :root {
-                    .theme {
-                        [tuiPlatform='android'] &,
-                        [tuiPlatform='ios'] & {
-                            --tui-mobile: var(--tui-const-black);
+        val declaration =
+            extract(
+                fileName = "tokens.scss",
+                content =
+                    """
+                    :root {
+                        .theme {
+                            [tuiPlatform='android'] &,
+                            [tuiPlatform='ios'] & {
+                                --tui-mobile: var(--tui-const-black);
+                            }
                         }
                     }
-                }
-            """.trimIndent(),
-        ).single()
+                    """.trimIndent(),
+            ).single()
 
         assertDeclaration(
             declaration = declaration,
             name = "--tui-mobile",
             value = "var(--tui-const-black)",
             line = 5,
-            selectors = listOf(
-                ":root",
-                ".theme",
-                "[tuiPlatform='android'] &,\n[tuiPlatform='ios'] &",
-            ),
+            selectors =
+                listOf(
+                    ":root",
+                    ".theme",
+                    "[tuiPlatform='android'] &,\n[tuiPlatform='ios'] &",
+                ),
         )
     }
 
     fun testExtractsNestedLessSelectorChainFromOuterToInner() {
-        val declaration = extract(
-            fileName = "tokens.less",
-            content = """
-                :root {
-                    .theme {
-                        [tuiPlatform='android'] & {
-                            --tui-mobile: var(--tui-const-black);
+        val declaration =
+            extract(
+                fileName = "tokens.less",
+                content =
+                    """
+                    :root {
+                        .theme {
+                            [tuiPlatform='android'] & {
+                                --tui-mobile: var(--tui-const-black);
+                            }
                         }
                     }
-                }
-            """.trimIndent(),
-        ).single()
+                    """.trimIndent(),
+            ).single()
 
         assertDeclaration(
             declaration = declaration,
             name = "--tui-mobile",
             value = "var(--tui-const-black)",
             line = 4,
-            selectors = listOf(
-                ":root",
-                ".theme",
-                "[tuiPlatform='android'] &",
-            ),
+            selectors =
+                listOf(
+                    ":root",
+                    ".theme",
+                    "[tuiPlatform='android'] &",
+                ),
         )
     }
 
     fun testPreservesMultilineRawValue() {
-        val declaration = extract(
-            fileName = "shadow.css",
-            content = """
-                :root {
-                    --tui-shadow:
-                        0 1px 2px rgb(0 0 0 / 10%),
-                        0 2px 4px rgb(0 0 0 / 20%);
-                }
-            """.trimIndent(),
-        ).single()
+        val declaration =
+            extract(
+                fileName = "shadow.css",
+                content =
+                    """
+                    :root {
+                        --tui-shadow:
+                            0 1px 2px rgb(0 0 0 / 10%),
+                            0 2px 4px rgb(0 0 0 / 20%);
+                    }
+                    """.trimIndent(),
+            ).single()
 
         assertEquals(
             "0 1px 2px rgb(0 0 0 / 10%),\n        0 2px 4px rgb(0 0 0 / 20%)",
@@ -124,34 +136,38 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
     }
 
     fun testIgnoresCommentsStringsReferencesAndUnrelatedProperties() {
-        val declarations = extract(
-            fileName = "ignored.scss",
-            content = """
-                :root {
-                    color: var(--tui-reference);
-                    --company-token: red;
-                    /* --tui-commented: blue; */
-                    content: "--tui-string: green;";
-                }
-            """.trimIndent(),
-        )
+        val declarations =
+            extract(
+                fileName = "ignored.scss",
+                content =
+                    """
+                    :root {
+                        color: var(--tui-reference);
+                        --company-token: red;
+                        /* --tui-commented: blue; */
+                        content: "--tui-string: green;";
+                    }
+                    """.trimIndent(),
+            )
 
         assertEmpty(declarations)
     }
 
     fun testSelectorContextDoesNotLeakToSiblingRuleset() {
-        val declarations = extract(
-            fileName = "siblings.css",
-            content = """
-                [tuiPlatform='android'] {
-                    --tui-mobile: #000;
-                }
+        val declarations =
+            extract(
+                fileName = "siblings.css",
+                content =
+                    """
+                    [tuiPlatform='android'] {
+                        --tui-mobile: #000;
+                    }
 
-                :root {
-                    --tui-desktop: #fff;
-                }
-            """.trimIndent(),
-        )
+                    :root {
+                        --tui-desktop: #fff;
+                    }
+                    """.trimIndent(),
+            )
 
         assertEquals(listOf("[tuiPlatform='android']"), declarations[0].selectorChain)
         assertEquals(listOf(":root"), declarations[1].selectorChain)
@@ -159,23 +175,26 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
 
     fun testBuildsMobileAndDesktopVariantsFromSelectorsInSameDesktopFile() {
         val sourceFile = packageRoot.resolve("palette/light.css")
-        val declarations = extract(
-            fileName = "light.css",
-            sourceFile = sourceFile,
-            content = """
-                :root {
-                    --tui-background: #fff;
+        val declarations =
+            extract(
+                fileName = "light.css",
+                sourceFile = sourceFile,
+                content =
+                    """
+                    :root {
+                        --tui-background: #fff;
 
-                    [tuiPlatform='ios'] & {
-                        --tui-background: #eee;
+                        [tuiPlatform='ios'] & {
+                            --tui-background: #eee;
+                        }
                     }
-                }
-            """.trimIndent(),
-        )
+                    """.trimIndent(),
+            )
 
-        val variants = DesignTokenIndex
-            .build(packageRoot, declarations)
-            .find("--tui-background")
+        val variants =
+            DesignTokenIndex
+                .build(packageRoot, declarations)
+                .find("--tui-background")
 
         assertEquals(2, variants.size)
         assertEquals(DesignTokenPlatform.DESKTOP, variants[0].context.platform)
@@ -189,11 +208,12 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
 
     fun testNormalizesStoredSourcePath() {
         val sourceFile = packageRoot.resolve("palette/../palette/light.css")
-        val declaration = extract(
-            fileName = "light.css",
-            sourceFile = sourceFile,
-            content = ":root { --tui-background: #fff; }",
-        ).single()
+        val declaration =
+            extract(
+                fileName = "light.css",
+                sourceFile = sourceFile,
+                content = ":root { --tui-background: #fff; }",
+            ).single()
 
         assertEquals(packageRoot.resolve("palette/light.css"), declaration.sourceFile)
     }
@@ -217,7 +237,10 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
             sourceFile = sourceFile,
         )
 
-    private fun createPsiFile(fileName: String, content: String): PsiFile {
+    private fun createPsiFile(
+        fileName: String,
+        content: String,
+    ): PsiFile {
         val fileType = FileTypeManager.getInstance().getFileTypeByFileName(fileName)
 
         return PsiFileFactory.getInstance(project).createFileFromText(

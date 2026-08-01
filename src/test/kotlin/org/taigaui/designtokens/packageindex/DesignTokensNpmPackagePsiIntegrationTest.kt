@@ -21,9 +21,10 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
 
     fun testScansRealCssScssAndLessFilesThroughPsi() {
         val declarations = scanner.scan(packageInfo)
-        val formats = declarations
-            .map { DesignTokenSourceFormat.from(it.sourceFile) }
-            .toSet()
+        val formats =
+            declarations
+                .map { DesignTokenSourceFormat.from(it.sourceFile) }
+                .toSet()
 
         assertFalse(declarations.isEmpty())
         assertTrue(declarations.all { it.name.startsWith("--tui-") })
@@ -80,12 +81,13 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
     fun testFindsRealMobileSelectorsOutsideMobileDirectories() {
         val declarations = scanner.scan(packageInfo)
         val classifier = DesignTokenContextClassifier()
-        val selectorMobileDeclarations = declarations.filter { declaration ->
-            !packageInfo.realRoot
-                .relativize(declaration.sourceFile)
-                .any { it.toString().equals("mobile", ignoreCase = true) } &&
-                declaration.selectorChain.any(::containsMobilePlatformSelector)
-        }
+        val selectorMobileDeclarations =
+            declarations.filter { declaration ->
+                !packageInfo.realRoot
+                    .relativize(declaration.sourceFile)
+                    .any { it.toString().equals("mobile", ignoreCase = true) } &&
+                    declaration.selectorChain.any(::containsMobilePlatformSelector)
+            }
 
         assertFalse(
             "Expected the pinned package to contain platform-specific selectors outside mobile directories.",
@@ -101,17 +103,19 @@ class DesignTokensNpmPackagePsiIntegrationTest : BasePlatformTestCase() {
     fun testRealIndexContainsDesktopAndSelectorBasedMobileVariants() {
         val declarations = scanner.scan(packageInfo)
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
-        val tokenWithBothPlatforms = index.names.firstOrNull { tokenName ->
-            index.find(tokenName)
-                .map { it.context.platform }
-                .toSet()
-                .containsAll(
-                    setOf(
-                        DesignTokenPlatform.DESKTOP,
-                        DesignTokenPlatform.MOBILE,
-                    ),
-                )
-        }
+        val tokenWithBothPlatforms =
+            index.names.firstOrNull { tokenName ->
+                index
+                    .find(tokenName)
+                    .map { it.context.platform }
+                    .toSet()
+                    .containsAll(
+                        setOf(
+                            DesignTokenPlatform.DESKTOP,
+                            DesignTokenPlatform.MOBILE,
+                        ),
+                    )
+            }
 
         assertNotNull(
             "Expected at least one real token to expose desktop and mobile variants.",

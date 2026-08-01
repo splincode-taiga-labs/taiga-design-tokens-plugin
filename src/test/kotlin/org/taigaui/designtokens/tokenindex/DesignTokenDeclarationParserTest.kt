@@ -15,18 +15,19 @@ class DesignTokenDeclarationParserTest {
 
     @Test
     fun `parses declarations with values and source locations`() {
-        val sourceFile = createSourceFile(
-            "tokens.scss",
-            """
-            :root {
-                --tui-text-primary: #000;
-                --tui-shadow:
-                    0 1px 2px rgb(0 0 0 / 10%);
-                --tui-data: url("data:image/svg+xml;utf8,<svg></svg>");
-                --tui-last: white
-            }
-            """.trimIndent(),
-        )
+        val sourceFile =
+            createSourceFile(
+                "tokens.scss",
+                """
+                :root {
+                    --tui-text-primary: #000;
+                    --tui-shadow:
+                        0 1px 2px rgb(0 0 0 / 10%);
+                    --tui-data: url("data:image/svg+xml;utf8,<svg></svg>");
+                    --tui-last: white
+                }
+                """.trimIndent(),
+            )
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
 
         val result = extractor.extract(sourceFile)
@@ -64,28 +65,30 @@ class DesignTokenDeclarationParserTest {
 
     @Test
     fun `ignores references comments strings and unrelated properties`() {
-        val sourceFile = createSourceFile(
-            "ignored.less",
-            """
-            :root {
-                color: var(--tui-text-primary);
-                --company-token: red;
-                /* --tui-block-commented: red; */
-                // --tui-line-commented: blue;
-                content: "--tui-string-token: green;";
-            }
-            """.trimIndent(),
-        )
+        val sourceFile =
+            createSourceFile(
+                "ignored.less",
+                """
+                :root {
+                    color: var(--tui-text-primary);
+                    --company-token: red;
+                    /* --tui-block-commented: red; */
+                    // --tui-line-commented: blue;
+                    content: "--tui-string-token: green;";
+                }
+                """.trimIndent(),
+            )
 
         assertEquals(emptyList<DesignTokenDeclaration>(), extractor.extract(sourceFile))
     }
 
     @Test
     fun `supports whitespace and comments before the colon`() {
-        val sourceFile = createSourceFile(
-            "spacing.css",
-            "--tui-text-warning /* generated */ : rgb(255 100 0);",
-        )
+        val sourceFile =
+            createSourceFile(
+                "spacing.css",
+                "--tui-text-warning /* generated */ : rgb(255 100 0);",
+            )
 
         val result = extractor.extract(sourceFile)
 
@@ -102,7 +105,10 @@ class DesignTokenDeclarationParserTest {
         assertEquals(emptyList<DesignTokenDeclaration>(), extractor.extract(missingFile))
     }
 
-    private fun createSourceFile(name: String, content: String): Path {
+    private fun createSourceFile(
+        name: String,
+        content: String,
+    ): Path {
         val sourceFile = temporaryFolder.root.toPath().resolve(name)
         Files.writeString(sourceFile, content)
 
