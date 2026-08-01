@@ -17,22 +17,35 @@ class DesignTokenDocumentationTargetProvider : DocumentationTargetProvider {
         file: PsiFile,
         offset: Int,
     ): List<DocumentationTarget> {
-        if (!file.isSupportedStylesheet()) {
-            return emptyList()
-        }
-
-        val reference = DesignTokenReferenceAtOffsetFinder.find(file.text, offset) ?: return emptyList()
-        val sourceFile = file.virtualFile?.path?.toPathOrNull() ?: return emptyList()
+        val request = file.documentationRequest(offset)
         val groups =
-            file.project
-                .service<DesignTokenIndexService>()
-                .resolveToken(sourceFile, reference.name)
+            request?.let { documentationRequest ->
+                file.project
+                    .service<DesignTokenIndexService>()
+                    .resolveToken(documentationRequest.sourceFile, documentationRequest.tokenName)
+            }
 
-        return groups
-            .takeIf(List<*>::isNotEmpty)
-            ?.let { listOf(DesignTokenDocumentationTarget(reference.name, it)) }
-            .orEmpty()
+        return if (request != null && !groups.isNullOrEmpty()) {
+            listOf(DesignTokenDocumentationTarget(request.tokenName, groups))
+        } else {
+            emptyList()
+        }
     }
+
+    private fun PsiFile.documentationRequest(offset: Int): DocumentationRequest? =
+        takeIf(PsiFile::isSupportedStylesheet)
+            ?.let { psiFile ->
+                DesignTokenReferenceAtOffsetFinder
+                    .find(psiFile.text, offset)
+                    ?.let { reference ->
+                        psiFile.virtualFile
+                            ?.path
+                            ?.toPathOrNull()
+                            ?.let { sourceFile ->
+                                DocumentationRequest(reference.name, sourceFile)
+                            }
+                    }
+            }
 
     private fun PsiFile.isSupportedStylesheet(): Boolean =
         virtualFile
@@ -40,6 +53,11 @@ class DesignTokenDocumentationTargetProvider : DocumentationTargetProvider {
             ?.lowercase() in SUPPORTED_EXTENSIONS
 
     private fun String.toPathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull()
+
+    private data class DocumentationRequest(
+        val tokenName: String,
+        val sourceFile: Path,
+    )
 
     private companion object {
         val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
