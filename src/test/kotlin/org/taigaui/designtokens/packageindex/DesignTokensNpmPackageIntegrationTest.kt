@@ -1,9 +1,7 @@
 package org.taigaui.designtokens.packageindex
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.taigaui.designtokens.tokenindex.DesignTokenContext
 import org.taigaui.designtokens.tokenindex.DesignTokenDeclaration
@@ -16,15 +14,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class DesignTokensNpmPackageIntegrationTest {
-    private val projectRoot = Path.of("").toAbsolutePath().normalize()
-    private val packageJson = projectRoot.resolve(
-        "node_modules/@taiga-ui/design-tokens/package.json",
-    )
+    private val fixture = InstalledDesignTokensPackageFixture()
+    private val scanner = DesignTokensPackageScanner()
 
     @Test
     fun `resolves package installed from npm`() {
-        val result = resolveInstalledPackage()
-        val expectedRoot = packageJson.parent.toAbsolutePath().normalize()
+        val result = fixture.resolve()
+        val expectedRoot = fixture.packageJson.parent.toAbsolutePath().normalize()
 
         assertEquals(expectedRoot, result.root)
         assertEquals(expectedRoot.toRealPath(), result.realRoot)
@@ -33,7 +29,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `real package contains the pinned token source layout`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
 
         val actualFiles = Files.walk(packageInfo.realRoot).use { paths ->
             paths
@@ -50,8 +46,8 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `scans declarations from package installed from npm`() {
-        val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val packageInfo = fixture.resolve()
+        val declarations = scan(packageInfo)
 
         assertTrue(
             "Expected the real npm package to contain Taiga UI custom-property declarations.",
@@ -63,8 +59,8 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `turns real CSS Less and SCSS declarations into models`() {
-        val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val packageInfo = fixture.resolve()
+        val declarations = scan(packageInfo)
         val expectedDeclarations = listOf(
             DesignTokenDeclaration(
                 name = "--tui-font-offset",
@@ -96,9 +92,8 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `real package exposes CSS Less and SCSS declaration origins`() {
-        val packageInfo = resolveInstalledPackage()
-        val formats = DesignTokensPackageScanner()
-            .scan(packageInfo)
+        val packageInfo = fixture.resolve()
+        val formats = scan(packageInfo)
             .map { DesignTokenSourceFormat.from(it.sourceFile) }
             .toSet()
 
@@ -115,8 +110,8 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `builds logical index without losing real declarations`() {
-        val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val packageInfo = fixture.resolve()
+        val declarations = scan(packageInfo)
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
 
         assertEquals(
@@ -130,8 +125,8 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `real package contains exact duplicates that collapse into logical variants`() {
-        val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val packageInfo = fixture.resolve()
+        val declarations = scan(packageInfo)
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
 
         assertTrue(
@@ -146,7 +141,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `groups real desktop dark CSS and SCSS declarations into one variant`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
             .single { candidate ->
@@ -171,7 +166,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `groups real desktop light CSS and SCSS declarations into one variant`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
             .single { candidate ->
@@ -192,7 +187,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `groups real mobile light CSS and SCSS declarations into one variant`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
             .single { candidate ->
@@ -213,7 +208,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `groups public and mixin desktop Less declarations into one variant`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
             .single { candidate ->
@@ -235,7 +230,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `groups public and mixin mobile Less declarations into one variant`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
             .single { candidate ->
@@ -256,7 +251,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `keeps real desktop light and dark variants separate`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variants = realIndex(packageInfo).find("--tui-background-base")
 
         assertTrue(
@@ -279,7 +274,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `keeps desktop themed and desktop base declarations separate`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variants = realIndex(packageInfo)
             .find("--tui-background-base")
             .filter { it.rawValue == "var(--tui-const-white)" }
@@ -308,7 +303,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `keeps real mobile light and mobile dark variants separate`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variants = realIndex(packageInfo).find("--tui-background-base")
 
         assertTrue(
@@ -331,7 +326,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `classifies known real desktop and mobile files`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val variants = realIndex(packageInfo).variants
 
         assertTrue(
@@ -354,7 +349,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `real index contains no repeated physical origins`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val origins = realIndex(packageInfo)
             .variants
             .flatMap { it.origins }
@@ -364,7 +359,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `real index returns token names in stable order`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
         val names = realIndex(packageInfo).names
 
         assertEquals(names.sorted(), names)
@@ -372,7 +367,7 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `real index returns empty result for unknown token`() {
-        val packageInfo = resolveInstalledPackage()
+        val packageInfo = fixture.resolve()
 
         assertTrue(
             realIndex(packageInfo)
@@ -381,26 +376,14 @@ class DesignTokensNpmPackageIntegrationTest {
         )
     }
 
+    private fun scan(packageInfo: DesignTokensPackage): List<DesignTokenDeclaration> =
+        scanner.scan(packageInfo)
+
     private fun realIndex(packageInfo: DesignTokensPackage): DesignTokenIndex =
         DesignTokenIndex.build(
             packageRoot = packageInfo.realRoot,
-            declarations = DesignTokensPackageScanner().scan(packageInfo),
+            declarations = scan(packageInfo),
         )
-
-    private fun resolveInstalledPackage(): DesignTokensPackage {
-        assumeTrue(
-            "Run `npm ci` to execute the real-package integration tests.",
-            Files.isRegularFile(packageJson),
-        )
-
-        val result = DesignTokensPackageResolver().resolve(
-            projectRoot.resolve("build.gradle.kts"),
-        )
-
-        assertNotNull(result)
-
-        return result!!
-    }
 
     private fun isSupportedTokenSource(path: String): Boolean =
         path.endsWith(".css") || path.endsWith(".less") || path.endsWith(".scss")
