@@ -5,10 +5,16 @@
 
     <description><![CDATA[
         <p>WebStorm support for Taiga UI design tokens.</p>
-        <p>The plugin reads the installed <code>@taiga-ui/design-tokens</code> package and will provide structured token documentation for CSS custom properties.</p>
+        <p>The plugin reads the installed <code>@taiga-ui/design-tokens</code> package and provides structured documentation with resolved values and color previews for CSS custom properties.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>JavaScript</depends>
     <depends>com.intellij.css</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <platform.backend.documentation.targetProvider
+            implementation="org.taigaui.designtokens.documentation.DesignTokenDocumentationTargetProvider"
+        />
+    </extensions>
 </idea-plugin>
