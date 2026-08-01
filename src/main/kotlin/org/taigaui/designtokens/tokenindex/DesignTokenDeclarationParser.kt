@@ -3,8 +3,8 @@ package org.taigaui.designtokens.tokenindex
 import java.nio.file.Files
 import java.nio.file.Path
 
-class DesignTokenDeclarationParser {
-    fun parse(sourceFile: Path): List<DesignTokenDeclaration> {
+class DesignTokenDeclarationParser : DesignTokenSourceExtractor {
+    override fun extract(sourceFile: Path): List<DesignTokenDeclaration> {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val content = runCatching { Files.readString(normalizedSourceFile) }
             .getOrNull()
