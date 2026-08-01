@@ -65,18 +65,20 @@ class PsiDesignTokenSourceExtractor(
         sourceFile: Path,
         line: Int,
     ): DesignTokenDeclaration? {
-        val tokenName = propertyName.takeIf { it.startsWith(TOKEN_PREFIX) }
-            ?: return null
-        val rawValue = rawValue().takeIf(String::isNotEmpty)
-            ?: return null
+        val tokenName = propertyName
+        val rawValue = rawValue()
 
-        return DesignTokenDeclaration(
-            name = tokenName,
-            value = rawValue,
-            sourceFile = sourceFile,
-            line = line,
-            selectorChain = selectorChain(),
-        )
+        return if (tokenName.startsWith(TOKEN_PREFIX) && rawValue.isNotEmpty()) {
+            DesignTokenDeclaration(
+                name = tokenName,
+                value = rawValue,
+                sourceFile = sourceFile,
+                line = line,
+                selectorChain = selectorChain(),
+            )
+        } else {
+            null
+        }
     }
 
     private fun CssDeclaration.rawValue(): String =
