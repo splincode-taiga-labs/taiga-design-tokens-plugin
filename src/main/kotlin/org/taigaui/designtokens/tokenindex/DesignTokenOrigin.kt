@@ -29,4 +29,5 @@ data class DesignTokenOrigin(
     val sourceFile: Path,
     val line: Int,
     val format: DesignTokenSourceFormat,
+    val selectorChain: List<String> = emptyList(),
 )
