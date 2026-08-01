@@ -20,9 +20,9 @@ class DesignTokenValueParserTest {
     fun `parses multiple references inside compound value`() {
         val parsed = parse("calc(var(--tui-size) * 2) solid var(--tui-color)")
 
-        assertEquals(5, parsed.parts.size)
+        assertEquals(4, parsed.parts.size)
         assertEquals("--tui-size", (parsed.parts[1] as DesignTokenValuePart.Reference).name)
-        assertEquals("--tui-color", (parsed.parts[4] as DesignTokenValuePart.Reference).name)
+        assertEquals("--tui-color", (parsed.parts[3] as DesignTokenValuePart.Reference).name)
     }
 
     @Test
