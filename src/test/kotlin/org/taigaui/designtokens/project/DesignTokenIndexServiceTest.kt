@@ -38,7 +38,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
     fun testKeepsCachedIndexForUnrelatedProjectAndPackageFiles() {
         val first = index(fixture)
 
-        writeFile(fixture.sourceFile, ".app { color: red; }")
+        writeFile(fixture.sourceFile, "Application source")
         val readme = createFile("workspace/node_modules/@taiga-ui/design-tokens/README.md", "Docs")
         writeFile(readme, "Updated docs")
 
@@ -111,7 +111,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
     }
 
     fun testServiceReturnsNullWhenNoInstalledPackageCanBeResolved() {
-        val sourceFile = createFile("standalone/app.css", ":root {}")
+        val sourceFile = createFile("standalone/app.txt", "Application source")
 
         assertNull(service.getIndex(Path.of(sourceFile.path)))
         assertEquals(0, service.cachedPackageCount)
@@ -124,7 +124,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         val packagePath = "$workspace/node_modules/@taiga-ui/design-tokens"
 
         return PackageFixture(
-            sourceFile = createFile("$workspace/src/app.css", ".app {}"),
+            sourceFile = createFile("$workspace/src/app.txt", "Application source"),
             packageJson =
                 createFile(
                     "$packagePath/package.json",
@@ -140,7 +140,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
 
     private fun index(packageFixture: PackageFixture): DesignTokenIndex =
         requireNotNull(
-            service.getIndex(Path.of(packageFixture.sourceFile.path)),
+            service.getIndexOrThrow(Path.of(packageFixture.sourceFile.path)),
         )
 
     private fun tokenValue(index: DesignTokenIndex): String =
