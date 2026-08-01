@@ -64,18 +64,10 @@ sealed interface DesignTokenUnresolvedReason {
 
 data class DesignTokenResolutionNode(
     val name: String,
-    val context: DesignTokenContext,
+    val declarationContext: DesignTokenContext,
+    val requestedContext: DesignTokenContext,
     val rawValue: String,
-) {
-    companion object {
-        fun from(variant: DesignTokenVariant): DesignTokenResolutionNode =
-            DesignTokenResolutionNode(
-                name = variant.name,
-                context = variant.context,
-                rawValue = variant.rawValue,
-            )
-    }
-}
+)
 
 enum class DesignTokenColorFormat {
     HEX,
