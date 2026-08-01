@@ -5,9 +5,7 @@ import org.junit.Assume.assumeTrue
 import java.nio.file.Files
 import java.nio.file.Path
 
-internal class InstalledDesignTokensPackageFixture(
-    val projectRoot: Path = Path.of("").toAbsolutePath().normalize(),
-) {
+internal class InstalledDesignTokensPackageFixture(val projectRoot: Path = Path.of("").toAbsolutePath().normalize()) {
     val packageJson: Path = projectRoot.resolve(
         "node_modules/@taiga-ui/design-tokens/package.json",
     )
