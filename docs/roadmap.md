@@ -13,7 +13,7 @@ The plugin will be developed in small reviewable stages. Each stage should leave
 
 - Locate the nearest `node_modules/@taiga-ui/design-tokens` package for the current project module.
 - Read the installed package version from `package.json`.
-- Parse CSS, SCSS, and Less custom-property declarations.
+- Extract CSS, SCSS, and Less custom-property declarations through a source adapter.
 - Preserve each physical declaration's raw value, source file, line number, and enclosing selector context.
 - Classify declarations as mobile when they are published under a `mobile` path or enclosed by a `[tuiPlatform='android']` / `[tuiPlatform='ios']` selector; classify every other declaration as desktop.
 - Classify declarations by light/dark theme context while retaining an unspecified theme when neither theme is encoded by the source.
