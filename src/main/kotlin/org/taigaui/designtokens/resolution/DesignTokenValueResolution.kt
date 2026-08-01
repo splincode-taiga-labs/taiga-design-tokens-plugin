@@ -94,6 +94,19 @@ data class DesignTokenResolutionGroup(
 
     val origins: List<DesignTokenOrigin> =
         resolutions
-            .flatMap { resolution -> resolution.variant.origins }
+            .flatMap(DesignTokenVariantResolution::originsInTree)
             .distinct()
 }
+
+private fun DesignTokenVariantResolution.originsInTree(): List<DesignTokenOrigin> =
+    variant.origins + result.originsInTree()
+
+private fun DesignTokenValueResolution.originsInTree(): List<DesignTokenOrigin> =
+    references.flatMap(DesignTokenReferenceResolution::originsInTree)
+
+private fun DesignTokenReferenceResolution.originsInTree(): List<DesignTokenOrigin> =
+    buildList {
+        selectedVariant?.origins?.let(::addAll)
+        addAll(primaryResult.originsInTree())
+        fallbackResult?.originsInTree()?.let(::addAll)
+    }
