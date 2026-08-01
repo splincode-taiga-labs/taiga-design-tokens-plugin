@@ -11,6 +11,10 @@ class DesignTokensPackageScanner(
         sourceExtractor = PsiDesignTokenSourceExtractor(project),
     )
 
+    internal constructor() : this(
+        sourceExtractor = DesignTokenDeclarationParser(),
+    )
+
     fun scan(designTokensPackage: DesignTokensPackage): List<DesignTokenDeclaration> =
         sourceFileFinder.find(designTokensPackage.realRoot)
             .flatMap(sourceExtractor::extract)
