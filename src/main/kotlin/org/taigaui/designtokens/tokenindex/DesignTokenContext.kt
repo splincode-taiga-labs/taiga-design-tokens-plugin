@@ -3,7 +3,6 @@ package org.taigaui.designtokens.tokenindex
 enum class DesignTokenPlatform {
     DESKTOP,
     MOBILE,
-    UNSPECIFIED,
 }
 
 enum class DesignTokenTheme {
@@ -17,8 +16,8 @@ data class DesignTokenContext(
     val theme: DesignTokenTheme,
 ) {
     companion object {
-        val UNSPECIFIED = DesignTokenContext(
-            platform = DesignTokenPlatform.UNSPECIFIED,
+        val DEFAULT = DesignTokenContext(
+            platform = DesignTokenPlatform.DESKTOP,
             theme = DesignTokenTheme.UNSPECIFIED,
         )
     }
