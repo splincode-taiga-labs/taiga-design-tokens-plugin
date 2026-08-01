@@ -7,4 +7,5 @@ data class DesignTokenDeclaration(
     val value: String,
     val sourceFile: Path,
     val line: Int,
+    val selectorChain: List<String> = emptyList(),
 )
