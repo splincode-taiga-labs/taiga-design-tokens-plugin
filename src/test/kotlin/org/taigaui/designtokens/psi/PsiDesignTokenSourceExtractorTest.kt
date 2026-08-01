@@ -7,6 +7,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
+import org.taigaui.designtokens.index.DesignTokenTheme
 import java.nio.file.Path
 
 class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
@@ -206,6 +207,54 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
         assertEquals(
             listOf(":root", "[tuiPlatform='ios'] &"),
             variants[1].origins.single().selectorChain,
+        )
+    }
+
+    fun testBuildsSingleMobileDarkVariantFromEquivalentSelectorList() {
+        val sourceFile = packageRoot.resolve("tokens.css")
+        val selectorList =
+            """
+            [data-platform='ios'][tuiTheme='dark'],
+            [data-platform='android'][tuiTheme='dark'],
+            [data-platform='ios'] [tuiTheme='dark'],
+            [data-platform='android'] [tuiTheme='dark'],
+            [tuiTheme='dark'] [data-platform='ios'],
+            [tuiTheme='dark'] [data-platform='android']
+            """.trimIndent()
+        val declarations =
+            extract(
+                fileName = "tokens.css",
+                sourceFile = sourceFile,
+                content =
+                    """
+                    $selectorList {
+                        --tui-background-base: var(--tui-const-black);
+                    }
+                    """.trimIndent(),
+            )
+
+        assertEquals(1, declarations.size)
+        assertDeclaration(
+            declaration = declarations.single(),
+            name = "--tui-background-base",
+            value = "var(--tui-const-black)",
+            line = 7,
+            selectors = listOf(selectorList),
+        )
+
+        val variant =
+            DesignTokenIndex
+                .build(packageRoot, declarations)
+                .find("--tui-background-base")
+                .single()
+
+        assertEquals(DesignTokenPlatform.MOBILE, variant.context.platform)
+        assertEquals(DesignTokenTheme.DARK, variant.context.theme)
+        assertEquals("var(--tui-const-black)", variant.rawValue)
+        assertEquals(1, variant.origins.size)
+        assertEquals(
+            listOf(normalizeSelector(selectorList)),
+            variant.origins.single().selectorChain.map(::normalizeSelector),
         )
     }
 
