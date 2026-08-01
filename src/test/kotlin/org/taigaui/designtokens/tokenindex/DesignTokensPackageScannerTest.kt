@@ -6,29 +6,34 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.taigaui.designtokens.packageindex.DesignTokensPackage
 import java.nio.file.Files
+import java.nio.file.Path
 
 class DesignTokensPackageScannerTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
-    private val scanner = DesignTokensPackageScanner()
-
     @Test
     fun `collects declarations from all supported package files`() {
         val packageRoot = temporaryFolder.newFolder("design-tokens").toPath()
-        Files.createDirectories(packageRoot.resolve("themes"))
-        Files.writeString(
-            packageRoot.resolve("a.css"),
-            ":root { --tui-text-primary: #000; }",
-        )
-        Files.writeString(
-            packageRoot.resolve("themes/b.less"),
-            ":root { --tui-text-primary: #fff; --tui-radius: 0.75rem; }",
-        )
-        Files.writeString(
-            packageRoot.resolve("index.js"),
-            "export const ignored = true;",
-        )
+        val css = createFile(packageRoot.resolve("a.css"))
+        val less = createFile(packageRoot.resolve("themes/b.less"))
+        createFile(packageRoot.resolve("index.js"))
+        val declarationsByFile =
+            mapOf(
+                css.toAbsolutePath().normalize() to
+                    listOf(declaration(css, "--tui-text-primary", "#000")),
+                less.toAbsolutePath().normalize() to
+                    listOf(
+                        declaration(less, "--tui-text-primary", "#fff"),
+                        declaration(less, "--tui-radius", "0.75rem"),
+                    ),
+            )
+        val scanner =
+            DesignTokensPackageScanner(
+                sourceExtractor = DesignTokenSourceExtractor { sourceFile ->
+                    declarationsByFile[sourceFile].orEmpty()
+                },
+            )
         val designTokensPackage =
             DesignTokensPackage(
                 root = packageRoot,
@@ -48,4 +53,23 @@ class DesignTokensPackageScannerTest {
         )
         assertEquals(listOf("#000", "#fff", "0.75rem"), result.map(DesignTokenDeclaration::value))
     }
+
+    private fun createFile(path: Path): Path {
+        Files.createDirectories(path.parent)
+        Files.writeString(path, "fixture")
+
+        return path
+    }
+
+    private fun declaration(
+        sourceFile: Path,
+        name: String,
+        value: String,
+    ): DesignTokenDeclaration =
+        DesignTokenDeclaration(
+            name = name,
+            value = value,
+            sourceFile = sourceFile.toAbsolutePath().normalize(),
+            line = 1,
+        )
 }
