@@ -43,7 +43,7 @@ class DesignTokenIndexTest {
 
         assertEquals(
             DesignTokenContext(
-                platform = DesignTokenPlatform.UNSPECIFIED,
+                platform = DesignTokenPlatform.DESKTOP,
                 theme = DesignTokenTheme.DARK,
             ),
             variant.context,
@@ -107,14 +107,14 @@ class DesignTokenIndexTest {
     }
 
     @Test
-    fun `keeps unspecified context separate from explicit context`() {
+    fun `defaults unmarked declarations to desktop and keeps mobile separate`() {
         val index = buildIndex(
             declaration("palette/animation.css", "--tui-duration", "300ms", 2),
             declaration("palette/mobile/animation.css", "--tui-duration", "300ms", 2),
         )
 
         assertEquals(
-            listOf(DesignTokenPlatform.MOBILE, DesignTokenPlatform.UNSPECIFIED),
+            listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
             index.find("--tui-duration").map { it.context.platform },
         )
     }
