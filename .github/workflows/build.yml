@@ -35,10 +35,10 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
 
-            - name: Test and build plugin
+            - name: Check and build plugin
               run: >-
                   ./gradlew
-                  test
+                  check
                   buildPlugin
                   verifyPluginStructure
                   verifyPluginProjectConfiguration
