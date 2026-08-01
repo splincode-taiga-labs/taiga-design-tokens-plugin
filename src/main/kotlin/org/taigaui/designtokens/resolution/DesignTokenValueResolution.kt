@@ -94,6 +94,11 @@ data class DesignTokenResolutionGroup(
 
     val origins: List<DesignTokenOrigin> =
         resolutions
+            .flatMap { resolution -> resolution.variant.origins }
+            .distinct()
+
+    val allOrigins: List<DesignTokenOrigin> =
+        resolutions
             .flatMap(DesignTokenVariantResolution::originsInTree)
             .distinct()
 }
