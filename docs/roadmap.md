@@ -14,15 +14,16 @@ The plugin will be developed in small reviewable stages. Each stage should leave
 - Locate the nearest `node_modules/@taiga-ui/design-tokens` package for the current project module.
 - Read the installed package version from `package.json`.
 - Parse CSS, SCSS, and Less custom-property declarations.
-- Preserve each physical declaration's raw value, source file, and line number.
-- Classify declarations by desktop/mobile and light/dark context using package-relative paths.
+- Preserve each physical declaration's raw value, source file, line number, and enclosing selector context.
+- Classify declarations as mobile when they are published under a `mobile` path or enclosed by a `[tuiPlatform='android']` / `[tuiPlatform='ios']` selector; classify every other declaration as desktop.
+- Classify declarations by light/dark theme context while retaining an unspecified theme when neither theme is encoded by the source.
 - Treat CSS, Less, and SCSS as parallel source representations rather than separate semantic variants.
 - Group only exact duplicates with the same token name, context, and raw value into one logical variant.
 - Retain every physical CSS, Less, and SCSS origin on the logical variant.
 - Keep different raw values separate until recursive resolution, even when they may resolve to the same terminal value.
 - Store logical variants in a project-level cached index grouped by token name.
 - Invalidate the cache when token files or package metadata change.
-- Cover npm, pnpm symlinks, monorepo layouts, and the pinned real npm package with tests.
+- Cover npm, pnpm symlinks, monorepo layouts, selectors, and the pinned real npm package with tests.
 
 ## Stage 3 — Recursive value resolution
 
