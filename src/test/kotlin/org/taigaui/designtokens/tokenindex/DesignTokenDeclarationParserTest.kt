@@ -11,7 +11,7 @@ class DesignTokenDeclarationParserTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
-    private val parser = DesignTokenDeclarationParser()
+    private val extractor: DesignTokenSourceExtractor = DesignTokenDeclarationParser()
 
     @Test
     fun `parses declarations with values and source locations`() {
@@ -29,7 +29,7 @@ class DesignTokenDeclarationParserTest {
         )
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
 
-        val result = parser.parse(sourceFile)
+        val result = extractor.extract(sourceFile)
 
         assertEquals(
             listOf(
@@ -77,7 +77,7 @@ class DesignTokenDeclarationParserTest {
             """.trimIndent(),
         )
 
-        assertEquals(emptyList<DesignTokenDeclaration>(), parser.parse(sourceFile))
+        assertEquals(emptyList<DesignTokenDeclaration>(), extractor.extract(sourceFile))
     }
 
     @Test
@@ -87,7 +87,7 @@ class DesignTokenDeclarationParserTest {
             "--tui-text-warning /* generated */ : rgb(255 100 0);",
         )
 
-        val result = parser.parse(sourceFile)
+        val result = extractor.extract(sourceFile)
 
         assertEquals(1, result.size)
         assertEquals("--tui-text-warning", result.single().name)
@@ -99,7 +99,7 @@ class DesignTokenDeclarationParserTest {
     fun `returns empty list when source file cannot be read`() {
         val missingFile = temporaryFolder.root.toPath().resolve("missing.css")
 
-        assertEquals(emptyList<DesignTokenDeclaration>(), parser.parse(missingFile))
+        assertEquals(emptyList<DesignTokenDeclaration>(), extractor.extract(missingFile))
     }
 
     private fun createSourceFile(name: String, content: String): Path {
