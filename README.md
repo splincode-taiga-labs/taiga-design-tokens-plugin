@@ -37,7 +37,7 @@ sequenceDiagram
     participant Resolver as Package resolver
     participant Scanner as Package scanner
     participant Finder as Source-file finder
-    participant Parser as CSS/SCSS/Less extractor
+    participant Extractor as CSS/SCSS/Less source adapter
     participant Classifier as Context classifier
     participant Index as Project token index
     participant Values as Value resolver
@@ -58,10 +58,10 @@ sequenceDiagram
         Finder-->>Scanner: Source files
 
         loop Every source file
-            Scanner->>Parser: extract(sourceFile)
-            Parser->>FS: Read source or PSI
-            FS-->>Parser: Syntax tree and source ranges
-            Parser-->>Scanner: Raw declarations with selector context
+            Scanner->>Extractor: extract(sourceFile)
+            Extractor->>FS: Read source or PSI
+            FS-->>Extractor: Syntax tree and source ranges
+            Extractor-->>Scanner: Raw declarations with selector context
         end
 
         Scanner-->>Service: Physical declarations
@@ -99,7 +99,7 @@ sequenceDiagram
 Architecture status:
 
 - implemented: package resolver, source-file finder, declaration parser, package scanner, path-based context classifier, and immutable in-memory token index;
-- next in Stage 2: selector-aware extraction for `[tuiPlatform='android']` and `[tuiPlatform='ios']`, followed by project-level caching and filesystem invalidation;
+- next in Stage 2: selector-aware source extraction for `[tuiPlatform='android']` and `[tuiPlatform='ios']`, followed by project-level caching and filesystem invalidation;
 - planned for Stage 3: recursive value resolution with fallbacks and cycle detection;
 - planned for Stage 4: documentation provider, editor integration, and navigation.
 
