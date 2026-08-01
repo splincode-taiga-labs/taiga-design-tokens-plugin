@@ -50,40 +50,38 @@ class DesignTokensNpmPackageIntegrationTest {
 
     @Test
     fun `scans declarations from package installed from npm`() {
-        val designTokensPackage = resolveInstalledPackage()
-
-        val declarations = DesignTokensPackageScanner().scan(designTokensPackage)
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
 
         assertTrue(
             "Expected the real npm package to contain Taiga UI custom-property declarations.",
             declarations.isNotEmpty(),
         )
         assertTrue(declarations.all { it.name.startsWith("--tui-") })
-        assertTrue(declarations.all { it.sourceFile.startsWith(designTokensPackage.realRoot) })
+        assertTrue(declarations.all { it.sourceFile.startsWith(packageInfo.realRoot) })
     }
 
     @Test
     fun `turns real CSS Less and SCSS declarations into models`() {
-        val designTokensPackage = resolveInstalledPackage()
-
-        val declarations = DesignTokensPackageScanner().scan(designTokensPackage)
+        val packageInfo = resolveInstalledPackage()
+        val declarations = DesignTokensPackageScanner().scan(packageInfo)
         val expectedDeclarations = listOf(
             DesignTokenDeclaration(
                 name = "--tui-font-offset",
                 value = "0rem",
-                sourceFile = designTokensPackage.realRoot.resolve("fonts/desktop.css"),
+                sourceFile = packageInfo.realRoot.resolve("fonts/desktop.css"),
                 line = 3,
             ),
             DesignTokenDeclaration(
                 name = "--tui-background-base",
                 value = "var(--tui-const-white)",
-                sourceFile = designTokensPackage.realRoot.resolve("angular/desktop.less"),
+                sourceFile = packageInfo.realRoot.resolve("angular/desktop.less"),
                 line = 5,
             ),
             DesignTokenDeclaration(
                 name = "--tui-background-base",
                 value = "var(--tui-const-black-lighter-13)",
-                sourceFile = designTokensPackage.realRoot.resolve("palette/scss/dark.scss"),
+                sourceFile = packageInfo.realRoot.resolve("palette/scss/dark.scss"),
                 line = 2,
             ),
         )
@@ -99,18 +97,19 @@ class DesignTokensNpmPackageIntegrationTest {
     @Test
     fun `real package exposes CSS Less and SCSS declaration origins`() {
         val packageInfo = resolveInstalledPackage()
-        val declarations = DesignTokensPackageScanner().scan(packageInfo)
+        val formats = DesignTokensPackageScanner()
+            .scan(packageInfo)
+            .map { DesignTokenSourceFormat.from(it.sourceFile) }
+            .toSet()
 
         assertTrue(
-            declarations
-                .map { DesignTokenSourceFormat.from(it.sourceFile) }
-                .containsAll(
-                    listOf(
-                        DesignTokenSourceFormat.CSS,
-                        DesignTokenSourceFormat.LESS,
-                        DesignTokenSourceFormat.SCSS,
-                    ),
+            formats.containsAll(
+                setOf(
+                    DesignTokenSourceFormat.CSS,
+                    DesignTokenSourceFormat.LESS,
+                    DesignTokenSourceFormat.SCSS,
                 ),
+            ),
         )
     }
 
@@ -118,7 +117,6 @@ class DesignTokensNpmPackageIntegrationTest {
     fun `builds logical index without losing real declarations`() {
         val packageInfo = resolveInstalledPackage()
         val declarations = DesignTokensPackageScanner().scan(packageInfo)
-
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
 
         assertEquals(
@@ -134,7 +132,6 @@ class DesignTokensNpmPackageIntegrationTest {
     fun `real package contains exact duplicates that collapse into logical variants`() {
         val packageInfo = resolveInstalledPackage()
         val declarations = DesignTokensPackageScanner().scan(packageInfo)
-
         val index = DesignTokenIndex.build(packageInfo.realRoot, declarations)
 
         assertTrue(
@@ -148,13 +145,13 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
-    fun `groups real dark CSS and SCSS declarations into one variant`() {
+    fun `groups real desktop dark CSS and SCSS declarations into one variant`() {
         val packageInfo = resolveInstalledPackage()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
             .single { candidate ->
                 candidate.context == DesignTokenContext(
-                    platform = DesignTokenPlatform.UNSPECIFIED,
+                    platform = DesignTokenPlatform.DESKTOP,
                     theme = DesignTokenTheme.DARK,
                 ) && candidate.rawValue == "var(--tui-const-black-lighter-13)"
             }
@@ -173,13 +170,13 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
-    fun `groups real light CSS and SCSS declarations into one variant`() {
+    fun `groups real desktop light CSS and SCSS declarations into one variant`() {
         val packageInfo = resolveInstalledPackage()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
             .single { candidate ->
                 candidate.context == DesignTokenContext(
-                    platform = DesignTokenPlatform.UNSPECIFIED,
+                    platform = DesignTokenPlatform.DESKTOP,
                     theme = DesignTokenTheme.LIGHT,
                 ) && candidate.rawValue == "var(--tui-const-white)"
             }
@@ -194,7 +191,7 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
-    fun `groups real mobile CSS and SCSS declarations into one variant`() {
+    fun `groups real mobile light CSS and SCSS declarations into one variant`() {
         val packageInfo = resolveInstalledPackage()
         val variant = realIndex(packageInfo)
             .find("--tui-background-base")
@@ -258,26 +255,30 @@ class DesignTokensNpmPackageIntegrationTest {
     }
 
     @Test
-    fun `keeps real light and dark variants separate`() {
+    fun `keeps real desktop light and dark variants separate`() {
         val packageInfo = resolveInstalledPackage()
         val variants = realIndex(packageInfo).find("--tui-background-base")
 
         assertTrue(
             variants.any {
-                it.context.theme == DesignTokenTheme.LIGHT &&
-                    it.rawValue == "var(--tui-const-white)"
+                it.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.DESKTOP,
+                    theme = DesignTokenTheme.LIGHT,
+                ) && it.rawValue == "var(--tui-const-white)"
             },
         )
         assertTrue(
             variants.any {
-                it.context.theme == DesignTokenTheme.DARK &&
-                    it.rawValue == "var(--tui-const-black-lighter-13)"
+                it.context == DesignTokenContext(
+                    platform = DesignTokenPlatform.DESKTOP,
+                    theme = DesignTokenTheme.DARK,
+                ) && it.rawValue == "var(--tui-const-black-lighter-13)"
             },
         )
     }
 
     @Test
-    fun `keeps real desktop declaration separate from light theme duplicate`() {
+    fun `keeps desktop themed and desktop base declarations separate`() {
         val packageInfo = resolveInstalledPackage()
         val variants = realIndex(packageInfo)
             .find("--tui-background-base")
@@ -296,7 +297,7 @@ class DesignTokensNpmPackageIntegrationTest {
         assertTrue(
             variants.any {
                 it.context == DesignTokenContext(
-                    platform = DesignTokenPlatform.UNSPECIFIED,
+                    platform = DesignTokenPlatform.DESKTOP,
                     theme = DesignTokenTheme.LIGHT,
                 ) && it.origins.any { origin ->
                     origin.sourceFile == packageInfo.realRoot.resolve("palette/light.css")
