@@ -4,8 +4,8 @@ import com.intellij.openapi.project.Project
 import org.taigaui.designtokens.packageindex.DesignTokensPackage
 
 class DesignTokensPackageScanner(
+    private val sourceExtractor: DesignTokenSourceExtractor,
     private val sourceFileFinder: DesignTokenSourceFileFinder = DesignTokenSourceFileFinder(),
-    private val sourceExtractor: DesignTokenSourceExtractor = DesignTokenDeclarationParser(),
 ) {
     constructor(project: Project) : this(
         sourceExtractor = PsiDesignTokenSourceExtractor(project),
