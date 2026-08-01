@@ -11,19 +11,19 @@ class DesignTokenContextClassifierTest {
     private val classifier = DesignTokenContextClassifier()
 
     @Test
-    fun `classifies desktop from file name`() {
-        assertContext(
-            relativePath = "fonts/desktop.css",
-            platform = DesignTokenPlatform.DESKTOP,
-        )
-    }
-
-    @Test
-    fun `defaults files without mobile marker to desktop`() {
+    fun `defaults to desktop when path and selectors contain no mobile context`() {
         assertContext(
             relativePath = "palette/light.css",
             platform = DesignTokenPlatform.DESKTOP,
             theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `classifies desktop from file name`() {
+        assertContext(
+            relativePath = "fonts/desktop.css",
+            platform = DesignTokenPlatform.DESKTOP,
         )
     }
 
@@ -56,7 +56,7 @@ class DesignTokenContextClassifierTest {
     @Test
     fun `classifies dark theme from file name`() {
         assertContext(
-            relativePath = "palette/less/dark.less",
+            relativePath = "palette/scss/dark.scss",
             platform = DesignTokenPlatform.DESKTOP,
             theme = DesignTokenTheme.DARK,
         )
@@ -72,7 +72,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classification is case insensitive`() {
+    fun `path classification is case insensitive`() {
         assertContext(
             relativePath = "Palette/MOBILE/DARK.CSS",
             platform = DesignTokenPlatform.MOBILE,
@@ -81,15 +81,15 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `does not classify marker substrings as mobile`() {
+    fun `does not classify marker substrings`() {
         assertContext(
-            relativePath = "palette/mobilestyle.css",
+            relativePath = "palette/mobile-first-highlight.css",
             platform = DesignTokenPlatform.DESKTOP,
         )
     }
 
     @Test
-    fun `mobile marker takes precedence over desktop marker`() {
+    fun `mobile path marker takes precedence over desktop marker`() {
         assertContext(
             relativePath = "mobile/desktop.css",
             platform = DesignTokenPlatform.MOBILE,
@@ -97,7 +97,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `returns unspecified theme for conflicting theme markers`() {
+    fun `returns unspecified theme for conflicting markers`() {
         assertContext(
             relativePath = "light/dark.css",
             platform = DesignTokenPlatform.DESKTOP,
@@ -105,45 +105,116 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `defaults source outside package to desktop`() {
+    fun `defaults source outside package to desktop unspecified`() {
         val context = classifier.classify(
             packageRoot = packageRoot,
-            sourceFile = packageRoot.parent.resolve("dark.css"),
+            declaration = declaration(
+                sourceFile = packageRoot.parent.resolve("tokens.css"),
+            ),
         )
 
-        assertEquals(
-            DesignTokenContext(
-                platform = DesignTokenPlatform.DESKTOP,
-                theme = DesignTokenTheme.UNSPECIFIED,
-            ),
-            context,
-        )
+        assertEquals(DesignTokenContext.DEFAULT, context)
     }
 
     @Test
     fun `normalizes package and source paths before classification`() {
         val context = classifier.classify(
             packageRoot = packageRoot.resolve("nested/.."),
-            sourceFile = packageRoot.resolve("palette/../fonts/desktop.css"),
+            declaration = declaration(
+                sourceFile = packageRoot.resolve("palette/../fonts/desktop.css"),
+            ),
         )
 
-        assertEquals(
-            DesignTokenContext(
-                platform = DesignTokenPlatform.DESKTOP,
-                theme = DesignTokenTheme.UNSPECIFIED,
+        assertEquals(DesignTokenContext.DEFAULT, context)
+    }
+
+    @Test
+    fun `classifies android selector as mobile`() {
+        assertContext(
+            relativePath = "palette/light.css",
+            selectors = listOf(":root", "[tuiPlatform='android'] &"),
+            platform = DesignTokenPlatform.MOBILE,
+            theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `classifies ios selector as mobile`() {
+        assertContext(
+            relativePath = "palette/dark.css",
+            selectors = listOf("[tuiPlatform=\"ios\"]"),
+            platform = DesignTokenPlatform.MOBILE,
+            theme = DesignTokenTheme.DARK,
+        )
+    }
+
+    @Test
+    fun `classifies mobile selector with whitespace and mixed case`() {
+        assertContext(
+            relativePath = "palette/light.css",
+            selectors = listOf("[ TUIPlatform = 'Android' ] &"),
+            platform = DesignTokenPlatform.MOBILE,
+            theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `finds mobile selector in any parent level`() {
+        assertContext(
+            relativePath = "palette/light.css",
+            selectors = listOf(
+                ":root",
+                ".theme",
+                "[tuiPlatform='ios'] &",
+                ".component",
             ),
-            context,
+            platform = DesignTokenPlatform.MOBILE,
+            theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `keeps web platform selector desktop`() {
+        assertContext(
+            relativePath = "palette/light.css",
+            selectors = listOf("[tuiPlatform='web']"),
+            platform = DesignTokenPlatform.DESKTOP,
+            theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `does not match similar attribute name`() {
+        assertContext(
+            relativePath = "palette/light.css",
+            selectors = listOf("[notTuiPlatform='android']"),
+            platform = DesignTokenPlatform.DESKTOP,
+            theme = DesignTokenTheme.LIGHT,
+        )
+    }
+
+    @Test
+    fun `does not match extended platform value`() {
+        assertContext(
+            relativePath = "palette/light.css",
+            selectors = listOf("[tuiPlatform='android-tablet']"),
+            platform = DesignTokenPlatform.DESKTOP,
+            theme = DesignTokenTheme.LIGHT,
         )
     }
 
     private fun assertContext(
         relativePath: String,
-        platform: DesignTokenPlatform = DesignTokenPlatform.DESKTOP,
+        selectors: List<String> = emptyList(),
+        platform: DesignTokenPlatform,
         theme: DesignTokenTheme = DesignTokenTheme.UNSPECIFIED,
     ) {
         val context = classifier.classify(
             packageRoot = packageRoot,
-            sourceFile = packageRoot.resolve(relativePath),
+            declaration = declaration(
+                sourceFile = packageRoot.resolve(relativePath),
+                selectors = selectors,
+            ),
         )
 
         assertEquals(
@@ -151,4 +222,15 @@ class DesignTokenContextClassifierTest {
             context,
         )
     }
+
+    private fun declaration(
+        sourceFile: Path,
+        selectors: List<String> = emptyList(),
+    ): DesignTokenDeclaration = DesignTokenDeclaration(
+        name = "--tui-test",
+        value = "test",
+        sourceFile = sourceFile,
+        line = 1,
+        selectorChain = selectors,
+    )
 }
