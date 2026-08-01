@@ -2,7 +2,6 @@ package org.taigaui.designtokens.resolution
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -306,10 +305,14 @@ class DesignTokenValueResolverTest {
             )
         val groups = DesignTokenValueResolver(index).resolveGrouped(ROOT)
         val group = groups.single()
+        val representative = group.representative as DesignTokenValueResolution.Resolved
 
         assertEquals(2, group.resolutions.size)
         assertEquals(2, group.origins.size)
-        assertEquals("#ffffff", requireNotNull((group.representative as DesignTokenValueResolution.Resolved).color).canonicalValue)
+        assertEquals(
+            "#ffffff",
+            requireNotNull(representative.color).canonicalValue,
+        )
     }
 
     @Test
