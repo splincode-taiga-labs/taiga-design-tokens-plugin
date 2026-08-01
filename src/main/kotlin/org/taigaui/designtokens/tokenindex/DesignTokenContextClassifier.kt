@@ -5,20 +5,31 @@ import java.nio.file.Path
 class DesignTokenContextClassifier {
     fun classify(
         packageRoot: Path,
-        sourceFile: Path,
+        declaration: DesignTokenDeclaration,
     ): DesignTokenContext {
+        val markers = pathMarkers(
+            packageRoot = packageRoot,
+            sourceFile = declaration.sourceFile,
+        )
+
+        return DesignTokenContext(
+            platform = classifyPlatform(markers, declaration.selectorChain),
+            theme = classifyTheme(markers),
+        )
+    }
+
+    private fun pathMarkers(
+        packageRoot: Path,
+        sourceFile: Path,
+    ): Set<String> {
         val normalizedRoot = packageRoot.toAbsolutePath().normalize()
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
-        val markers = if (normalizedSourceFile.startsWith(normalizedRoot)) {
+
+        return if (normalizedSourceFile.startsWith(normalizedRoot)) {
             markersFrom(normalizedRoot.relativize(normalizedSourceFile))
         } else {
             emptySet()
         }
-
-        return DesignTokenContext(
-            platform = classifyPlatform(markers),
-            theme = classifyTheme(markers),
-        )
     }
 
     private fun markersFrom(relativePath: Path): Set<String> = buildSet {
@@ -34,8 +45,11 @@ class DesignTokenContextClassifier {
             }
     }
 
-    private fun classifyPlatform(markers: Set<String>): DesignTokenPlatform =
-        if (MOBILE_MARKER in markers) {
+    private fun classifyPlatform(
+        markers: Set<String>,
+        selectorChain: List<String>,
+    ): DesignTokenPlatform =
+        if (MOBILE_MARKER in markers || selectorChain.any(MOBILE_PLATFORM_SELECTOR::containsMatchIn)) {
             DesignTokenPlatform.MOBILE
         } else {
             DesignTokenPlatform.DESKTOP
@@ -56,5 +70,10 @@ class DesignTokenContextClassifier {
         const val MOBILE_MARKER = "mobile"
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
+
+        val MOBILE_PLATFORM_SELECTOR = Regex(
+            pattern = """\[\s*tuiPlatform\s*=\s*(['"])(?:android|ios)\1\s*]""",
+            option = RegexOption.IGNORE_CASE,
+        )
     }
 }
