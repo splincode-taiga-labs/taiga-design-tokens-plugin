@@ -2,9 +2,9 @@
 
 WebStorm plugin for exploring Taiga UI CSS custom properties directly in the editor.
 
-The plugin reads the version of `@taiga-ui/design-tokens` installed in the current project instead of shipping a hardcoded token catalog. Quick documentation will show the declarations available for desktop, mobile, light, and dark themes.
+The plugin reads the version of `@taiga-ui/design-tokens` installed in the current project instead of shipping a hardcoded token catalog. Quick documentation shows the declarations available for desktop, mobile, light, and dark themes.
 
-## Planned experience
+## Editor experience
 
 Given:
 
@@ -14,16 +14,15 @@ Given:
 }
 ```
 
-Quick documentation should show:
+Quick documentation shows:
 
-- the installed `@taiga-ui/design-tokens` version;
 - matching desktop and mobile declarations;
 - light and dark theme values;
 - both the raw declaration and its recursively resolved value;
 - the token-reference tree, source files, and line numbers;
-- color previews when the final value is a color.
+- a color swatch when the final value is a color.
 
-The plugin will show all statically known candidates. It will not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
+The plugin shows all statically known candidates. It does not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
 
 ## Architecture
 
@@ -32,6 +31,7 @@ This sequence diagram is the architectural contract for the plugin. Pull request
 ```mermaid
 sequenceDiagram
     actor User as Editor user
+    participant Offset as Reference-at-offset finder
     participant Docs as Documentation provider
     participant Service as Project token service
     participant Cache as Project index cache
@@ -44,10 +44,13 @@ sequenceDiagram
     participant Values as Value resolver
     participant Parser as var() value parser
     participant Colors as Color detector
+    participant Renderer as Documentation HTML renderer
     participant VFS as VFS change listener
     participant FS as Project filesystem
 
-    User->>Docs: Request docs for var(--tui-*)
+    User->>Offset: Request docs at editor offset
+    Offset->>Offset: Find --tui-* inside var()
+    Offset-->>Docs: Token name or no target
     Docs->>Service: resolveToken(sourceFile, tokenName)
     Service->>Resolver: resolve(sourceFile)
     Resolver->>FS: Find nearest package.json
@@ -110,7 +113,8 @@ sequenceDiagram
     Service->>Values: Group equivalent terminal results
     Values-->>Service: Resolution groups with root and complete-tree origins
     Service-->>Docs: Context-grouped resolved candidates
-    Docs-->>User: Raw and final values, references, origins, and color previews
+    Docs->>Renderer: Render hint or full documentation
+    Renderer-->>User: Raw and final values, references, origins, and color swatches
 
     FS-->>VFS: Relevant package path changed
     VFS->>Cache: Invalidate affected package entries
@@ -122,21 +126,22 @@ Architecture status:
 
 - implemented: package discovery, PSI extraction, context classification, immutable indexing, project-level caching, and targeted VFS invalidation;
 - implemented in Stage 3: balanced `var(...)` parsing, context-aware recursive resolution, structured fallback and cycle results, color detection, and equivalent-result grouping;
-- Stage 3 is complete once the recursive resolution change is merged;
-- next in Stage 4: documentation provider, caret detection, rendering, and navigation.
+- implemented in Stage 4: caret-offset token detection, Documentation Target API integration, CSS/SCSS/Less support, resolved values, reference trees, source metadata, and color swatches;
+- remaining in Stage 4: clickable navigation from documentation entries to source declarations and richer color presentation.
 
 Package boundaries:
 
 ```text
 org.taigaui.designtokens
-├── packageinfo  package discovery and installed-package metadata
-├── index        physical declarations, logical variants, classification, and indexing
-├── resolution   pure var parsing, candidate selection, recursive resolution, and grouping
-├── psi          IntelliJ PSI adapter for CSS, SCSS, and Less
-└── project      project service, package cache, VFS invalidation, and resolution entry point
+├── packageinfo    package discovery and installed-package metadata
+├── index          physical declarations, logical variants, classification, and indexing
+├── resolution     pure var parsing, candidate selection, recursive resolution, and grouping
+├── psi            IntelliJ PSI adapter for CSS, SCSS, and Less
+├── project        project service, package cache, VFS invalidation, and resolution entry point
+└── documentation  caret detection, Documentation Target API, and HTML rendering
 ```
 
-Dependencies point inward: `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` depends on extraction contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. Package discovery, the cache core, and recursive resolution remain independent from PSI types.
+Dependencies point inward: `documentation` consumes the project resolution entry point; `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` depends on extraction contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. Package discovery, the cache core, recursive resolution, and HTML rendering remain independently testable.
 
 The project cache is keyed by normalized real package root and installed version. Multiple logical npm or pnpm paths that point to the same physical package reuse one immutable index. A version change or a logical package pointing to a different real target replaces the old entry.
 
@@ -144,7 +149,7 @@ VFS events only remove affected cache entries. CSS, SCSS, Less, `package.json`, 
 
 Platform classification has no unknown state. A declaration under a `mobile` package path or a mobile `tuiPlatform` or `data-platform` selector is mobile; every other declaration is desktop. Theme may remain unspecified when neither light nor dark context is encoded by the source.
 
-A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate hover entries.
+A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate documentation entries.
 
 The value parser scans balanced functions and emits text/reference parts. It resolves several references inside compound values, nested fallbacks, and empty fallbacks without replacing `var(...)` text inside quoted strings or comments. Raw variant values are never mutated.
 
@@ -156,9 +161,11 @@ A `DesignTokenValueResolution` is either resolved or unresolved. Resolved result
 
 `DesignTokenResolutionGroup` collapses equal terminal values for presentation. Hex colors such as `#fff` and `#FFFFFF` share a canonical key. Each group retains root origins separately from all origins reachable through selected references and evaluated fallbacks.
 
+The documentation provider only creates a target when the editor offset is inside a `--tui-*` name used as the first argument of `var(...)`. It ignores declarations, comments, strings, unrelated custom properties, unknown tokens, and unsupported file types. Nested fallback references and several references in one value are resolved independently.
+
 ## Development status
 
-Stages 1 and 2 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, and VFS invalidation. Stage 3 adds pure recursive value resolution and exposes grouped results through `DesignTokenIndexService.resolveToken`. The next stage connects these results to WebStorm quick documentation and navigation. See [the implementation roadmap](docs/roadmap.md) for the remaining work.
+Stages 1 through 3 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, VFS invalidation, and pure recursive value resolution. Stage 4 now connects those results to WebStorm Quick Documentation with color swatches. See [the implementation roadmap](docs/roadmap.md) for the remaining navigation and production work.
 
 ## Requirements
 
@@ -197,5 +204,14 @@ Run the sandbox IDE or build the distributable plugin:
 ./gradlew runIde
 ./gradlew buildPlugin
 ```
+
+Open a real local project directly in the sandbox:
+
+```bash
+./gradlew runIde \
+  -PdebugProjectPath="/absolute/path/to/project"
+```
+
+See [local debugging](docs/local-debugging.md) for using an installed WebStorm build, attaching a debugger on port 5005, inspecting sandbox logs, and resetting sandbox state.
 
 `runIde` starts an isolated WebStorm instance with the plugin installed. The distributable ZIP is generated under `build/distributions`.
