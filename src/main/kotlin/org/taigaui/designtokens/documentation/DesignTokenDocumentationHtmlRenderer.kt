@@ -2,11 +2,8 @@ package org.taigaui.designtokens.documentation
 
 import org.taigaui.designtokens.index.DesignTokenContext
 import org.taigaui.designtokens.index.DesignTokenOrigin
-import org.taigaui.designtokens.index.DesignTokenPlatform
-import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
-import org.taigaui.designtokens.resolution.DesignTokenUnresolvedReason
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 
 internal object DesignTokenDocumentationHtmlRenderer {
@@ -15,8 +12,8 @@ internal object DesignTokenDocumentationHtmlRenderer {
         groups: List<DesignTokenResolutionGroup>,
     ): String {
         val firstGroup = groups.firstOrNull()
-        val summary = firstGroup?.representative?.summary().orEmpty()
-        val swatch = firstGroup?.representative?.swatch().orEmpty()
+        val summary = firstGroup?.representative?.documentationSummary().orEmpty()
+        val swatch = firstGroup?.representative?.documentationSwatch().orEmpty()
 
         return buildString {
             append("<b>")
@@ -63,16 +60,16 @@ internal object DesignTokenDocumentationHtmlRenderer {
             group.resolutions
                 .map { resolution -> resolution.variant.context }
                 .distinct()
-                .joinToString(separator = ", ", transform = DesignTokenContext::label)
+                .joinToString(separator = ", ", transform = DesignTokenContext::documentationLabel)
         val result = group.representative
 
         append("<p><b>")
         append(contexts.escapeHtml())
         append("</b></p>")
         append("<p>")
-        append(result.swatch())
+        append(result.documentationSwatch())
         append("<b>Resolved:</b> <code>")
-        append(result.summary().escapeHtml())
+        append(result.documentationSummary().escapeHtml())
         append("</code></p>")
 
         val rawValues =
@@ -92,12 +89,10 @@ internal object DesignTokenDocumentationHtmlRenderer {
     }
 
     private fun StringBuilder.appendReferences(result: DesignTokenValueResolution) {
-        if (result.references.isEmpty()) {
-            return
+        if (result.references.isNotEmpty()) {
+            append("<p><b>References:</b></p>")
+            appendReferenceList(result.references)
         }
-
-        append("<p><b>References:</b></p>")
-        appendReferenceList(result.references)
     }
 
     private fun StringBuilder.appendReferenceList(references: List<DesignTokenReferenceResolution>) {
@@ -107,7 +102,7 @@ internal object DesignTokenDocumentationHtmlRenderer {
             append("<li><code>")
             append(reference.name.escapeHtml())
             append("</code> → <code>")
-            append(reference.effectiveResult.summary().escapeHtml())
+            append(reference.effectiveResult.documentationSummary().escapeHtml())
             append("</code>")
 
             if (reference.fallbackUsed) {
@@ -125,90 +120,26 @@ internal object DesignTokenDocumentationHtmlRenderer {
     }
 
     private fun StringBuilder.appendOrigins(origins: List<DesignTokenOrigin>) {
-        if (origins.isEmpty()) {
-            return
-        }
+        if (origins.isNotEmpty()) {
+            append("<p><b>Sources:</b></p><ul>")
 
-        append("<p><b>Sources:</b></p><ul>")
+            origins.forEach { origin ->
+                append("<li><code>")
+                append(origin.sourceFile.toString().escapeHtml())
+                append(':')
+                append(origin.line)
+                append("</code>")
 
-        origins.forEach { origin ->
-            append("<li><code>")
-            append(origin.sourceFile.toString().escapeHtml())
-            append(':')
-            append(origin.line)
-            append("</code>")
+                if (origin.selectorChain.isNotEmpty()) {
+                    append("<br><small>")
+                    append(origin.selectorChain.joinToString(" → ").escapeHtml())
+                    append("</small>")
+                }
 
-            if (origin.selectorChain.isNotEmpty()) {
-                append("<br><small>")
-                append(origin.selectorChain.joinToString(" → ").escapeHtml())
-                append("</small>")
+                append("</li>")
             }
 
-            append("</li>")
+            append("</ul>")
         }
-
-        append("</ul>")
     }
-
-    private fun DesignTokenValueResolution.summary(): String =
-        when (this) {
-            is DesignTokenValueResolution.Resolved -> value
-            is DesignTokenValueResolution.Unresolved -> reason.summary()
-        }
-
-    private fun DesignTokenValueResolution.swatch(): String {
-        val color = (this as? DesignTokenValueResolution.Resolved)?.color ?: return ""
-        val cssColor = color.canonicalValue.escapeHtmlAttribute()
-
-        return """
-            <span style='display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px;border:1px solid #808080;border-radius:2px;background-color:$cssColor'></span>
-        """.trimIndent()
-    }
-
-    private fun DesignTokenUnresolvedReason.summary(): String =
-        when (this) {
-            is DesignTokenUnresolvedReason.MissingReference -> "Missing reference: $name"
-            is DesignTokenUnresolvedReason.AmbiguousReference ->
-                "Ambiguous reference: $name (${candidates.size} candidates)"
-
-            is DesignTokenUnresolvedReason.CircularReference ->
-                "Circular reference: ${chain.joinToString(" → ") { node -> node.name }}"
-
-            is DesignTokenUnresolvedReason.InvalidExpression ->
-                "Invalid expression at offset $offset: $message"
-        }
-
-    private fun DesignTokenContext.label(): String {
-        val platformLabel =
-            when (platform) {
-                DesignTokenPlatform.DESKTOP -> "Desktop"
-                DesignTokenPlatform.MOBILE -> "Mobile"
-            }
-        val themeLabel =
-            when (theme) {
-                DesignTokenTheme.LIGHT -> "Light"
-                DesignTokenTheme.DARK -> "Dark"
-                DesignTokenTheme.UNSPECIFIED -> "Any theme"
-            }
-
-        return "$platformLabel · $themeLabel"
-    }
-
-    private fun String.escapeHtml(): String =
-        buildString(length) {
-            this@escapeHtml.forEach { character ->
-                append(
-                    when (character) {
-                        '&' -> "&amp;"
-                        '<' -> "&lt;"
-                        '>' -> "&gt;"
-                        '"' -> "&quot;"
-                        '\'' -> "&#39;"
-                        else -> character
-                    },
-                )
-            }
-        }
-
-    private fun String.escapeHtmlAttribute(): String = escapeHtml().replace("`", "&#96;")
 }
