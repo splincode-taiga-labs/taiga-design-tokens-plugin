@@ -13,6 +13,8 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
 import org.taigaui.designtokens.packageinfo.DesignTokensPackageResolver
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
+import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
+import org.taigaui.designtokens.resolution.DesignTokenValueResolver
 import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
@@ -57,6 +59,14 @@ class DesignTokenIndexService(
                 error,
             )
         }.getOrNull()
+
+    fun resolveToken(
+        sourceFile: Path,
+        tokenName: String,
+    ): List<DesignTokenResolutionGroup> =
+        getIndex(sourceFile)
+            ?.let { index -> DesignTokenValueResolver(index).resolveGrouped(tokenName) }
+            .orEmpty()
 
     internal fun getIndexOrThrow(sourceFile: Path): DesignTokenIndex? =
         packageResolver
