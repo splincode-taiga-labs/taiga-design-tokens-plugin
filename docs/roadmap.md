@@ -74,9 +74,11 @@ Implemented:
 - Support several `var(...)` references in one value and token references nested inside fallbacks.
 - Ignore declarations, comments, strings, unrelated custom properties, unsupported files, and unknown Taiga UI tokens.
 - Register the IntelliJ Documentation Target API provider.
-- Render matching logical variants grouped by platform and theme.
-- Show raw expressions, recursively resolved terminal values, and nested reference trees.
-- Show source files, line numbers, and selector contexts without duplicating equivalent CSS/SCSS/Less variants.
+- Present contexts, declared token values, and final values in a comparison table.
+- Collapse a complete set of equivalent desktop/mobile and light/dark contexts into one explicit applicability label.
+- Keep incomplete context combinations listed explicitly instead of implying broader applicability.
+- Show recursively resolved terminal values and nested reference trees.
+- Keep source files, line numbers, and selector contexts in the resolution model without displaying them by default.
 - Show a color swatch for terminal hex, named, and CSS color-function values.
 - Explain missing, ambiguous, circular, and invalid values instead of pretending that one runtime value is known.
 - Cover offset detection and HTML rendering with pure tests.
@@ -85,7 +87,7 @@ Implemented:
 
 Remaining:
 
-- Add clickable navigation from documentation source entries to declarations.
+- Add an optional setting for source details and clickable navigation to declarations.
 - Add richer color presentation and accessibility checks for swatches.
 - Test the packaged plugin manually against representative real monorepos and pnpm layouts.
 
