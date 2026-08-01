@@ -28,18 +28,26 @@ internal sealed interface DesignTokenValueParseResult {
 }
 
 internal object DesignTokenValueParser {
-    fun parse(value: String): DesignTokenValueParseResult = Parser(value).parse()
+    fun parse(value: String): DesignTokenValueParseResult =
+        try {
+            DesignTokenValueParseResult.Parsed(Parser(value).parse())
+        } catch (failure: ParseFailure) {
+            DesignTokenValueParseResult.Invalid(
+                offset = failure.offset,
+                message = failure.message,
+            )
+        }
 
     private class Parser(
         private val input: String,
     ) {
-        fun parse(): DesignTokenValueParseResult = parseRange(0, input.length, trim = false)
+        fun parse(): ParsedDesignTokenValue = parseRange(0, input.length, trim = false)
 
         private fun parseRange(
             initialStart: Int,
             initialEnd: Int,
             trim: Boolean,
-        ): DesignTokenValueParseResult {
+        ): ParsedDesignTokenValue {
             val (start, end) =
                 if (trim) {
                     trimmedRange(initialStart, initialEnd)
@@ -52,46 +60,20 @@ internal object DesignTokenValueParser {
 
             while (index < end) {
                 when {
-                    input[index].isQuote() -> {
-                        val quotedEnd = findQuotedEnd(index, end)
-
-                        if (quotedEnd == null) {
-                            return invalid(index, "Unterminated quoted string in token value.")
-                        }
-
-                        index = quotedEnd + 1
-                    }
-
-                    input.startsComment(index, end) -> {
-                        val commentEnd = input.indexOf("*/", startIndex = index + 2)
-
-                        if (commentEnd < 0 || commentEnd + 2 > end) {
-                            return invalid(index, "Unterminated comment in token value.")
-                        }
-
-                        index = commentEnd + 2
-                    }
-
+                    input[index].isQuote() -> index = findQuotedEnd(index, end) + 1
+                    input.startsComment(index, end) -> index = findCommentEnd(index, end)
                     isVarFunctionAt(index, end) -> {
                         addText(parts, textStart, index)
 
                         val openParenthesis = index + VAR_FUNCTION_NAME.length
                         val closeParenthesis = findClosingParenthesis(openParenthesis, end)
 
-                        if (closeParenthesis == null) {
-                            return invalid(index, "Unterminated var() expression.")
-                        }
-
-                        when (
-                            val reference =
-                                parseReference(
-                                    contentStart = openParenthesis + 1,
-                                    contentEnd = closeParenthesis,
-                                )
-                        ) {
-                            is ReferenceParseResult.Parsed -> parts.add(reference.reference)
-                            is ReferenceParseResult.Invalid -> return reference.result
-                        }
+                        parts.add(
+                            parseReference(
+                                contentStart = openParenthesis + 1,
+                                contentEnd = closeParenthesis,
+                            ),
+                        )
 
                         index = closeParenthesis + 1
                         textStart = index
@@ -103,48 +85,29 @@ internal object DesignTokenValueParser {
 
             addText(parts, textStart, end)
 
-            return DesignTokenValueParseResult.Parsed(
-                ParsedDesignTokenValue(
-                    rawValue = input.substring(start, end),
-                    parts = parts.toList(),
-                ),
+            return ParsedDesignTokenValue(
+                rawValue = input.substring(start, end),
+                parts = parts.toList(),
             )
         }
 
         private fun parseReference(
             contentStart: Int,
             contentEnd: Int,
-        ): ReferenceParseResult {
+        ): DesignTokenValuePart.Reference {
             val comma = findTopLevelComma(contentStart, contentEnd)
             val nameEnd = comma ?: contentEnd
             val name = input.substring(contentStart, nameEnd).trim()
 
             if (!name.isCustomPropertyName()) {
-                return ReferenceParseResult.Invalid(
-                    invalid(
-                        contentStart,
-                        "var() must reference a CSS custom property name.",
-                    ),
-                )
+                fail(contentStart, "var() must reference a CSS custom property name.")
             }
 
-            val fallback =
-                if (comma == null) {
-                    null
-                } else {
-                    when (val result = parseRange(comma + 1, contentEnd, trim = true)) {
-                        is DesignTokenValueParseResult.Parsed -> result.value
-                        is DesignTokenValueParseResult.Invalid -> {
-                            return ReferenceParseResult.Invalid(result)
-                        }
-                    }
-                }
+            val fallback = comma?.let { parseRange(it + 1, contentEnd, trim = true) }
 
-            return ReferenceParseResult.Parsed(
-                DesignTokenValuePart.Reference(
-                    name = name,
-                    fallback = fallback,
-                ),
+            return DesignTokenValuePart.Reference(
+                name = name,
+                fallback = fallback,
             )
         }
 
@@ -153,19 +116,13 @@ internal object DesignTokenValueParser {
             end: Int,
         ): Int? {
             var depth = 0
+            var comma: Int? = null
             var index = start
 
-            while (index < end) {
+            while (index < end && comma == null) {
                 when {
-                    input[index].isQuote() -> {
-                        index = findQuotedEnd(index, end)?.plus(1) ?: end
-                    }
-
-                    input.startsComment(index, end) -> {
-                        val commentEnd = input.indexOf("*/", startIndex = index + 2)
-                        index = if (commentEnd < 0) end else commentEnd + 2
-                    }
-
+                    input[index].isQuote() -> index = findQuotedEnd(index, end) + 1
+                    input.startsComment(index, end) -> index = findCommentEnd(index, end)
                     input[index] == '(' -> {
                         depth++
                         index++
@@ -176,38 +133,26 @@ internal object DesignTokenValueParser {
                         index++
                     }
 
-                    input[index] == ',' && depth == 0 -> return index
+                    input[index] == ',' && depth == 0 -> comma = index
                     else -> index++
                 }
             }
 
-            return null
+            return comma
         }
 
         private fun findClosingParenthesis(
             openParenthesis: Int,
             end: Int,
-        ): Int? {
+        ): Int {
             var depth = 1
+            var closingParenthesis: Int? = null
             var index = openParenthesis + 1
 
-            while (index < end) {
+            while (index < end && closingParenthesis == null) {
                 when {
-                    input[index].isQuote() -> {
-                        val quotedEnd = findQuotedEnd(index, end) ?: return null
-                        index = quotedEnd + 1
-                    }
-
-                    input.startsComment(index, end) -> {
-                        val commentEnd = input.indexOf("*/", startIndex = index + 2)
-
-                        if (commentEnd < 0 || commentEnd + 2 > end) {
-                            return null
-                        }
-
-                        index = commentEnd + 2
-                    }
-
+                    input[index].isQuote() -> index = findQuotedEnd(index, end) + 1
+                    input.startsComment(index, end) -> index = findCommentEnd(index, end)
                     input[index] == '(' -> {
                         depth++
                         index++
@@ -217,40 +162,54 @@ internal object DesignTokenValueParser {
                         depth--
 
                         if (depth == 0) {
-                            return index
+                            closingParenthesis = index
+                        } else {
+                            index++
                         }
-
-                        index++
                     }
 
                     else -> index++
                 }
             }
 
-            return null
+            return closingParenthesis ?: fail(openParenthesis, "Unterminated var() expression.")
         }
 
         private fun findQuotedEnd(
             quoteStart: Int,
             end: Int,
-        ): Int? {
+        ): Int {
             val quote = input[quoteStart]
             var escaped = false
+            var quotedEnd: Int? = null
             var index = quoteStart + 1
 
-            while (index < end) {
+            while (index < end && quotedEnd == null) {
                 val character = input[index]
 
                 when {
                     escaped -> escaped = false
                     character == '\\' -> escaped = true
-                    character == quote -> return index
+                    character == quote -> quotedEnd = index
                 }
 
                 index++
             }
 
-            return null
+            return quotedEnd ?: fail(quoteStart, "Unterminated quoted string in token value.")
+        }
+
+        private fun findCommentEnd(
+            commentStart: Int,
+            end: Int,
+        ): Int {
+            val commentEnd = input.indexOf("*/", startIndex = commentStart + 2)
+
+            if (commentEnd < 0 || commentEnd + 2 > end) {
+                fail(commentStart, "Unterminated comment in token value.")
+            }
+
+            return commentEnd + 2
         }
 
         private fun isVarFunctionAt(
@@ -300,28 +259,19 @@ internal object DesignTokenValueParser {
 
             return start to end
         }
-
-        private fun invalid(
-            offset: Int,
-            message: String,
-        ): DesignTokenValueParseResult.Invalid =
-            DesignTokenValueParseResult.Invalid(
-                offset = offset,
-                message = message,
-            )
     }
 
-    private sealed interface ReferenceParseResult {
-        data class Parsed(
-            val reference: DesignTokenValuePart.Reference,
-        ) : ReferenceParseResult
-
-        data class Invalid(
-            val result: DesignTokenValueParseResult.Invalid,
-        ) : ReferenceParseResult
-    }
+    private class ParseFailure(
+        val offset: Int,
+        override val message: String,
+    ) : RuntimeException(message)
 
     private const val VAR_FUNCTION_NAME = "var"
+
+    private fun fail(
+        offset: Int,
+        message: String,
+    ): Nothing = throw ParseFailure(offset, message)
 
     private fun Char.isQuote(): Boolean = this == '\'' || this == '"'
 
