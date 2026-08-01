@@ -41,7 +41,7 @@ internal class DesignTokenIndexCache(
             )
 
             entries[identity]?.let { entry ->
-                entry.logicalRoots += normalizedPackage.root
+                entry.logicalRoots.add(normalizedPackage.root)
 
                 return@synchronized entry.index
             }
