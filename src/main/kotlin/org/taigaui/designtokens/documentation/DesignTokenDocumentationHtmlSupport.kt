@@ -44,6 +44,29 @@ internal fun DesignTokenUnresolvedReason.documentationSummary(): String =
             "Invalid expression at offset $offset: $message"
     }
 
+internal fun Collection<DesignTokenContext>.documentationContextsLabel(): String {
+    val contexts = distinct()
+    val platforms = contexts.map(DesignTokenContext::platform).toSet()
+    val themes = contexts.map(DesignTokenContext::theme).toSet()
+    val expectedContexts =
+        platforms
+            .flatMap { platform ->
+                themes.map { theme -> DesignTokenContext(platform, theme) }
+            }.toSet()
+    val platformLabel = platforms.documentationLabel()
+    val themeLabel = themes.documentationLabel()
+    val canCompact =
+        contexts.toSet() == expectedContexts &&
+            platformLabel != null &&
+            themeLabel != null
+
+    return if (canCompact) {
+        "$platformLabel · $themeLabel"
+    } else {
+        contexts.joinToString(separator = ", ", transform = DesignTokenContext::documentationLabel)
+    }
+}
+
 internal fun DesignTokenContext.documentationLabel(): String {
     val platformLabel =
         when (platform) {
@@ -74,6 +97,23 @@ internal fun String.escapeHtml(): String =
                 },
             )
         }
+    }
+
+private fun Set<DesignTokenPlatform>.documentationLabel(): String? =
+    when (this) {
+        setOf(DesignTokenPlatform.DESKTOP) -> "Desktop"
+        setOf(DesignTokenPlatform.MOBILE) -> "Mobile"
+        DesignTokenPlatform.entries.toSet() -> "All platforms"
+        else -> null
+    }
+
+private fun Set<DesignTokenTheme>.documentationLabel(): String? =
+    when (this) {
+        setOf(DesignTokenTheme.LIGHT) -> "Light"
+        setOf(DesignTokenTheme.DARK) -> "Dark"
+        setOf(DesignTokenTheme.UNSPECIFIED) -> "Any theme"
+        setOf(DesignTokenTheme.LIGHT, DesignTokenTheme.DARK) -> "Light and dark"
+        else -> null
     }
 
 private fun String.escapeHtmlAttribute(): String = escapeHtml().replace("`", "&#96;")
