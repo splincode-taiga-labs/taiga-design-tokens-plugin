@@ -4,6 +4,8 @@ plugins {
     java
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.intellij.platform")
+    id("org.jlleitschuh.gradle.ktlint")
+    id("io.gitlab.arturbosch.detekt")
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -25,6 +27,19 @@ java {
 
 kotlin {
     jvmToolchain(21)
+}
+
+ktlint {
+    verbose.set(true)
+    outputToConsole.set(true)
+    ignoreFailures.set(false)
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    parallel = true
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
 }
 
 val localIdePath = providers.gradleProperty("localIdePath").orNull
@@ -59,8 +74,4 @@ intellijPlatform {
             untilBuild = provider { null }
         }
     }
-}
-
-tasks.test {
-    testLogging.showStandardStreams = true
 }
