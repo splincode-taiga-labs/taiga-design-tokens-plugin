@@ -247,15 +247,17 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
                 .build(packageRoot, declarations)
                 .find("--tui-background-base")
                 .single()
+        val originSelectors =
+            variant.origins
+                .single()
+                .selectorChain
+                .map(::normalizeSelector)
 
         assertEquals(DesignTokenPlatform.MOBILE, variant.context.platform)
         assertEquals(DesignTokenTheme.DARK, variant.context.theme)
         assertEquals("var(--tui-const-black)", variant.rawValue)
         assertEquals(1, variant.origins.size)
-        assertEquals(
-            listOf(normalizeSelector(selectorList)),
-            variant.origins.single().selectorChain.map(::normalizeSelector),
-        )
+        assertEquals(listOf(normalizeSelector(selectorList)), originSelectors)
     }
 
     fun testNormalizesStoredSourcePath() {
