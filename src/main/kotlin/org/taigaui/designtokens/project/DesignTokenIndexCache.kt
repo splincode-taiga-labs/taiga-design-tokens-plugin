@@ -104,9 +104,13 @@ internal class DesignTokenIndexCache(
             realRoot: Path,
         ): Boolean =
             (logicalRoots + realRoot).any { packageRoot ->
-                changedPath == packageRoot ||
-                    packageRoot.startsWith(changedPath) ||
-                    changedPath.startsWith(packageRoot) && changedPath.isRelevantPackagePath()
+                val packageRootChanged = changedPath == packageRoot
+                val packageAncestorChanged = packageRoot.startsWith(changedPath)
+                val relevantPackageFileChanged =
+                    changedPath.startsWith(packageRoot) &&
+                        changedPath.isRelevantPackagePath()
+
+                packageRootChanged || packageAncestorChanged || relevantPackageFileChanged
             }
     }
 
