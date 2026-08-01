@@ -18,12 +18,14 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
     override fun setUp() {
         super.setUp()
         tempRoot = Files.createTempDirectory("design-token-index-service")
-        fixture = createPackage("workspace", "#fff")
         service = project.getService(DesignTokenIndexService::class.java)
+        service.clear()
+        fixture = createPackage("workspace", "#fff")
     }
 
     override fun tearDown() {
         try {
+            service.clear()
             tempRoot.toFile().deleteRecursively()
         } finally {
             super.tearDown()
@@ -51,7 +53,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         val first = index(fixture)
 
         writeFile(fixture.sourceFile, "Application source updated")
-        val readme = createFile(fixture.packageRoot.resolve("README.md"), "Docs")
+        val readme = createVfsFile(fixture.packageRoot.resolve("README.md"), "Docs")
         writeFile(readme, "Updated docs")
 
         assertSame(first, index(fixture))
@@ -61,7 +63,7 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
     fun testInvalidatesWhenNewStylesheetIsCreated() {
         val first = index(fixture)
 
-        createFile(
+        createVfsFile(
             fixture.packageRoot.resolve("palette/dark.scss"),
             "[tuiTheme='dark'] { --tui-background-base: #000; }",
         )
@@ -196,6 +198,22 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         WriteCommandAction.runWriteCommandAction(project) {
             file.delete(this)
         }
+    }
+
+    private fun createVfsFile(
+        path: Path,
+        content: String,
+    ): VirtualFile {
+        val parent = requireNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path.parent))
+        val file =
+            WriteCommandAction.writeCommandAction(project).compute<VirtualFile, RuntimeException> {
+                parent.findChild(path.fileName.toString())
+                    ?: parent.createChildData(this, path.fileName.toString())
+            }
+
+        writeFile(file, content)
+
+        return file
     }
 
     private fun createFile(
