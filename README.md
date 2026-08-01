@@ -103,6 +103,17 @@ Architecture status:
 - planned for Stage 3: recursive value resolution with fallbacks and cycle detection;
 - planned for Stage 4: documentation provider, editor integration, and navigation.
 
+Package boundaries:
+
+```text
+org.taigaui.designtokens
+├── packageinfo  package discovery and installed-package metadata
+├── index        pure domain models, scanning, classification, and indexing
+└── psi          IntelliJ PSI adapter for CSS, SCSS, and Less
+```
+
+Dependencies point inward: `psi` depends on contracts from `index`, while `index` depends only on `packageinfo` where installed-package information is required. `packageinfo` remains pure Kotlin.
+
 Platform classification has no unknown state. A declaration under a `mobile` package path or a mobile `tuiPlatform` selector is mobile; every other declaration is desktop. Theme may remain unspecified when neither light nor dark context is encoded by the source.
 
 A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate hover entries.
