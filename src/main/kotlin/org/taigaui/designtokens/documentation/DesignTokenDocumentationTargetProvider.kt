@@ -7,7 +7,6 @@ import com.intellij.platform.backend.documentation.DocumentationTarget
 import com.intellij.platform.backend.documentation.DocumentationTargetProvider
 import com.intellij.platform.backend.presentation.TargetPresentation
 import com.intellij.psi.PsiFile
-import org.jetbrains.annotations.Nls
 import org.taigaui.designtokens.project.DesignTokenIndexService
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import java.nio.file.Path
@@ -77,8 +76,7 @@ internal class DesignTokenDocumentationTarget(
             .presentableText(tokenName)
             .presentation()
 
-    override fun computeDocumentationHint(): @Nls String =
-        DesignTokenDocumentationHtmlRenderer.renderHint(tokenName, groups)
+    override fun computeDocumentationHint(): String? = null
 
     override fun computeDocumentation(): DocumentationResult =
         DocumentationResult.documentation(
