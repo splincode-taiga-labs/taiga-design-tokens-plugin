@@ -80,9 +80,7 @@ private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueR
         color = representative.toAwtColorOrNull(),
     )
 
-private fun DesignTokenResolutionGroup.toHoverReferenceChain(
-    tokenName: String,
-): DesignTokenHoverReferenceChain =
+private fun DesignTokenResolutionGroup.toHoverReferenceChain(tokenName: String): DesignTokenHoverReferenceChain =
     DesignTokenHoverReferenceChain(
         platform =
             resolutions
