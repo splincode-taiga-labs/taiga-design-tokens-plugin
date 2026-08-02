@@ -64,9 +64,7 @@ Status: implemented.
 
 ## Stage 4 — Swing hover popup and navigation
 
-Status: partially implemented.
-
-Implemented:
+Status: implemented.
 
 - Detect a `--tui-*` custom property under the pointer only when it is the first argument of `var(...)`.
 - Support CSS, SCSS, and Less source files.
@@ -75,17 +73,20 @@ Implemented:
 - Ignore declarations, comments, strings, unrelated custom properties, unsupported files, and unknown Taiga UI tokens.
 - Register one editor mouse-motion listener and debounce hover requests.
 - Render one custom Swing popup instead of combining it with IntelliJ Quick Documentation.
-- Present grouped contexts and values in `Platform` and `Value` rows.
-- Show the declared expression and resolved result only when they differ.
+- Keep the popup within the current screen and truncate long values with the full text available in a tooltip.
+- Present grouped contexts and immediately useful final values in `Platform` and `Value` rows.
+- Keep intermediate `var(...)` expressions out of the summary and expose them in the reference chain instead.
 - Preserve and display the original CSS color notation while using the canonical value for grouping and swatch painting.
 - Collapse a complete set of equivalent desktop/mobile and light/dark contexts into one explicit applicability label.
 - Keep incomplete context combinations listed explicitly instead of implying broader applicability.
-- Show recursively resolved terminal values and separate nested reference chains for distinct results.
+- Show recursively resolved terminal values and keep distinct chains in one left-aligned vertical list.
+- Keep `Reference chain` collapsed by default and expand it on demand as an accordion.
+- Extract a token description from an adjacent CSS, Less, or SCSS comment when all discovered descriptions agree.
 - Keep source files, line numbers, and selector contexts in the resolution model.
 - Show a checkerboard-backed color swatch for terminal colors.
 - Explain missing, ambiguous, circular, and invalid values instead of pretending that one runtime value is known.
-- Add `Copy value`, `Go to definition`, and `Report a bug` actions.
-- Cover offset detection and popup-model mapping with pure tests.
+- Add `Go to definition` and `Report a bug` actions.
+- Cover offset detection, popup-model mapping, and comment extraction with pure tests.
 - Document sandbox launch and debugger attachment against a real local project.
 
 Remaining:
