@@ -156,13 +156,7 @@ internal object DesignTokenDocumentationHtmlRenderer {
             append(result.documentationSwatch())
             append("<code>")
             append(result.documentationSummary().escapeHtml())
-            append("</code>")
-            result.documentationColorDetails()?.let { details ->
-                append(" <code>")
-                append(details.escapeHtml())
-                append("</code>")
-            }
-            append("<br>")
+            append("</code><br>")
         } else {
             nestedReferences.forEach { nested ->
                 appendReferenceBranch(nested, depth + 1)
