@@ -42,18 +42,18 @@ private fun String.expandedHexColor(): String? {
 }
 
 private fun String.toRgbFunctionOrNull(): String? {
-    val components = chunked(2).map { component -> component.toIntOrNull(16) }
-    val red = components.getOrNull(0)
-    val green = components.getOrNull(1)
-    val blue = components.getOrNull(2)
-    val alpha = components.getOrNull(3)
+    val components = chunked(2).mapNotNull { component -> component.toIntOrNull(16) }
 
-    return if (red == null || green == null || blue == null || alpha == null) {
+    return if (components.size != RGBA_COMPONENTS_COUNT) {
         null
-    } else if (alpha == OPAQUE_ALPHA) {
-        "rgb($red, $green, $blue)"
     } else {
-        "rgba($red, $green, $blue, ${alpha.toCssAlpha()})"
+        val (red, green, blue, alpha) = components
+
+        if (alpha == OPAQUE_ALPHA) {
+            "rgb($red, $green, $blue)"
+        } else {
+            "rgba($red, $green, $blue, ${alpha.toCssAlpha()})"
+        }
     }
 }
 
@@ -79,3 +79,4 @@ private fun Int.toCssAlpha(): String {
 private fun String.escapeHtmlAttribute(): String = escapeHtml().replace("`", "&#96;")
 
 private const val OPAQUE_ALPHA = 255
+private const val RGBA_COMPONENTS_COUNT = 4
