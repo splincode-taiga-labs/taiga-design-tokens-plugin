@@ -189,48 +189,48 @@ internal object DesignTokenDescriptionExtractor {
         return null
     }
 
-    private fun String.normalizeComment(): String =
-        lineSequence()
-            .map { line ->
-                line.trim()
-                    .removePrefix("/*")
-                    .removePrefix("/**")
-                    .removePrefix("//")
-                    .removeSuffix("*/")
-                    .trim()
-                    .removePrefix("*")
-                    .trim()
-            }
-            .filter(String::isNotEmpty)
-            .joinToString(separator = " ")
-            .replace(WHITESPACE, " ")
-            .trim()
-
-    private fun String.isUsefulDescription(): Boolean {
-        val normalized = lowercase()
-
-        return isNotBlank() && IGNORED_COMMENT_PREFIXES.none(normalized::startsWith)
-    }
-
     private data class DescriptionSource(
         val path: Path,
         val line: Int,
         val modifiedAt: Long,
     )
-
-    private val WHITESPACE = Regex("\\s+")
-    private val IGNORED_COMMENT_PREFIXES =
-        listOf(
-            "stylelint",
-            "prettier",
-            "noinspection",
-            "language=",
-            "region",
-            "endregion",
-            "todo",
-            "fixme",
-        )
-    private const val NO_DESCRIPTION = "\u0000"
-    private const val MAX_DECLARATION_LINES = 12
-    private const val BLOCK_COMMENT_END = "*/"
 }
+
+private fun String.normalizeComment(): String =
+    lineSequence()
+        .map { line ->
+            line.trim()
+                .removePrefix("/*")
+                .removePrefix("/**")
+                .removePrefix("//")
+                .removeSuffix("*/")
+                .trim()
+                .removePrefix("*")
+                .trim()
+        }
+        .filter(String::isNotEmpty)
+        .joinToString(separator = " ")
+        .replace(WHITESPACE, " ")
+        .trim()
+
+private fun String.isUsefulDescription(): Boolean {
+    val normalized = lowercase()
+
+    return isNotBlank() && IGNORED_COMMENT_PREFIXES.none(normalized::startsWith)
+}
+
+private val WHITESPACE = Regex("\\s+")
+private val IGNORED_COMMENT_PREFIXES =
+    listOf(
+        "stylelint",
+        "prettier",
+        "noinspection",
+        "language=",
+        "region",
+        "endregion",
+        "todo",
+        "fixme",
+    )
+private const val NO_DESCRIPTION = "\u0000"
+private const val MAX_DECLARATION_LINES = 12
+private const val BLOCK_COMMENT_END = "*/"
