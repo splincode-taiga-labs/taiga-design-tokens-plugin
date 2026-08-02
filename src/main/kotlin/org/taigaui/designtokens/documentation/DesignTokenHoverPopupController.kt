@@ -7,12 +7,15 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.editor.impl.EditorMouseHoverPopupControl
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.ui.popup.JBPopupListener
+import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.ui.JBUI
@@ -47,6 +50,7 @@ internal class DesignTokenHoverPopupController(
         )
     private var popup: JBPopup? = null
     private var popupKey: PopupKey? = null
+    private var nativeHoverSuppressedEditor: Editor? = null
 
     init {
         coroutineScope.launch(CoroutineName("Taiga UI design token hover popup")) {
@@ -57,10 +61,24 @@ internal class DesignTokenHoverPopupController(
     }
 
     fun mouseMoved(event: EditorMouseEvent) {
-        if (event.editor.project == project && !event.editor.isDisposed) {
+        val editor = event.editor
+
+        if (editor.project == project && !editor.isDisposed) {
+            val virtualFile = FileDocumentManager.getInstance().getFile(editor.document)
+            val isDesignTokenReference =
+                virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS &&
+                    DesignTokenReferenceAtOffsetFinder.find(
+                        editor.document.immutableCharSequence,
+                        event.offset,
+                    ) != null
+
+            if (isDesignTokenReference) {
+                setNativeHoverSuppressed(editor)
+            }
+
             requests.tryEmit(
                 HoverRequest(
-                    editor = event.editor,
+                    editor = editor,
                     offset = event.offset,
                     anchor = Point(event.mouseEvent.point),
                 ),
@@ -123,6 +141,7 @@ internal class DesignTokenHoverPopupController(
         }
 
         hidePopup()
+        setNativeHoverSuppressed(editor)
 
         val panel =
             DesignTokenHoverPopupPanel(
@@ -147,6 +166,17 @@ internal class DesignTokenHoverPopupController(
                 .setMinSize(JBUI.size(MIN_POPUP_WIDTH, MIN_POPUP_HEIGHT))
                 .createPopup()
 
+        createdPopup.addListener(
+            object : JBPopupListener {
+                override fun onClosed(event: LightweightWindowEvent) {
+                    if (popup === createdPopup) {
+                        popup = null
+                        popupKey = null
+                        setNativeHoverSuppressed(null)
+                    }
+                }
+            },
+        )
         popup = createdPopup
         popupKey = data.key
         createdPopup.show(
@@ -197,9 +227,26 @@ internal class DesignTokenHoverPopupController(
     }
 
     private fun hidePopup() {
-        popup?.cancel()
+        val currentPopup = popup
+
         popup = null
         popupKey = null
+        currentPopup?.cancel()
+        setNativeHoverSuppressed(null)
+    }
+
+    private fun setNativeHoverSuppressed(editor: Editor?) {
+        if (nativeHoverSuppressedEditor === editor) {
+            return
+        }
+
+        nativeHoverSuppressedEditor
+            ?.takeUnless(Editor::isDisposed)
+            ?.let { previousEditor -> EditorMouseHoverPopupControl.enablePopups(previousEditor) }
+        nativeHoverSuppressedEditor = editor?.takeUnless(Editor::isDisposed)
+        nativeHoverSuppressedEditor?.let { currentEditor ->
+            EditorMouseHoverPopupControl.disablePopups(currentEditor)
+        }
     }
 
     private data class HoverRequest(
