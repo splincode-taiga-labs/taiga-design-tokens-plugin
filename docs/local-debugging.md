@@ -22,12 +22,9 @@ From the plugin repository:
 
 Gradle uses the WebStorm version pinned by `platformVersion` and opens the supplied project in the sandbox IDE.
 
-In the sandbox project, place the caret on a Taiga UI token inside `var(...)` and invoke Quick Documentation:
+In the sandbox project, move the pointer over a Taiga UI token name inside `var(...)` and keep it still for about 350 ms. The plugin shows its custom Swing popup directly; it does not register or use the IntelliJ Quick Documentation provider.
 
-- macOS: `F1` or `Control+J`, depending on the active keymap;
-- Windows/Linux: `Ctrl+Q`.
-
-The documentation target also supplies the short documentation hint used by modifier-hover when that IDE feature is enabled.
+After changing plugin code, stop the running sandbox IDE and start `runIde` again. Hot reload is not used for plugin classes or `plugin.xml` extension registrations.
 
 ## Run against the locally installed WebStorm
 
@@ -62,12 +59,15 @@ In the WebStorm instance where the plugin repository is open:
 Useful breakpoint locations:
 
 ```text
-DesignTokenDocumentationTargetProvider.documentationTargets
+DesignTokenHoverPopupListener.mouseMoved
+DesignTokenHoverPopupController.mouseMoved
+DesignTokenHoverPopupController.handleRequest
+DesignTokenHoverPopupController.showPopup
 DesignTokenReferenceAtOffsetFinder.find
 DesignTokenIndexService.resolveToken
 DesignTokenValueResolver.resolve
-DesignTokenDocumentationHtmlRenderer.renderHint
-DesignTokenDocumentationHtmlRenderer.render
+DesignTokenHoverPopupModel.create
+DesignTokenHoverPopupPanel.<init>
 ```
 
 ## Inspect sandbox logs
@@ -94,7 +94,7 @@ tail -f build/idea-sandbox/*/log/idea.log
 
 ## Reset the sandbox
 
-When cached IDE state interferes with reproduction, stop the sandbox and remove its generated state:
+When cached IDE state or an old plugin installation interferes with reproduction, stop the sandbox and remove its generated state:
 
 ```bash
 rm -rf build/idea-sandbox
