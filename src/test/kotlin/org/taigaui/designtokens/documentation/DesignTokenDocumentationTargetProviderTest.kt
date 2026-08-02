@@ -55,11 +55,8 @@ class DesignTokenDocumentationTargetProviderTest : BasePlatformTestCase() {
             val psiFile = createPsiFile("src/styles.$extension", content)
             val offset = content.indexOf(TOKEN) + 5
             val target = provider.documentationTargets(psiFile, offset).single()
-            val hint = requireNotNull(target.computeDocumentationHint())
 
-            assertTrue(hint.contains(TOKEN))
-            assertTrue(hint.contains("#fff"))
-            assertTrue(hint.contains("background-color:#ffffff"))
+            assertNull(target.computeDocumentationHint())
             assertNotNull(target.computeDocumentation())
         }
 
@@ -75,10 +72,9 @@ class DesignTokenDocumentationTargetProviderTest : BasePlatformTestCase() {
                     psiFile,
                     content.indexOf(NEUTRAL_HOVER_TOKEN) + NEUTRAL_HOVER_TOKEN.length / 2,
                 ).single()
-        val hint = requireNotNull(target.computeDocumentationHint())
 
-        assertTrue(hint.contains(NEUTRAL_HOVER_TOKEN))
-        assertTrue(hint.contains("#fff"))
+        assertNull(target.computeDocumentationHint())
+        assertNotNull(target.computeDocumentation())
     }
 
     fun testDoesNotProvideDocumentationOutsideVarOrForUnknownToken() {
@@ -109,7 +105,8 @@ class DesignTokenDocumentationTargetProviderTest : BasePlatformTestCase() {
                     content.indexOf(TOKEN) + 4,
                 ).single()
 
-        assertTrue(requireNotNull(target.computeDocumentationHint()).contains("#fff"))
+        assertNull(target.computeDocumentationHint())
+        assertNotNull(target.computeDocumentation())
     }
 
     private fun createPsiFile(
