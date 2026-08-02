@@ -415,9 +415,10 @@ private class ColorSwatch(
         preferredSize = JBUI.size(size, size)
         minimumSize = preferredSize
         maximumSize = preferredSize
-        toolTipText =
-            "rgba(${swatchColor.red}, ${swatchColor.green}, " +
-                "${swatchColor.blue}, ${formatAlpha(swatchColor.alpha)})"
+
+        val alpha = formatAlpha(swatchColor.alpha)
+
+        toolTipText = "rgba(${swatchColor.red}, ${swatchColor.green}, ${swatchColor.blue}, $alpha)"
     }
 
     override fun paintComponent(graphics: Graphics) {
