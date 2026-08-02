@@ -16,5 +16,8 @@
         <platform.backend.documentation.targetProvider
             implementation="org.taigaui.designtokens.documentation.DesignTokenDocumentationTargetProvider"
         />
+        <editorFactoryMouseMotionListener
+            implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
+        />
     </extensions>
 </idea-plugin>
