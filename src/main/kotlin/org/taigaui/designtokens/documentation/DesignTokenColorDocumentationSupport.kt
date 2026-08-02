@@ -80,8 +80,7 @@ private fun Int.toCssAlpha(): String {
     }
 }
 
-private fun String.escapeHtmlAttribute(): String =
-    escapeHtml().replace("`", "&#96;")
+private fun String.escapeHtmlAttribute(): String = escapeHtml().replace("`", "&#96;")
 
 private const val OPAQUE_ALPHA = 255
 private const val RGBA_COMPONENTS_COUNT = 4
