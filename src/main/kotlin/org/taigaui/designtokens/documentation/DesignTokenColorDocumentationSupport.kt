@@ -60,12 +60,13 @@ private fun String.toRgbFunctionOrNull(): String? {
     }
 }
 
-private fun String.flatMapCharacters(): String = buildString(length * 2) {
-    this@flatMapCharacters.forEach { character ->
-        append(character)
-        append(character)
+private fun String.flatMapCharacters(): String =
+    buildString(length * 2) {
+        this@flatMapCharacters.forEach { character ->
+            append(character)
+            append(character)
+        }
     }
-}
 
 private fun Int.toCssAlpha(): String {
     val hundredths = (this * 100 + OPAQUE_ALPHA / 2) / OPAQUE_ALPHA
@@ -79,7 +80,8 @@ private fun Int.toCssAlpha(): String {
     }
 }
 
-private fun String.escapeHtmlAttribute(): String = escapeHtml().replace("`", "&#96;")
+private fun String.escapeHtmlAttribute(): String =
+    escapeHtml().replace("`", "&#96;")
 
 private const val OPAQUE_ALPHA = 255
 private const val RGBA_COMPONENTS_COUNT = 4
