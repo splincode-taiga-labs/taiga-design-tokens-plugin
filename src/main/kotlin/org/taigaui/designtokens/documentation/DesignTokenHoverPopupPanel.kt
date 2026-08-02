@@ -385,7 +385,7 @@ private class TruncatedCodeValueLabel(
     init {
         font = CODE_FONT
         val scaledMaxWidth = JBUI.scale(maxWidth)
-        text = truncateToWidth(fullText, fontMetrics, scaledMaxWidth)
+        text = truncateToWidth(fullText, getFontMetrics(font), scaledMaxWidth)
         toolTipText = fullText.takeIf { value -> value != text }
         maximumSize = Dimension(scaledMaxWidth, preferredSize.height)
     }
