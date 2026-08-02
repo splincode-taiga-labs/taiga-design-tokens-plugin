@@ -9,7 +9,6 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
-import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
@@ -29,9 +28,9 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
+import java.awt.Dimension
 import java.awt.MouseInfo
 import java.awt.Point
-import java.awt.datatransfer.StringSelection
 import java.nio.file.Path
 import javax.swing.JComponent
 import javax.swing.SwingUtilities
@@ -144,12 +143,22 @@ internal class DesignTokenHoverPopupController(
         hidePopup()
         nativeHoverPopupSuppression.suppress(editor)
 
+        val popupWidth = calculatePopupWidth(editor)
+        var popupReference: JBPopup? = null
         val panel =
             DesignTokenHoverPopupPanel(
                 model = data.model,
-                onCopy = { copyValue(data.model.copyValue) },
+                popupWidth = popupWidth,
                 onNavigate = { navigateToDefinition(data.model.navigationTarget) },
                 onReportBug = ::reportBug,
+                onPreferredSizeChanged = { size ->
+                    popupReference
+                        ?.takeIf { currentPopup -> currentPopup.isVisible && !currentPopup.isDisposed }
+                        ?.let { currentPopup ->
+                            currentPopup.setSize(size)
+                            currentPopup.moveToFitScreen()
+                        }
+                },
             )
         val createdPopup =
             JBPopupFactory
@@ -164,9 +173,14 @@ internal class DesignTokenHoverPopupController(
                 .setCancelKeyEnabled(true)
                 .setMovable(false)
                 .setResizable(true)
-                .setMinSize(JBUI.size(MIN_POPUP_WIDTH, MIN_POPUP_HEIGHT))
-                .createPopup()
+                .setMinSize(
+                    Dimension(
+                        minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)),
+                        JBUI.scale(MIN_POPUP_HEIGHT),
+                    ),
+                ).createPopup()
 
+        popupReference = createdPopup
         createdPopup.addListener(
             object : JBPopupListener {
                 override fun onClosed(event: LightweightWindowEvent) {
@@ -188,10 +202,22 @@ internal class DesignTokenHoverPopupController(
                 Point(anchor.x + ANCHOR_X_OFFSET, anchor.y + editor.lineHeight + ANCHOR_Y_OFFSET),
             ),
         )
+        createdPopup.moveToFitScreen()
     }
 
-    private fun copyValue(value: String) {
-        CopyPasteManager.getInstance().setContents(StringSelection(value))
+    private fun calculatePopupWidth(editor: Editor): Int {
+        val preferredWidth = JBUI.scale(PREFERRED_POPUP_WIDTH)
+        val minimumWidth = JBUI.scale(MIN_POPUP_WIDTH)
+        val availableWidth =
+            editor.contentComponent.graphicsConfiguration
+                ?.bounds
+                ?.width
+                ?.let { screenWidth -> (screenWidth * MAX_SCREEN_WIDTH_RATIO).toInt() }
+                ?: preferredWidth
+
+        return preferredWidth
+            .coerceAtMost(availableWidth)
+            .coerceAtLeast(minimumWidth.coerceAtMost(availableWidth))
     }
 
     private fun navigateToDefinition(target: DesignTokenNavigationTarget?) {
@@ -258,8 +284,10 @@ internal class DesignTokenHoverPopupController(
     private companion object {
         val HOVER_DELAY = 350.milliseconds
         val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
-        const val MIN_POPUP_WIDTH = 720
-        const val MIN_POPUP_HEIGHT = 300
+        const val PREFERRED_POPUP_WIDTH = 650
+        const val MIN_POPUP_WIDTH = 520
+        const val MIN_POPUP_HEIGHT = 230
+        const val MAX_SCREEN_WIDTH_RATIO = 0.8
         const val ANCHOR_X_OFFSET = 14
         const val ANCHOR_Y_OFFSET = 8
         const val REPORT_BUG_URL =
