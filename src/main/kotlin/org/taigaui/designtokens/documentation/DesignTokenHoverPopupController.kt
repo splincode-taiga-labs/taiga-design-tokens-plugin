@@ -81,32 +81,36 @@ internal class DesignTokenHoverPopupController(
     }
 
     private fun HoverRequest.resolvePopupData(): PopupData? {
-        if (project.isDisposed || editor.isDisposed) {
-            return null
-        }
-
-        val virtualFile = FileDocumentManager.getInstance().getFile(editor.document) ?: return null
-
-        if (virtualFile.extension?.lowercase() !in SUPPORTED_EXTENSIONS) {
-            return null
-        }
-
+        val virtualFile =
+            takeIf { !project.isDisposed && !editor.isDisposed }
+                ?.let { FileDocumentManager.getInstance().getFile(editor.document) }
+                ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
         val reference =
-            DesignTokenReferenceAtOffsetFinder.find(
-                editor.document.immutableCharSequence,
-                offset,
-            ) ?: return null
-        val sourceFile = runCatching { Path.of(virtualFile.path) }.getOrNull() ?: return null
-        val groups = project.service<DesignTokenIndexService>().resolveToken(sourceFile, reference.name)
-
-        return groups
-            .takeIf(List<*>::isNotEmpty)
-            ?.let { resolutions ->
-                PopupData(
-                    key = PopupKey(editor, reference.name),
-                    model = DesignTokenHoverPopupModel.create(reference.name, resolutions),
+            virtualFile?.let {
+                DesignTokenReferenceAtOffsetFinder.find(
+                    editor.document.immutableCharSequence,
+                    offset,
                 )
             }
+        val sourceFile =
+            virtualFile?.let { file ->
+                runCatching { Path.of(file.path) }.getOrNull()
+            }
+
+        return if (reference == null || sourceFile == null) {
+            null
+        } else {
+            project
+                .service<DesignTokenIndexService>()
+                .resolveToken(sourceFile, reference.name)
+                .takeIf { groups -> groups.isNotEmpty() }
+                ?.let { groups ->
+                    PopupData(
+                        key = PopupKey(editor, reference.name),
+                        model = DesignTokenHoverPopupModel.create(reference.name, groups),
+                    )
+                }
+        }
     }
 
     private fun showPopup(
@@ -181,12 +185,15 @@ internal class DesignTokenHoverPopupController(
     }
 
     private fun isPointerInsidePopup(): Boolean {
-        val content = popup?.content?.takeIf { component -> component.isShowing } ?: return false
-        val pointer = MouseInfo.getPointerInfo()?.location ?: return false
+        val content = popup?.content?.takeIf { component -> component.isShowing }
+        val pointer = MouseInfo.getPointerInfo()?.location
 
-        SwingUtilities.convertPointFromScreen(pointer, content)
-
-        return content.contains(pointer)
+        return if (content == null || pointer == null) {
+            false
+        } else {
+            SwingUtilities.convertPointFromScreen(pointer, content)
+            content.contains(pointer)
+        }
     }
 
     private fun hidePopup() {
