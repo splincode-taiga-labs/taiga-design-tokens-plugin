@@ -196,22 +196,24 @@ internal object DesignTokenDescriptionExtractor {
     )
 }
 
-private fun String.normalizeComment(): String =
-    lineSequence()
-        .map { line ->
-            line.trim()
-                .removePrefix("/*")
-                .removePrefix("/**")
-                .removePrefix("//")
-                .removeSuffix("*/")
-                .trim()
-                .removePrefix("*")
-                .trim()
+private fun String.normalizeComment(): String {
+    val normalizedLines =
+        lineSequence().map { line ->
+            var normalized = line.trim()
+
+            normalized = normalized.removePrefix("/*")
+            normalized = normalized.removePrefix("/**")
+            normalized = normalized.removePrefix("//")
+            normalized = normalized.removeSuffix("*/")
+            normalized = normalized.trim()
+            normalized = normalized.removePrefix("*")
+
+            normalized.trim()
         }
-        .filter(String::isNotEmpty)
-        .joinToString(separator = " ")
-        .replace(WHITESPACE, " ")
-        .trim()
+    val content = normalizedLines.filter(String::isNotEmpty).joinToString(separator = " ")
+
+    return content.replace(WHITESPACE, " ").trim()
+}
 
 private fun String.isUsefulDescription(): Boolean {
     val normalized = lowercase()
