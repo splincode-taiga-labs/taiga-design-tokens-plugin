@@ -44,16 +44,19 @@ private fun String.expandedHexColor(): String? {
 private fun String.toRgbFunctionOrNull(): String? {
     val components = chunked(2).mapNotNull { component -> component.toIntOrNull(16) }
 
-    return if (components.size != RGBA_COMPONENTS_COUNT) {
-        null
-    } else {
-        val (red, green, blue, alpha) = components
+    if (components.size != RGBA_COMPONENTS_COUNT) {
+        return null
+    }
 
-        if (alpha == OPAQUE_ALPHA) {
-            "rgb($red, $green, $blue)"
-        } else {
-            "rgba($red, $green, $blue, ${alpha.toCssAlpha()})"
-        }
+    val red = components[0]
+    val green = components[1]
+    val blue = components[2]
+    val alpha = components[3]
+
+    return if (alpha == OPAQUE_ALPHA) {
+        "rgb($red, $green, $blue)"
+    } else {
+        "rgba($red, $green, $blue, ${alpha.toCssAlpha()})"
     }
 }
 
