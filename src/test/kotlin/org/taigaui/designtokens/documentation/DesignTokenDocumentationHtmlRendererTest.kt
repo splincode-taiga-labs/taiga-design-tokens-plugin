@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.documentation
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,31 +21,35 @@ import java.nio.file.Path
 
 class DesignTokenDocumentationHtmlRendererTest {
     @Test
-    fun `renders compact hint with resolved color swatch`() {
+    fun `renders informative hint with platform and value table`() {
         val html =
             DesignTokenDocumentationHtmlRenderer.renderHint(
                 TOKEN,
-                listOf(group(resolved("var(--tui-white)", "#fff"))),
+                listOf(group(resolved("#fff", "#fff"))),
             )
 
         assertTrue(html.contains("<b>$TOKEN</b>"))
+        assertTrue(html.contains("<th align='left'>Platform</th>"))
+        assertTrue(html.contains("<th align='left'>Value</th>"))
+        assertFalse(html.contains("Values by context"))
+        assertFalse(html.contains(">Context</th>"))
         assertTrue(html.contains("background-color:#ffffff"))
         assertTrue(html.contains("<code>#fff</code>"))
     }
 
     @Test
-    fun `renders context token value final value and reference chain as a table`() {
-        val terminalVariant = variant("--tui-white", "#fff", line = 2)
-        val terminalResult = resolved("#fff", "#fff")
+    fun `renders referenced value without token and final value duplication`() {
+        val terminalVariant = variant("--tui-const-black-alpha-54", "#0000008A", line = 2)
+        val terminalResult = resolved("#0000008A", "#0000008A")
         val rootResult =
             DesignTokenValueResolution.Resolved(
-                rawValue = "var(--tui-white)",
-                value = "#fff",
+                rawValue = "var(--tui-const-black-alpha-54)",
+                value = "#0000008A",
                 color = terminalResult.color,
                 references =
                     listOf(
                         DesignTokenReferenceResolution(
-                            name = "--tui-white",
+                            name = "--tui-const-black-alpha-54",
                             requestedContext = LIGHT_DESKTOP,
                             selectedVariant = terminalVariant,
                             primaryResult = terminalResult,
@@ -56,17 +61,30 @@ class DesignTokenDocumentationHtmlRendererTest {
             )
         val html = DesignTokenDocumentationHtmlRenderer.render(TOKEN, listOf(group(rootResult)))
 
-        assertTrue(html.contains("<th align='left'>Context</th>"))
-        assertTrue(html.contains("<th align='left'>Token value</th>"))
-        assertTrue(html.contains("<th align='left'>Final value</th>"))
-        assertTrue(html.contains("<td valign='top'>Desktop · Light</td>"))
-        assertTrue(html.contains("<code>var(--tui-white)</code>"))
-        assertTrue(html.contains("<code>#fff</code>"))
-        assertTrue(html.contains("<b>Reference chain:</b>"))
-        assertTrue(html.contains("<code>--tui-white</code> → <code>#fff</code>"))
+        assertTrue(html.contains("<td valign='top'>🖥️ Desktop · Light ☀️</td>"))
+        assertTrue(html.contains("<code>var(--tui-const-black-alpha-54)</code> &rarr;"))
+        assertTrue(html.contains("<code>#0000008A</code>"))
+        assertTrue(html.contains("<b>Reference chain</b>"))
+        assertTrue(html.contains("<code><b>$TOKEN</b></code>"))
+        assertTrue(html.contains("<code>--tui-const-black-alpha-54</code>"))
+        assertTrue(html.contains("<code>rgba(0, 0, 0, 0.54)</code>"))
+        assertFalse(html.contains("Token value"))
+        assertFalse(html.contains("Final value"))
         assertFalse(html.contains("Sources:"))
         assertFalse(html.contains("palette/light.css"))
         assertFalse(html.contains("tuiTheme"))
+    }
+
+    @Test
+    fun `renders a direct value only once`() {
+        val html =
+            DesignTokenDocumentationHtmlRenderer.render(
+                TOKEN,
+                listOf(group(resolved("#fff", "#fff"))),
+            )
+
+        assertEquals(1, html.windowed("<code>#fff</code>".length).count { it == "<code>#fff</code>" })
+        assertFalse(html.contains("&rarr;"))
     }
 
     @Test
@@ -74,28 +92,28 @@ class DesignTokenDocumentationHtmlRendererTest {
         val html =
             DesignTokenDocumentationHtmlRenderer.render(
                 TOKEN,
-                listOf(group(resolved("var(--tui-white)", "#fff"), ALL_CONTEXTS)),
+                listOf(group(resolved("#fff", "#fff"), ALL_CONTEXTS)),
             )
 
-        assertTrue(html.contains("<td valign='top'>All platforms · Light and dark</td>"))
+        assertTrue(html.contains("<td valign='top'>All platforms · Light ☀️ and dark 🌚</td>"))
         assertFalse(html.contains("Desktop · Light, Desktop · Dark"))
     }
 
     @Test
-    fun `keeps incomplete context combinations explicit`() {
+    fun `keeps incomplete platform combinations explicit with theme emoji`() {
         val html =
             DesignTokenDocumentationHtmlRenderer.render(
                 TOKEN,
                 listOf(
                     group(
-                        resolved("var(--tui-white)", "#fff"),
+                        resolved("#fff", "#fff"),
                         listOf(LIGHT_DESKTOP, DARK_MOBILE),
                     ),
                 ),
             )
 
-        assertTrue(html.contains("Desktop · Light, Mobile · Dark"))
-        assertFalse(html.contains("All platforms · Light and dark"))
+        assertTrue(html.contains("🖥️ Desktop · Light ☀️, 📱 Mobile · Dark 🌚"))
+        assertFalse(html.contains("All platforms · Light ☀️ and dark 🌚"))
     }
 
     @Test
@@ -165,10 +183,16 @@ class DesignTokenDocumentationHtmlRendererTest {
             color =
                 DesignTokenColorValue(
                     cssText = value,
-                    canonicalValue = "#ffffff",
+                    canonicalValue = value.normalizeTestColor(),
                     format = DesignTokenColorFormat.HEX,
                 ),
         )
+
+    private fun String.normalizeTestColor(): String =
+        when (lowercase()) {
+            "#fff" -> "#ffffff"
+            else -> this
+        }
 
     private fun variant(
         name: String,
@@ -193,7 +217,7 @@ class DesignTokenDocumentationHtmlRendererTest {
         )
 
     private companion object {
-        const val TOKEN = "--tui-background-base"
+        const val TOKEN = "--tui-text-secondary"
         val LIGHT_DESKTOP = DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.LIGHT)
         val DARK_DESKTOP = DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.DARK)
         val LIGHT_MOBILE = DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.LIGHT)
