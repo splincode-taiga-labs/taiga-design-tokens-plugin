@@ -10,7 +10,6 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BasicStroke
 import java.awt.BorderLayout
 import java.awt.Color
-import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Font
 import java.awt.Graphics
@@ -20,14 +19,12 @@ import java.awt.GridBagLayout
 import java.awt.RenderingHints
 import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
-import javax.swing.BorderFactory
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.JSeparator
-import javax.swing.SwingConstants
 
 internal class DesignTokenHoverPopupPanel(
     model: DesignTokenHoverPopupModel,
@@ -225,7 +222,9 @@ private fun createReferenceSection(chains: List<DesignTokenHoverReferenceChain>)
         )
         add(Box.createVerticalStrut(JBUI.scale(10)))
 
-        chains.chunked(MAX_CHAIN_COLUMNS).forEachIndexed { index, row ->
+        val chainRows = chains.chunked(MAX_CHAIN_COLUMNS)
+
+        chainRows.forEachIndexed { index, row ->
             add(
                 JPanel(GridBagLayout()).apply {
                     isOpaque = false
@@ -246,7 +245,7 @@ private fun createReferenceSection(chains: List<DesignTokenHoverReferenceChain>)
                 },
             )
 
-            if (index != chains.chunked(MAX_CHAIN_COLUMNS).lastIndex) {
+            if (index != chainRows.lastIndex) {
                 add(Box.createVerticalStrut(JBUI.scale(16)))
             }
         }
@@ -344,7 +343,9 @@ private class RoundedRowPanel : JPanel() {
     }
 }
 
-private class CodeChip(text: String) : JBLabel(text) {
+private class CodeChip(
+    text: String,
+) : JBLabel(text) {
     init {
         font = CODE_FONT
         isOpaque = true
@@ -353,7 +354,9 @@ private class CodeChip(text: String) : JBLabel(text) {
     }
 }
 
-private class CodeValueLabel(text: String) : JBLabel(text) {
+private class CodeValueLabel(
+    text: String,
+) : JBLabel(text) {
     init {
         font = CODE_FONT
     }
@@ -412,7 +415,9 @@ private class ColorSwatch(
         preferredSize = JBUI.size(size, size)
         minimumSize = preferredSize
         maximumSize = preferredSize
-        toolTipText = "rgba(${swatchColor.red}, ${swatchColor.green}, ${swatchColor.blue}, ${formatAlpha(swatchColor.alpha)})"
+        toolTipText =
+            "rgba(${swatchColor.red}, ${swatchColor.green}, " +
+                "${swatchColor.blue}, ${formatAlpha(swatchColor.alpha)})"
     }
 
     override fun paintComponent(graphics: Graphics) {
