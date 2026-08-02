@@ -89,7 +89,7 @@ private fun createHeader(
                 isOpaque = false
                 add(
                     JBLabel(model.tokenName).apply {
-                        font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(19f))
+                        font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(19f).toFloat())
                     },
                 )
                 add(Box.createVerticalStrut(JBUI.scale(3)))
@@ -217,7 +217,7 @@ private fun createReferenceSection(chains: List<DesignTokenHoverReferenceChain>)
         alignmentX = JComponent.LEFT_ALIGNMENT
         add(
             JBLabel("Reference chain").apply {
-                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(15f))
+                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(15f).toFloat())
             },
         )
         add(Box.createVerticalStrut(JBUI.scale(10)))
@@ -375,7 +375,7 @@ private class TokenBadge : JComponent() {
         graphics2D.color = TOKEN_BADGE_BACKGROUND
         graphics2D.fillRoundRect(0, 0, width, height, JBUI.scale(9), JBUI.scale(9))
         graphics2D.color = Color.WHITE
-        graphics2D.font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(20f))
+        graphics2D.font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(20f).toFloat())
 
         val metrics = graphics2D.fontMetrics
         val text = "T"
