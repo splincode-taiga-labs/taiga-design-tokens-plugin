@@ -6,7 +6,9 @@ config:
 
 complexity:
     TooManyFunctions:
-        excludes: ['**/DesignTokenHoverPopupPanel.kt']
+        excludes:
+            - '**/test/**'
+            - '**/DesignTokenHoverPopupPanel.kt'
 
 style:
     MagicNumber:
