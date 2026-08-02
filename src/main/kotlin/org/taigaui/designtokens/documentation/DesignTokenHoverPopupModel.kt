@@ -74,9 +74,9 @@ private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueR
         platform =
             resolutions
                 .map { resolution -> resolution.variant.context }
-                .documentationPlatformLabel(),
+                .hoverPlatformLabel(),
         rawValues = resolutions.map { resolution -> resolution.variant.rawValue }.distinct(),
-        resolvedValue = representative.documentationSummary(),
+        resolvedValue = representative.hoverValueText(),
         color = representative.toAwtColorOrNull(),
     )
 
@@ -85,7 +85,7 @@ private fun DesignTokenResolutionGroup.toHoverReferenceChain(tokenName: String):
         platform =
             resolutions
                 .map { resolution -> resolution.variant.context }
-                .documentationPlatformLabel(),
+                .hoverPlatformLabel(),
         lines =
             buildList {
                 add(DesignTokenHoverReferenceLine(tokenName, depth = 0, root = true))
@@ -110,7 +110,7 @@ private fun MutableList<DesignTokenHoverReferenceLine>.appendReferences(
         if (result.references.isEmpty()) {
             add(
                 DesignTokenHoverReferenceLine(
-                    text = result.documentationSummary(),
+                    text = result.hoverValueText(),
                     depth = depth,
                     color = result.toAwtColorOrNull(),
                 ),
