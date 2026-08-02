@@ -7,7 +7,6 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.event.EditorMouseEvent
-import com.intellij.openapi.editor.impl.EditorMouseHoverPopupControl
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.ide.CopyPasteManager
@@ -48,9 +47,9 @@ internal class DesignTokenHoverPopupController(
             extraBufferCapacity = 1,
             onBufferOverflow = BufferOverflow.DROP_OLDEST,
         )
+    private val nativeHoverPopupSuppression = DesignTokenNativeHoverPopupSuppression()
     private var popup: JBPopup? = null
     private var popupKey: PopupKey? = null
-    private var nativeHoverSuppressedEditor: Editor? = null
 
     init {
         coroutineScope.launch(CoroutineName("Taiga UI design token hover popup")) {
@@ -73,7 +72,7 @@ internal class DesignTokenHoverPopupController(
                     ) != null
 
             if (isDesignTokenReference) {
-                setNativeHoverSuppressed(editor)
+                nativeHoverPopupSuppression.suppress(editor)
             }
 
             requests.tryEmit(
@@ -141,7 +140,7 @@ internal class DesignTokenHoverPopupController(
         }
 
         hidePopup()
-        setNativeHoverSuppressed(editor)
+        nativeHoverPopupSuppression.suppress(editor)
 
         val panel =
             DesignTokenHoverPopupPanel(
@@ -172,7 +171,7 @@ internal class DesignTokenHoverPopupController(
                     if (popup === createdPopup) {
                         popup = null
                         popupKey = null
-                        setNativeHoverSuppressed(null)
+                        nativeHoverPopupSuppression.restore()
                     }
                 }
             },
@@ -232,21 +231,7 @@ internal class DesignTokenHoverPopupController(
         popup = null
         popupKey = null
         currentPopup?.cancel()
-        setNativeHoverSuppressed(null)
-    }
-
-    private fun setNativeHoverSuppressed(editor: Editor?) {
-        if (nativeHoverSuppressedEditor === editor) {
-            return
-        }
-
-        nativeHoverSuppressedEditor
-            ?.takeUnless(Editor::isDisposed)
-            ?.let { previousEditor -> EditorMouseHoverPopupControl.enablePopups(previousEditor) }
-        nativeHoverSuppressedEditor = editor?.takeUnless(Editor::isDisposed)
-        nativeHoverSuppressedEditor?.let { currentEditor ->
-            EditorMouseHoverPopupControl.disablePopups(currentEditor)
-        }
+        nativeHoverPopupSuppression.restore()
     }
 
     private data class HoverRequest(
