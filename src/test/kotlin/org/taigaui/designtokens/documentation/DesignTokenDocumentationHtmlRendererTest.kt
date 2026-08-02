@@ -38,9 +38,16 @@ class DesignTokenDocumentationHtmlRendererTest {
     }
 
     @Test
-    fun `renders referenced value without token and final value duplication`() {
-        val terminalVariant = variant("--tui-const-black-alpha-54", "#0000008A", line = 2)
-        val terminalResult = resolved("#0000008A", "#0000008A")
+    fun `renders referenced value in its original CSS color notation`() {
+        val cssColor = "rgba(0, 0, 0, 0.54)"
+        val terminalVariant = variant("--tui-const-black-alpha-54", cssColor, line = 2)
+        val terminalResult =
+            resolved(
+                rawValue = cssColor,
+                value = "#0000008A",
+                cssText = cssColor,
+                canonicalValue = "#0000008A",
+            )
         val rootResult =
             DesignTokenValueResolution.Resolved(
                 rawValue = "var(--tui-const-black-alpha-54)",
@@ -63,11 +70,11 @@ class DesignTokenDocumentationHtmlRendererTest {
 
         assertTrue(html.contains("<td valign='top'>🖥️ Desktop · Light ☀️</td>"))
         assertTrue(html.contains("<code>var(--tui-const-black-alpha-54)</code> &rarr;"))
-        assertTrue(html.contains("<code>#0000008A</code>"))
+        assertTrue(html.contains("<code>$cssColor</code>"))
         assertTrue(html.contains("<b>Reference chain</b>"))
         assertTrue(html.contains("<code><b>$TOKEN</b></code>"))
         assertTrue(html.contains("<code>--tui-const-black-alpha-54</code>"))
-        assertTrue(html.contains("<code>rgba(0, 0, 0, 0.54)</code>"))
+        assertFalse(html.contains("<code>#0000008A</code>"))
         assertFalse(html.contains("Token value"))
         assertFalse(html.contains("Final value"))
         assertFalse(html.contains("Sources:"))
@@ -176,15 +183,22 @@ class DesignTokenDocumentationHtmlRendererTest {
     private fun resolved(
         rawValue: String,
         value: String,
+        cssText: String = value,
+        canonicalValue: String = value.normalizeTestColor(),
     ): DesignTokenValueResolution.Resolved =
         DesignTokenValueResolution.Resolved(
             rawValue = rawValue,
             value = value,
             color =
                 DesignTokenColorValue(
-                    cssText = value,
-                    canonicalValue = value.normalizeTestColor(),
-                    format = DesignTokenColorFormat.HEX,
+                    cssText = cssText,
+                    canonicalValue = canonicalValue,
+                    format =
+                        if (cssText.startsWith("rgb")) {
+                            DesignTokenColorFormat.FUNCTION
+                        } else {
+                            DesignTokenColorFormat.HEX
+                        },
                 ),
         )
 
