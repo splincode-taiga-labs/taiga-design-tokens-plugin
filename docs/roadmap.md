@@ -62,33 +62,36 @@ Status: implemented.
 - Expose grouped resolution results through the project service.
 - Cover pure parser and resolver semantics, project-service cache invalidation, and the pinned real npm package with tests.
 
-## Stage 4 — Quick documentation and navigation
+## Stage 4 — Swing hover popup and navigation
 
 Status: partially implemented.
 
 Implemented:
 
-- Detect a `--tui-*` custom property under the caret only when it is the first argument of `var(...)`.
+- Detect a `--tui-*` custom property under the pointer only when it is the first argument of `var(...)`.
 - Support CSS, SCSS, and Less source files.
-- Support caret positions at the beginning, middle, end, and immediately after a token name.
+- Support offsets at the beginning, middle, end, and immediately after a token name.
 - Support several `var(...)` references in one value and token references nested inside fallbacks.
 - Ignore declarations, comments, strings, unrelated custom properties, unsupported files, and unknown Taiga UI tokens.
-- Register the IntelliJ Documentation Target API provider.
-- Present contexts, declared token values, and final values in a comparison table.
+- Register one editor mouse-motion listener and debounce hover requests.
+- Render one custom Swing popup instead of combining it with IntelliJ Quick Documentation.
+- Present grouped contexts and values in `Platform` and `Value` rows.
+- Show the declared expression and resolved result only when they differ.
+- Preserve and display the original CSS color notation while using the canonical value for grouping and swatch painting.
 - Collapse a complete set of equivalent desktop/mobile and light/dark contexts into one explicit applicability label.
 - Keep incomplete context combinations listed explicitly instead of implying broader applicability.
-- Show recursively resolved terminal values and nested reference trees.
-- Keep source files, line numbers, and selector contexts in the resolution model without displaying them by default.
-- Show a color swatch for terminal hex, named, and CSS color-function values.
+- Show recursively resolved terminal values and separate nested reference chains for distinct results.
+- Keep source files, line numbers, and selector contexts in the resolution model.
+- Show a checkerboard-backed color swatch for terminal colors.
 - Explain missing, ambiguous, circular, and invalid values instead of pretending that one runtime value is known.
-- Cover offset detection and HTML rendering with pure tests.
-- Cover the complete real-filesystem-to-PSI-to-project-service-to-documentation-target path with IntelliJ Platform tests.
+- Add `Copy value`, `Go to definition`, and `Report a bug` actions.
+- Cover offset detection and popup-model mapping with pure tests.
 - Document sandbox launch and debugger attachment against a real local project.
 
 Remaining:
 
-- Add an optional setting for source details and clickable navigation to declarations.
-- Add richer color presentation and accessibility checks for swatches.
+- Add an optional setting for detailed source lists and selector contexts.
+- Add accessibility checks for swatches, keyboard interaction, and focus behavior.
 - Test the packaged plugin manually against representative real monorepos and pnpm layouts.
 
 ## Stage 5 — Production features
