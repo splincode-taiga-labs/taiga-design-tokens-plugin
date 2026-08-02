@@ -8,24 +8,11 @@ import java.nio.file.Path
 
 internal data class DesignTokenHoverPopupModel(
     val tokenName: String,
+    val description: String?,
     val rows: List<DesignTokenHoverValueRow>,
     val chains: List<DesignTokenHoverReferenceChain>,
     val navigationTarget: DesignTokenNavigationTarget?,
 ) {
-    val copyValue: String =
-        rows
-            .map(DesignTokenHoverValueRow::resolvedValue)
-            .distinct()
-            .let { values ->
-                if (values.size == 1) {
-                    values.single()
-                } else {
-                    rows.joinToString(separator = System.lineSeparator()) { row ->
-                        "${row.platform}: ${row.resolvedValue}"
-                    }
-                }
-            }
-
     companion object {
         fun create(
             tokenName: String,
@@ -33,6 +20,7 @@ internal data class DesignTokenHoverPopupModel(
         ): DesignTokenHoverPopupModel =
             DesignTokenHoverPopupModel(
                 tokenName = tokenName,
+                description = DesignTokenDescriptionExtractor.extract(groups.flatMap { group -> group.origins }),
                 rows = groups.map(DesignTokenResolutionGroup::toHoverValueRow),
                 chains =
                     groups
@@ -45,12 +33,9 @@ internal data class DesignTokenHoverPopupModel(
 
 internal data class DesignTokenHoverValueRow(
     val platform: String,
-    val rawValues: List<String>,
     val resolvedValue: String,
     val color: Color?,
-) {
-    val showsResolution: Boolean = rawValues.any { rawValue -> rawValue != resolvedValue }
-}
+)
 
 internal data class DesignTokenHoverReferenceChain(
     val platform: String,
@@ -75,7 +60,6 @@ private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueR
             resolutions
                 .map { resolution -> resolution.variant.context }
                 .hoverPlatformLabel(),
-        rawValues = resolutions.map { resolution -> resolution.variant.rawValue }.distinct(),
         resolvedValue = representative.hoverValueText(),
         color = representative.toAwtColorOrNull(),
     )
