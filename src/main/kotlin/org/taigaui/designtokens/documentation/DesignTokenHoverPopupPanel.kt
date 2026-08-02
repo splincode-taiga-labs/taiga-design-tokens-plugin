@@ -1,6 +1,5 @@
 package org.taigaui.designtokens.documentation
 
-import com.intellij.icons.AllIcons
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
@@ -10,6 +9,7 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BasicStroke
 import java.awt.BorderLayout
 import java.awt.Color
+import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Font
 import java.awt.Graphics
@@ -27,10 +27,11 @@ import javax.swing.JScrollPane
 import javax.swing.JSeparator
 
 internal class DesignTokenHoverPopupPanel(
-    model: DesignTokenHoverPopupModel,
-    onCopy: () -> Unit,
+    private val model: DesignTokenHoverPopupModel,
+    private val popupWidth: Int,
     onNavigate: () -> Unit,
     onReportBug: () -> Unit,
+    private val onPreferredSizeChanged: (Dimension) -> Unit,
 ) : JPanel(BorderLayout()) {
     init {
         background = PANEL_BACKGROUND
@@ -40,16 +41,16 @@ internal class DesignTokenHoverPopupPanel(
             JPanel().apply {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
                 background = PANEL_BACKGROUND
-                border = JBUI.Borders.empty(18)
-                add(createHeader(model, onCopy, onNavigate))
-                add(Box.createVerticalStrut(JBUI.scale(18)))
+                border = JBUI.Borders.empty(16)
+                add(createHeader(model, onNavigate))
+                add(Box.createVerticalStrut(JBUI.scale(16)))
                 add(createValueTable(model.rows))
 
                 if (model.chains.isNotEmpty()) {
                     add(Box.createVerticalStrut(JBUI.scale(14)))
                     add(JSeparator())
-                    add(Box.createVerticalStrut(JBUI.scale(14)))
-                    add(createReferenceSection(model.chains))
+                    add(Box.createVerticalStrut(JBUI.scale(10)))
+                    add(createReferenceAccordion(model.chains, ::setReferenceExpanded))
                 }
 
                 add(Box.createVerticalStrut(JBUI.scale(12)))
@@ -68,14 +69,29 @@ internal class DesignTokenHoverPopupPanel(
             }
 
         add(scrollPane, BorderLayout.CENTER)
-        preferredSize = JBUI.size(POPUP_WIDTH, calculatePopupHeight(model))
-        minimumSize = JBUI.size(POPUP_WIDTH, MIN_POPUP_HEIGHT)
+        updatePreferredSize(referenceExpanded = false, notify = false)
+        minimumSize = Dimension(minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)), JBUI.scale(MIN_POPUP_HEIGHT))
+    }
+
+    private fun setReferenceExpanded(expanded: Boolean) {
+        updatePreferredSize(referenceExpanded = expanded, notify = true)
+    }
+
+    private fun updatePreferredSize(
+        referenceExpanded: Boolean,
+        notify: Boolean,
+    ) {
+        preferredSize = Dimension(popupWidth, JBUI.scale(calculatePopupHeight(model, referenceExpanded)))
+        revalidate()
+
+        if (notify) {
+            onPreferredSizeChanged(preferredSize)
+        }
     }
 }
 
 private fun createHeader(
     model: DesignTokenHoverPopupModel,
-    onCopy: () -> Unit,
     onNavigate: () -> Unit,
 ): JComponent =
     JPanel(BorderLayout(JBUI.scale(12), 0)).apply {
@@ -89,26 +105,17 @@ private fun createHeader(
                 isOpaque = false
                 add(
                     JBLabel(model.tokenName).apply {
-                        font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(19f).toFloat())
+                        font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(18f).toFloat())
                     },
                 )
                 add(Box.createVerticalStrut(JBUI.scale(3)))
-                add(
-                    JBLabel("Design token  ·  @taiga-ui/design-tokens").apply {
-                        foreground = UIUtil.getContextHelpForeground()
-                    },
-                )
+                add(createSubtitle(model.description))
             },
             BorderLayout.CENTER,
         )
         add(
-            JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(10), 0)).apply {
+            JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
                 isOpaque = false
-                add(
-                    ActionLink("Copy value") { onCopy() }.apply {
-                        icon = AllIcons.Actions.Copy
-                    },
-                )
                 add(
                     ActionLink("Go to definition") { onNavigate() }.apply {
                         isEnabled = model.navigationTarget != null
@@ -117,6 +124,28 @@ private fun createHeader(
             },
             BorderLayout.EAST,
         )
+    }
+
+private fun createSubtitle(description: String?): JComponent =
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+
+        if (description == null) {
+            add(
+                JBLabel("Design token  ·  @taiga-ui/design-tokens").apply {
+                    foreground = UIUtil.getContextHelpForeground()
+                },
+            )
+        } else {
+            add(WrappedLabel(description, DESCRIPTION_WIDTH))
+            add(Box.createVerticalStrut(JBUI.scale(2)))
+            add(
+                JBLabel("@taiga-ui/design-tokens").apply {
+                    foreground = UIUtil.getContextHelpForeground()
+                },
+            )
+        }
     }
 
 private fun createValueTable(rows: List<DesignTokenHoverValueRow>): JComponent =
@@ -157,7 +186,7 @@ private fun createTableHeader(): JComponent =
                 gridx = 1
                 weightx = 1.0
                 fill = GridBagConstraints.HORIZONTAL
-                anchor = GridBagConstraints.WEST
+                anchor = GridBagConstraints.EAST
             },
         )
     }
@@ -184,7 +213,7 @@ private fun createValueRow(row: DesignTokenHoverValueRow): JComponent =
                 gridx = 1
                 weightx = 1.0
                 fill = GridBagConstraints.HORIZONTAL
-                anchor = GridBagConstraints.WEST
+                anchor = GridBagConstraints.EAST
             },
         )
     }
@@ -193,78 +222,83 @@ private fun createValueCell(row: DesignTokenHoverValueRow): JComponent =
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.X_AXIS)
         isOpaque = false
-
-        if (row.showsResolution) {
-            add(CodeChip(row.rawValues.joinToString(separator = " | ")))
-            add(Box.createHorizontalStrut(JBUI.scale(10)))
-            add(JBLabel("→"))
-            add(Box.createHorizontalStrut(JBUI.scale(10)))
-        }
+        add(Box.createHorizontalGlue())
 
         row.color?.let { color ->
             add(ColorSwatch(color, SWATCH_SIZE))
             add(Box.createHorizontalStrut(JBUI.scale(8)))
         }
 
-        add(CodeValueLabel(row.resolvedValue))
-        add(Box.createHorizontalGlue())
+        add(TruncatedCodeValueLabel(row.resolvedValue, VALUE_TEXT_MAX_WIDTH))
     }
 
-private fun createReferenceSection(chains: List<DesignTokenHoverReferenceChain>): JComponent =
+private fun createReferenceAccordion(
+    chains: List<DesignTokenHoverReferenceChain>,
+    onExpandedChanged: (Boolean) -> Unit,
+): JComponent =
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-        add(
-            JBLabel("Reference chain").apply {
-                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(15f).toFloat())
-            },
-        )
-        add(Box.createVerticalStrut(JBUI.scale(10)))
 
-        val chainRows = chains.chunked(MAX_CHAIN_COLUMNS)
+        val body =
+            JPanel().apply {
+                layout = BoxLayout(this, BoxLayout.Y_AXIS)
+                isOpaque = false
+                alignmentX = JComponent.LEFT_ALIGNMENT
+                isVisible = false
 
-        chainRows.forEachIndexed { index, row ->
-            add(
-                JPanel(GridBagLayout()).apply {
-                    isOpaque = false
-                    alignmentX = JComponent.LEFT_ALIGNMENT
+                chains.forEachIndexed { index, chain ->
+                    add(createReferenceChain(chain))
 
-                    row.forEachIndexed { column, chain ->
-                        add(
-                            createReferenceChain(chain),
-                            GridBagConstraints().apply {
-                                gridx = column
-                                weightx = 1.0
-                                fill = GridBagConstraints.HORIZONTAL
-                                anchor = GridBagConstraints.NORTHWEST
-                                insets = JBUI.insetsRight(if (column == row.lastIndex) 0 else 16)
-                            },
-                        )
+                    if (index != chains.lastIndex) {
+                        add(Box.createVerticalStrut(JBUI.scale(8)))
+                        add(JSeparator())
+                        add(Box.createVerticalStrut(JBUI.scale(8)))
                     }
-                },
-            )
-
-            if (index != chainRows.lastIndex) {
-                add(Box.createVerticalStrut(JBUI.scale(16)))
+                }
             }
-        }
+        lateinit var toggle: ActionLink
+        toggle =
+            ActionLink(collapsedReferenceTitle(chains.size)) {
+                body.isVisible = !body.isVisible
+                toggle.text =
+                    if (body.isVisible) {
+                        expandedReferenceTitle(chains.size)
+                    } else {
+                        collapsedReferenceTitle(chains.size)
+                    }
+                revalidate()
+                repaint()
+                onExpandedChanged(body.isVisible)
+            }.apply {
+                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(15f).toFloat())
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            }
+
+        add(toggle)
+        add(Box.createVerticalStrut(JBUI.scale(8)))
+        add(body)
     }
 
 private fun createReferenceChain(chain: DesignTokenHoverReferenceChain): JComponent =
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
-        border = JBUI.Borders.emptyRight(8)
+        alignmentX = JComponent.LEFT_ALIGNMENT
         add(
             JBLabel(chain.platform).apply {
                 font = font.deriveFont(Font.BOLD)
+                alignmentX = JComponent.LEFT_ALIGNMENT
             },
         )
         add(Box.createVerticalStrut(JBUI.scale(7)))
-        chain.lines.forEach { line ->
+        chain.lines.forEachIndexed { index, line ->
             add(createReferenceLine(line))
-            add(Box.createVerticalStrut(JBUI.scale(4)))
+
+            if (index != chain.lines.lastIndex) {
+                add(Box.createVerticalStrut(JBUI.scale(4)))
+            }
         }
     }
 
@@ -272,6 +306,7 @@ private fun createReferenceLine(line: DesignTokenHoverReferenceLine): JComponent
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.X_AXIS)
         isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
         border = JBUI.Borders.emptyLeft(line.depth * 14)
 
         if (line.root) {
@@ -286,7 +321,7 @@ private fun createReferenceLine(line: DesignTokenHoverReferenceLine): JComponent
             add(Box.createHorizontalStrut(JBUI.scale(7)))
         }
         add(
-            CodeValueLabel(line.text).apply {
+            TruncatedCodeValueLabel(line.text, REFERENCE_TEXT_MAX_WIDTH).apply {
                 if (line.root) {
                     foreground = LINK_COLOR
                 }
@@ -343,29 +378,36 @@ private class RoundedRowPanel : JPanel() {
     }
 }
 
-private class CodeChip(
-    text: String,
-) : JBLabel(text) {
+private class TruncatedCodeValueLabel(
+    private val fullText: String,
+    maxWidth: Int,
+) : JBLabel() {
     init {
         font = CODE_FONT
-        isOpaque = true
-        background = CHIP_BACKGROUND
-        border = JBUI.Borders.empty(4, 7)
+        val scaledMaxWidth = JBUI.scale(maxWidth)
+        text = truncateToWidth(fullText, fontMetrics, scaledMaxWidth)
+        toolTipText = fullText.takeIf { value -> value != text }
+        maximumSize = Dimension(scaledMaxWidth, preferredSize.height)
     }
 }
 
-private class CodeValueLabel(
+private class WrappedLabel(
     text: String,
-) : JBLabel(text) {
+    width: Int,
+) : JBLabel(
+        "<html><div style='width:${JBUI.scale(width)}px'>${text.escapeHtml()}</div></html>",
+    ) {
     init {
-        font = CODE_FONT
+        foreground = UIUtil.getContextHelpForeground()
+        toolTipText = text
     }
 }
 
 private class TokenBadge : JComponent() {
     init {
-        preferredSize = JBUI.size(38, 38)
+        preferredSize = JBUI.size(TOKEN_BADGE_SIZE, TOKEN_BADGE_SIZE)
         minimumSize = preferredSize
+        maximumSize = preferredSize
     }
 
     override fun paintComponent(graphics: Graphics) {
@@ -373,9 +415,9 @@ private class TokenBadge : JComponent() {
 
         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         graphics2D.color = TOKEN_BADGE_BACKGROUND
-        graphics2D.fillRoundRect(0, 0, width, height, JBUI.scale(9), JBUI.scale(9))
+        graphics2D.fillRoundRect(0, 0, width, height, JBUI.scale(7), JBUI.scale(7))
         graphics2D.color = Color.WHITE
-        graphics2D.font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(20f).toFloat())
+        graphics2D.font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(16f).toFloat())
 
         val metrics = graphics2D.fontMetrics
         val text = "T"
@@ -469,14 +511,72 @@ private fun GridBagConstraints.preferredWidth(width: Int) {
     ipadx = JBUI.scale(width)
 }
 
-private fun calculatePopupHeight(model: DesignTokenHoverPopupModel): Int {
+private fun calculatePopupHeight(
+    model: DesignTokenHoverPopupModel,
+    referenceExpanded: Boolean,
+): Int {
     val rowsHeight = model.rows.size * VALUE_ROW_HEIGHT
-    val chainRows = (model.chains.size + MAX_CHAIN_COLUMNS - 1) / MAX_CHAIN_COLUMNS
-    val chainsHeight = if (model.chains.isEmpty()) 0 else REFERENCE_HEADER_HEIGHT + chainRows * CHAIN_ROW_HEIGHT
+    val descriptionHeight = if (model.description == null) 0 else DESCRIPTION_EXTRA_HEIGHT
+    val referenceHeight =
+        when {
+            model.chains.isEmpty() -> 0
+            !referenceExpanded -> REFERENCE_COLLAPSED_HEIGHT
+            else ->
+                REFERENCE_COLLAPSED_HEIGHT +
+                    model.chains.sumOf { chain ->
+                        CHAIN_HEADER_HEIGHT + chain.lines.size * CHAIN_LINE_HEIGHT
+                    }
+        }
 
-    return (BASE_POPUP_HEIGHT + rowsHeight + chainsHeight)
+    return (BASE_POPUP_HEIGHT + descriptionHeight + rowsHeight + referenceHeight)
         .coerceIn(MIN_POPUP_HEIGHT, MAX_POPUP_HEIGHT)
 }
+
+private fun truncateToWidth(
+    value: String,
+    metrics: java.awt.FontMetrics,
+    maxWidth: Int,
+): String {
+    if (metrics.stringWidth(value) <= maxWidth) {
+        return value
+    }
+
+    var low = 0
+    var high = value.length
+
+    while (low < high) {
+        val middle = (low + high + 1) / 2
+        val candidate = value.take(middle) + ELLIPSIS
+
+        if (metrics.stringWidth(candidate) <= maxWidth) {
+            low = middle
+        } else {
+            high = middle - 1
+        }
+    }
+
+    return value.take(low) + ELLIPSIS
+}
+
+private fun String.escapeHtml(): String =
+    buildString(length) {
+        this@escapeHtml.forEach { character ->
+            append(
+                when (character) {
+                    '&' -> "&amp;"
+                    '<' -> "&lt;"
+                    '>' -> "&gt;"
+                    '"' -> "&quot;"
+                    '\'' -> "&#39;"
+                    else -> character
+                },
+            )
+        }
+    }
+
+private fun collapsedReferenceTitle(count: Int): String = "▸ Reference chain ($count)"
+
+private fun expandedReferenceTitle(count: Int): String = "▾ Reference chain ($count)"
 
 private fun formatAlpha(alpha: Int): String =
     if (alpha == OPAQUE_ALPHA) {
@@ -488,7 +588,6 @@ private fun formatAlpha(alpha: Int): String =
 private val PANEL_BACKGROUND = JBColor(Color(247, 248, 250), Color(35, 37, 42))
 private val ROW_BACKGROUND = JBColor(Color(255, 255, 255), Color(43, 46, 52))
 private val ROW_BORDER = JBColor(Color(220, 223, 229), Color(65, 69, 77))
-private val CHIP_BACKGROUND = JBColor(Color(237, 239, 243), Color(56, 59, 66))
 private val LINK_COLOR = JBColor(Color(45, 108, 223), Color(88, 157, 246))
 private val TOKEN_BADGE_BACKGROUND = JBColor(Color(93, 63, 211), Color(94, 64, 220))
 private val CHECKER_LIGHT = Color(235, 235, 235)
@@ -496,15 +595,21 @@ private val CHECKER_DARK = Color(185, 185, 185)
 private val SWATCH_BORDER = JBColor(Color(110, 110, 110), Color(170, 170, 170))
 private val CODE_FONT = Font(Font.MONOSPACED, Font.PLAIN, JBUI.scale(13))
 
-private const val POPUP_WIDTH = 780
-private const val MIN_POPUP_HEIGHT = 300
-private const val MAX_POPUP_HEIGHT = 620
-private const val BASE_POPUP_HEIGHT = 120
-private const val VALUE_ROW_HEIGHT = 58
-private const val REFERENCE_HEADER_HEIGHT = 56
-private const val CHAIN_ROW_HEIGHT = 150
-private const val PLATFORM_COLUMN_WIDTH = 230
-private const val MAX_CHAIN_COLUMNS = 3
+private const val MIN_POPUP_WIDTH = 520
+private const val MIN_POPUP_HEIGHT = 230
+private const val MAX_POPUP_HEIGHT = 600
+private const val BASE_POPUP_HEIGHT = 128
+private const val DESCRIPTION_EXTRA_HEIGHT = 28
+private const val VALUE_ROW_HEIGHT = 56
+private const val REFERENCE_COLLAPSED_HEIGHT = 44
+private const val CHAIN_HEADER_HEIGHT = 34
+private const val CHAIN_LINE_HEIGHT = 27
+private const val PLATFORM_COLUMN_WIDTH = 250
+private const val DESCRIPTION_WIDTH = 430
+private const val VALUE_TEXT_MAX_WIDTH = 280
+private const val REFERENCE_TEXT_MAX_WIDTH = 500
+private const val TOKEN_BADGE_SIZE = 30
 private const val SWATCH_SIZE = 28
 private const val SMALL_SWATCH_SIZE = 22
 private const val OPAQUE_ALPHA = 255
+private const val ELLIPSIS = "…"
