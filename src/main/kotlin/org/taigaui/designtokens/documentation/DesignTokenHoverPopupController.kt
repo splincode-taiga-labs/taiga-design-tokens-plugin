@@ -33,6 +33,7 @@ import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.datatransfer.StringSelection
 import java.nio.file.Path
+import javax.swing.JComponent
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -49,6 +50,7 @@ internal class DesignTokenHoverPopupController(
         )
     private val nativeHoverPopupSuppression = DesignTokenNativeHoverPopupSuppression()
     private var popup: JBPopup? = null
+    private var popupContent: JComponent? = null
     private var popupKey: PopupKey? = null
 
     init {
@@ -170,6 +172,7 @@ internal class DesignTokenHoverPopupController(
                 override fun onClosed(event: LightweightWindowEvent) {
                     if (popup === createdPopup) {
                         popup = null
+                        popupContent = null
                         popupKey = null
                         nativeHoverPopupSuppression.restore()
                     }
@@ -177,6 +180,7 @@ internal class DesignTokenHoverPopupController(
             },
         )
         popup = createdPopup
+        popupContent = panel
         popupKey = data.key
         createdPopup.show(
             RelativePoint(
@@ -214,7 +218,7 @@ internal class DesignTokenHoverPopupController(
     }
 
     private fun isPointerInsidePopup(): Boolean {
-        val content = popup?.content?.takeIf { component -> component.isShowing }
+        val content = popupContent?.takeIf(JComponent::isShowing)
         val pointer = MouseInfo.getPointerInfo()?.location
 
         return if (content == null || pointer == null) {
@@ -229,6 +233,7 @@ internal class DesignTokenHoverPopupController(
         val currentPopup = popup
 
         popup = null
+        popupContent = null
         popupKey = null
         currentPopup?.cancel()
         nativeHoverPopupSuppression.restore()
