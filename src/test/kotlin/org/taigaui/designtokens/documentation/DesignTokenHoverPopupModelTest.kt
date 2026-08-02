@@ -1,8 +1,8 @@
 package org.taigaui.designtokens.documentation
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.taigaui.designtokens.index.DesignTokenContext
@@ -22,18 +22,18 @@ import java.nio.file.Path
 
 class DesignTokenHoverPopupModelTest {
     @Test
-    fun `keeps a direct value once`() {
+    fun `keeps a direct final value once`() {
         val model = DesignTokenHoverPopupModel.create(TOKEN, listOf(group(resolved("#fff", "#fff"))))
         val row = model.rows.single()
 
         assertEquals("#fff", row.resolvedValue)
-        assertFalse(row.showsResolution)
         assertNotNull(row.color)
         assertTrue(model.chains.isEmpty())
+        assertNull(model.description)
     }
 
     @Test
-    fun `shows referenced value in its original CSS color notation`() {
+    fun `shows referenced final value in its original CSS color notation`() {
         val cssColor = "rgba(0, 0, 0, 0.54)"
         val terminalVariant = variant("--tui-const-black-alpha-54", cssColor, line = 2)
         val terminalResult =
@@ -66,9 +66,7 @@ class DesignTokenHoverPopupModelTest {
         val chain = model.chains.single()
 
         assertEquals("🖥️ Desktop · Light ☀️", row.platform)
-        assertEquals(listOf("var(--tui-const-black-alpha-54)"), row.rawValues)
         assertEquals(cssColor, row.resolvedValue)
-        assertTrue(row.showsResolution)
         assertEquals(
             listOf(TOKEN, "--tui-const-black-alpha-54", cssColor),
             chain.lines.map(DesignTokenHoverReferenceLine::text),
@@ -98,7 +96,7 @@ class DesignTokenHoverPopupModelTest {
     }
 
     @Test
-    fun `shows unresolved reasons`() {
+    fun `shows unresolved reasons as the final value`() {
         val result =
             DesignTokenValueResolution.Unresolved(
                 rawValue = "var(--tui-missing)",
@@ -111,7 +109,6 @@ class DesignTokenHoverPopupModelTest {
         val row = DesignTokenHoverPopupModel.create(TOKEN, listOf(group(result))).rows.single()
 
         assertEquals("Missing reference: --tui-missing", row.resolvedValue)
-        assertTrue(row.showsResolution)
     }
 
     private fun group(
