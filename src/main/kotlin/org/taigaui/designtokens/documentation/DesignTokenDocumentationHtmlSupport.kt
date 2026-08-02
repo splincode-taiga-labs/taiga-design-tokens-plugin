@@ -8,7 +8,7 @@ import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 
 internal fun DesignTokenValueResolution.documentationSummary(): String =
     when (this) {
-        is DesignTokenValueResolution.Resolved -> value
+        is DesignTokenValueResolution.Resolved -> color?.cssText ?: value
         is DesignTokenValueResolution.Unresolved -> reason.documentationSummary()
     }
 
