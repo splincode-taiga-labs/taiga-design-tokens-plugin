@@ -30,7 +30,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies mobile from file name`() {
+    fun `classifies shared mobile from file name`() {
         assertContext(
             relativePath = "angular/mobile.less",
             platform = DesignTokenPlatform.MOBILE,
@@ -38,7 +38,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies mobile from directory name`() {
+    fun `classifies shared mobile from directory name`() {
         assertContext(
             relativePath = "palette/mobile/light.css",
             platform = DesignTokenPlatform.MOBILE,
@@ -65,7 +65,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies combined mobile dark context`() {
+    fun `classifies combined shared mobile dark context`() {
         assertContext(
             relativePath = "palette/mobile/scss/dark.scss",
             platform = DesignTokenPlatform.MOBILE,
@@ -135,49 +135,49 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies android tui platform selector as mobile`() {
+    fun `classifies android tui platform selector separately`() {
         assertContext(
             relativePath = "palette/light.css",
             selectors = listOf(":root", "[tuiPlatform='android'] &"),
-            platform = DesignTokenPlatform.MOBILE,
+            platform = DesignTokenPlatform.ANDROID,
             theme = DesignTokenTheme.LIGHT,
         )
     }
 
     @Test
-    fun `classifies ios tui platform selector as mobile`() {
+    fun `classifies ios tui platform selector separately`() {
         assertContext(
             relativePath = "palette/dark.css",
             selectors = listOf("[tuiPlatform=\"ios\"]"),
-            platform = DesignTokenPlatform.MOBILE,
+            platform = DesignTokenPlatform.IOS,
             theme = DesignTokenTheme.DARK,
         )
     }
 
     @Test
-    fun `classifies android data platform selector as mobile`() {
+    fun `classifies android data platform selector separately`() {
         assertContext(
             relativePath = "tokens.css",
             selectors = listOf("[data-platform='android']"),
-            platform = DesignTokenPlatform.MOBILE,
+            platform = DesignTokenPlatform.ANDROID,
         )
     }
 
     @Test
-    fun `classifies ios data platform selector as mobile`() {
+    fun `classifies ios data platform selector separately`() {
         assertContext(
             relativePath = "tokens.css",
             selectors = listOf("[data-platform=\"ios\"]"),
-            platform = DesignTokenPlatform.MOBILE,
+            platform = DesignTokenPlatform.IOS,
         )
     }
 
     @Test
-    fun `classifies unquoted data platform value as mobile`() {
+    fun `classifies unquoted ios data platform value separately`() {
         assertContext(
             relativePath = "tokens.css",
             selectors = listOf("[data-platform=ios]"),
-            platform = DesignTokenPlatform.MOBILE,
+            platform = DesignTokenPlatform.IOS,
         )
     }
 
@@ -202,7 +202,7 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies combined selector list as mobile dark regardless of attribute order`() {
+    fun `classifies a selector list shared by ios and android as mobile`() {
         assertContext(
             relativePath = "tokens.css",
             selectors =
@@ -222,17 +222,17 @@ class DesignTokenContextClassifierTest {
     }
 
     @Test
-    fun `classifies mobile selector with whitespace and mixed case`() {
+    fun `classifies android selector with whitespace and mixed case`() {
         assertContext(
             relativePath = "palette/light.css",
             selectors = listOf("[ TUIPlatform = 'Android' ] &"),
-            platform = DesignTokenPlatform.MOBILE,
+            platform = DesignTokenPlatform.ANDROID,
             theme = DesignTokenTheme.LIGHT,
         )
     }
 
     @Test
-    fun `finds mobile selector in any parent level`() {
+    fun `finds ios selector in any parent level`() {
         assertContext(
             relativePath = "palette/light.css",
             selectors =
@@ -242,7 +242,7 @@ class DesignTokenContextClassifierTest {
                     "[tuiPlatform='ios'] &",
                     ".component",
                 ),
-            platform = DesignTokenPlatform.MOBILE,
+            platform = DesignTokenPlatform.IOS,
             theme = DesignTokenTheme.LIGHT,
         )
     }
