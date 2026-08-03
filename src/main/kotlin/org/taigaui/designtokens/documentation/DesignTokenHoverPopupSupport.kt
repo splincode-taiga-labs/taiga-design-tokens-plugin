@@ -53,6 +53,8 @@ private fun DesignTokenContext.hoverPlatformLabel(): String {
         when (platform) {
             DesignTokenPlatform.DESKTOP -> "🖥️ Desktop"
             DesignTokenPlatform.MOBILE -> "📱 Mobile"
+            DesignTokenPlatform.IOS -> "📱 iOS"
+            DesignTokenPlatform.ANDROID -> "🤖 Android"
         }
     val themeLabel =
         when (theme) {
@@ -68,7 +70,13 @@ private fun Set<DesignTokenPlatform>.hoverPlatformLabel(): String? =
     when (this) {
         setOf(DesignTokenPlatform.DESKTOP) -> "🖥️ Desktop"
         setOf(DesignTokenPlatform.MOBILE) -> "📱 Mobile"
-        DesignTokenPlatform.entries.toSet() -> "All platforms"
+        setOf(DesignTokenPlatform.IOS) -> "📱 iOS"
+        setOf(DesignTokenPlatform.ANDROID) -> "🤖 Android"
+        setOf(DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID) -> "📱 iOS and Android"
+        setOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
+        setOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID),
+        -> "All platforms"
+
         else -> null
     }
 
