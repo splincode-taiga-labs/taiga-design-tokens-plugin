@@ -110,7 +110,9 @@ class DesignTokenIndex private constructor(
         private fun platformRank(platform: DesignTokenPlatform): Int =
             when (platform) {
                 DesignTokenPlatform.DESKTOP -> 0
-                DesignTokenPlatform.MOBILE -> 1
+                DesignTokenPlatform.IOS -> 1
+                DesignTokenPlatform.ANDROID -> 2
+                DesignTokenPlatform.MOBILE -> 3
             }
 
         private fun themeRank(theme: DesignTokenTheme): Int =
