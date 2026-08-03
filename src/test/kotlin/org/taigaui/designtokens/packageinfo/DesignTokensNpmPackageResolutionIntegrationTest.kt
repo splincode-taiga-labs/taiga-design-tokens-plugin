@@ -66,6 +66,30 @@ class DesignTokensNpmPackageResolutionIntegrationTest : BasePlatformTestCase() {
         )
     }
 
+    fun testSplitsMobileFontTokenIntoIosAndAndroidContexts() {
+        val index = buildIndex()
+        val mobileVariants =
+            index
+                .find(MOBILE_FONT_TOKEN)
+                .filter { variant ->
+                    variant.context.platform == DesignTokenPlatform.IOS ||
+                        variant.context.platform == DesignTokenPlatform.ANDROID
+                }
+
+        assertEquals(
+            setOf(DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID),
+            mobileVariants.map { variant -> variant.context.platform }.toSet(),
+        )
+
+        val resolver = DesignTokenValueResolver(index)
+
+        assertTrue(
+            mobileVariants
+                .map { variant -> resolver.resolve(variant).result }
+                .all { result -> result is DesignTokenValueResolution.Resolved },
+        )
+    }
+
     private fun buildIndex(): DesignTokenIndex =
         DesignTokenIndex.build(
             packageRoot = packageInfo.realRoot,
@@ -73,6 +97,7 @@ class DesignTokensNpmPackageResolutionIntegrationTest : BasePlatformTestCase() {
         )
 
     private companion object {
+        const val MOBILE_FONT_TOKEN = "--tui-font-ui-2xs"
         const val NEUTRAL_HOVER_TOKEN = "--tui-background-neutral-1-hover"
         val LIGHT_DESKTOP =
             DesignTokenContext(
