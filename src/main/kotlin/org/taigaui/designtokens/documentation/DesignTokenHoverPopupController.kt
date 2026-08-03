@@ -284,10 +284,10 @@ internal class DesignTokenHoverPopupController(
     private companion object {
         val HOVER_DELAY = 350.milliseconds
         val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
-        const val PREFERRED_POPUP_WIDTH = 650
-        const val MIN_POPUP_WIDTH = 520
-        const val MIN_POPUP_HEIGHT = 230
-        const val MAX_SCREEN_WIDTH_RATIO = 0.8
+        const val PREFERRED_POPUP_WIDTH = 560
+        const val MIN_POPUP_WIDTH = 460
+        const val MIN_POPUP_HEIGHT = 210
+        const val MAX_SCREEN_WIDTH_RATIO = 0.72
         const val ANCHOR_X_OFFSET = 14
         const val ANCHOR_Y_OFFSET = 8
         const val REPORT_BUG_URL =
