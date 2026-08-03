@@ -276,44 +276,44 @@ private fun createValueCell(
     valueWidth: Int,
 ): JComponent {
     val scaledValueWidth = JBUI.scale(valueWidth)
-    val swatchSpace = if (row.color == null) 0 else JBUI.scale(SWATCH_SIZE + 8)
-    val textWidth = (scaledValueWidth - swatchSpace).coerceAtLeast(JBUI.scale(MIN_VALUE_TEXT_WIDTH))
+    val color = row.color
+
+    if (color != null) {
+        val valueLabel =
+            JBLabel(row.resolvedValue).apply {
+                font = CODE_FONT
+                horizontalAlignment = SwingConstants.RIGHT
+            }
+
+        return JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(8), 0)).apply {
+            isOpaque = false
+            preferredSize =
+                Dimension(
+                    scaledValueWidth,
+                    maxOf(valueLabel.preferredSize.height, JBUI.scale(SWATCH_SIZE)),
+                )
+            minimumSize = preferredSize
+            maximumSize = Dimension(scaledValueWidth, preferredSize.height)
+            add(ColorSwatch(color, SWATCH_SIZE))
+            add(valueLabel)
+        }
+    }
+
     val text =
         WrappedTextPane(
             text = row.resolvedValue,
-            width = JBUI.unscale(textWidth),
+            width = valueWidth,
             textFont = CODE_FONT,
             textColor = UIUtil.getLabelForeground(),
             alignment = StyleConstants.ALIGN_RIGHT,
         )
 
-    return JPanel(GridBagLayout()).apply {
+    return JPanel(BorderLayout()).apply {
         isOpaque = false
-        preferredSize = Dimension(scaledValueWidth, maxOf(text.preferredSize.height, JBUI.scale(SWATCH_SIZE)))
+        preferredSize = Dimension(scaledValueWidth, text.preferredSize.height)
         minimumSize = preferredSize
         maximumSize = Dimension(scaledValueWidth, preferredSize.height)
-
-        row.color?.let { color ->
-            add(
-                ColorSwatch(color, SWATCH_SIZE),
-                GridBagConstraints().apply {
-                    gridx = 0
-                    weightx = 0.0
-                    anchor = GridBagConstraints.NORTHEAST
-                    insets = Insets(0, 0, 0, JBUI.scale(8))
-                },
-            )
-        }
-
-        add(
-            text,
-            GridBagConstraints().apply {
-                gridx = 1
-                weightx = 1.0
-                fill = GridBagConstraints.HORIZONTAL
-                anchor = GridBagConstraints.EAST
-            },
-        )
+        add(text, BorderLayout.CENTER)
     }
 }
 
