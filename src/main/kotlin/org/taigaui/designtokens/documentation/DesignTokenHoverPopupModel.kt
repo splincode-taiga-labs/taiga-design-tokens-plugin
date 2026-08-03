@@ -5,6 +5,7 @@ import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 import java.awt.Color
 import java.nio.file.Path
+import java.util.Locale
 
 internal data class DesignTokenHoverPopupModel(
     val tokenName: String,
@@ -92,17 +93,44 @@ private fun MutableList<DesignTokenHoverReferenceLine>.appendReferences(
         val result = reference.effectiveResult
 
         if (result.references.isEmpty()) {
+            val color = result.toAwtColorOrNull()
+
             add(
                 DesignTokenHoverReferenceLine(
-                    text = result.hoverValueText(),
+                    text = result.hoverReferenceValueText(color),
                     depth = depth,
-                    color = result.toAwtColorOrNull(),
+                    color = color,
                 ),
             )
         } else {
             appendReferences(result.references, depth + 1)
         }
     }
+}
+
+private fun DesignTokenValueResolution.hoverReferenceValueText(color: Color?): String {
+    val value = hoverValueText()
+    val rgba = color?.toRgbaText() ?: return value
+
+    return if (value.startsWith("rgba(", ignoreCase = true)) {
+        value
+    } else {
+        "$value, $rgba"
+    }
+}
+
+private fun Color.toRgbaText(): String {
+    val alphaValue =
+        if (alpha == OPAQUE_ALPHA) {
+            "1"
+        } else {
+            String
+                .format(Locale.ROOT, "%.2f", alpha.toDouble() / OPAQUE_ALPHA)
+                .trimEnd('0')
+                .trimEnd('.')
+        }
+
+    return "rgba($red, $green, $blue, $alphaValue)"
 }
 
 private fun DesignTokenResolutionGroup.navigationTarget(): DesignTokenNavigationTarget? =
@@ -143,4 +171,5 @@ private fun String.flatMapCharacters(): String =
         }
     }
 
+private const val OPAQUE_ALPHA = 255
 private const val RGBA_COMPONENTS_COUNT = 4
