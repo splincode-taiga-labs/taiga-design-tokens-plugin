@@ -302,7 +302,7 @@ private fun createValueCell(
     val text =
         WrappedTextPane(
             text = row.resolvedValue,
-            width = valueWidth,
+            width = valueWidth.coerceAtLeast(MIN_VALUE_TEXT_WIDTH),
             textFont = CODE_FONT,
             textColor = UIUtil.getLabelForeground(),
             alignment = StyleConstants.ALIGN_RIGHT,
