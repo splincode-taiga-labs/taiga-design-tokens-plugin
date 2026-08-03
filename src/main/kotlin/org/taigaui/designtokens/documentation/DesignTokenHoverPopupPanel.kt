@@ -91,7 +91,9 @@ internal class DesignTokenHoverPopupPanel(
         minimumSize = Dimension(minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)), JBUI.scale(MIN_POPUP_HEIGHT))
     }
 
-    private fun setReferenceExpanded(@Suppress("UNUSED_PARAMETER") expanded: Boolean) {
+    private fun setReferenceExpanded(
+        @Suppress("UNUSED_PARAMETER") expanded: Boolean,
+    ) {
         contentPanel.revalidate()
         contentPanel.repaint()
 
