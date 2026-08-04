@@ -36,6 +36,8 @@ class DesignTokenIndex private constructor(
                             line = declaration.line,
                             format = DesignTokenSourceFormat.from(normalizedSourceFile),
                             selectorChain = declaration.selectorChain,
+                            packageName = declaration.packageName,
+                            packageVersion = declaration.packageVersion,
                         )
 
                     groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
@@ -69,35 +71,45 @@ class DesignTokenIndex private constructor(
 
         private val DECLARATION_COMPARATOR =
             compareBy<DesignTokenDeclaration>(
-                { it.name },
-                { it.sourceFile.toString() },
-                { it.line },
-                { it.value },
-                { it.selectorChain.joinToString() },
+                { declaration -> declaration.name },
+                { declaration -> declaration.packageName.orEmpty() },
+                { declaration -> declaration.sourceFile.toString() },
+                { declaration -> declaration.line },
+                { declaration -> declaration.value },
+                { declaration -> declaration.selectorChain.joinToString() },
             )
 
         private val ORIGIN_COMPARATOR =
             compareBy<DesignTokenOrigin>(
-                { sourceFormatRank(it.format) },
-                { it.sourceFile.toString() },
-                { it.line },
-                { it.selectorChain.joinToString() },
+                { origin -> packageRank(origin.packageName) },
+                { origin -> origin.packageName.orEmpty() },
+                { origin -> sourceFormatRank(origin.format) },
+                { origin -> origin.sourceFile.toString() },
+                { origin -> origin.line },
+                { origin -> origin.selectorChain.joinToString() },
             )
 
         private val VARIANT_COMPARATOR =
             compareBy<DesignTokenVariant>(
-                { it.name },
-                { platformRank(it.context.platform) },
-                { themeRank(it.context.theme) },
-                { it.rawValue },
+                { variant -> variant.name },
+                { variant -> platformRank(variant.context.platform) },
+                { variant -> themeRank(variant.context.theme) },
+                { variant -> variant.rawValue },
                 {
                     it.origins
                         .first()
                         .sourceFile
                         .toString()
                 },
-                { it.origins.first().line },
+                { variant -> variant.origins.first().line },
             )
+
+        private fun packageRank(packageName: String?): Int =
+            when (packageName) {
+                "@taiga-ui/design-tokens" -> 0
+                "@taiga-ui/styles" -> 1
+                else -> 2
+            }
 
         private fun sourceFormatRank(format: DesignTokenSourceFormat): Int =
             when (format) {
