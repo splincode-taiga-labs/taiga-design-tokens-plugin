@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.project
 
 import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.packageinfo.DesignTokenSourcePackage
 import org.taigaui.designtokens.packageinfo.DesignTokensPackage
 import java.nio.file.Path
 
@@ -42,6 +43,7 @@ internal class DesignTokenIndexCache(
 
             entries[identity]?.let { entry ->
                 entry.logicalRoots.add(normalizedPackage.root)
+                entry.packageRoots.addAll(normalizedPackage.cacheRoots())
 
                 return@synchronized entry.index
             }
@@ -52,6 +54,7 @@ internal class DesignTokenIndexCache(
                 CacheEntry(
                     index = index,
                     logicalRoots = linkedSetOf(normalizedPackage.root),
+                    packageRoots = normalizedPackage.cacheRoots().toMutableSet(),
                 )
 
             index
@@ -67,13 +70,8 @@ internal class DesignTokenIndexCache(
 
             val sizeBefore = entries.size
 
-            entries.entries.removeIf { (identity, entry) ->
-                normalizedPaths.any { changedPath ->
-                    entry.isAffectedBy(
-                        changedPath = changedPath,
-                        realRoot = identity.realRoot,
-                    )
-                }
+            entries.entries.removeIf { (_, entry) ->
+                normalizedPaths.any(entry::isAffectedBy)
             }
 
             sizeBefore - entries.size
@@ -104,12 +102,10 @@ internal class DesignTokenIndexCache(
     private data class CacheEntry(
         val index: DesignTokenIndex,
         val logicalRoots: MutableSet<Path>,
+        val packageRoots: MutableSet<Path>,
     ) {
-        fun isAffectedBy(
-            changedPath: Path,
-            realRoot: Path,
-        ): Boolean =
-            (logicalRoots + realRoot).any { packageRoot ->
+        fun isAffectedBy(changedPath: Path): Boolean =
+            (logicalRoots + packageRoots).any { packageRoot ->
                 val packageRootChanged = changedPath == packageRoot
                 val packageAncestorChanged = packageRoot.startsWith(changedPath)
                 val relevantPackageFileChanged =
@@ -127,7 +123,29 @@ internal class DesignTokenIndexCache(
             copy(
                 root = root.toAbsolutePath().normalize(),
                 realRoot = realRoot.toAbsolutePath().normalize(),
+                sourcePackages = sourcePackages.map(DesignTokenSourcePackage::normalized),
             )
+
+        fun DesignTokenSourcePackage.normalized(): DesignTokenSourcePackage =
+            copy(
+                root = root.toAbsolutePath().normalize(),
+                realRoot = realRoot.toAbsolutePath().normalize(),
+                sourceRoots =
+                    sourceRoots
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize),
+            )
+
+        fun DesignTokensPackage.cacheRoots(): Set<Path> =
+            buildSet {
+                add(root)
+                add(realRoot)
+                effectiveSourcePackages.forEach { sourcePackage ->
+                    add(sourcePackage.root)
+                    add(sourcePackage.realRoot)
+                    addAll(sourcePackage.sourceRoots)
+                }
+            }
 
         fun Path.isRelevantPackagePath(): Boolean {
             val fileName = fileName?.toString()?.lowercase() ?: return true
