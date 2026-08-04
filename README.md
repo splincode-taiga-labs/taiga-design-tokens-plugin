@@ -2,9 +2,9 @@
 
 WebStorm plugin for exploring Taiga UI CSS custom properties directly in the editor.
 
-The plugin reads the version of `@taiga-ui/design-tokens` installed in the current project instead of shipping a hardcoded token catalog. Quick documentation will show the declarations available for desktop, mobile, light, and dark themes.
+The plugin reads the version of `@taiga-ui/design-tokens` installed in the current project instead of shipping a hardcoded token catalog. Hovering a Taiga UI token opens one custom Swing popup with desktop, mobile, light, and dark values.
 
-## Planned experience
+## Editor experience
 
 Given:
 
@@ -14,16 +14,20 @@ Given:
 }
 ```
 
-Quick documentation should show:
+The hover popup shows:
 
-- the installed `@taiga-ui/design-tokens` version;
 - matching desktop and mobile declarations;
 - light and dark theme values;
-- both the raw declaration and its recursively resolved value;
-- the token-reference tree, source files, and line numbers;
-- color previews when the final value is a color.
+- the declared value and recursively resolved result without duplicating equal values;
+- separate reference chains for distinct results;
+- color previews;
+- actions to copy the value, navigate to the declaration, and report a bug.
 
-The plugin will show all statically known candidates. It will not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
+Equivalent values across all four platform/theme combinations are shown as one row labeled `All platforms · Light ☀️ and dark 🌚`. Incomplete combinations stay explicit, so the UI never implies that a value applies to contexts that were not resolved.
+
+Source files, line numbers, and selector chains remain available in the resolution model. The popup uses the first root origin for `Go to definition`; detailed source lists may be exposed later through an optional setting.
+
+The plugin shows all statically known candidates. It does not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
 
 ## Architecture
 
@@ -32,7 +36,9 @@ This sequence diagram is the architectural contract for the plugin. Pull request
 ```mermaid
 sequenceDiagram
     actor User as Editor user
-    participant Docs as Documentation provider
+    participant Listener as Editor mouse listener
+    participant Controller as Hover popup controller
+    participant Offset as Reference-at-offset finder
     participant Service as Project token service
     participant Cache as Project index cache
     participant Resolver as Package resolver
@@ -44,11 +50,16 @@ sequenceDiagram
     participant Values as Value resolver
     participant Parser as var() value parser
     participant Colors as Color detector
+    participant Model as Swing popup model
+    participant Popup as Swing popup panel
     participant VFS as VFS change listener
     participant FS as Project filesystem
 
-    User->>Docs: Request docs for var(--tui-*)
-    Docs->>Service: resolveToken(sourceFile, tokenName)
+    User->>Listener: Move pointer over var(--tui-*)
+    Listener->>Controller: Debounced hover request
+    Controller->>Offset: Find token at editor offset
+    Offset-->>Controller: Token name or no target
+    Controller->>Service: resolveToken(sourceFile, tokenName)
     Service->>Resolver: resolve(sourceFile)
     Resolver->>FS: Find nearest package.json
     FS-->>Resolver: Logical root, real root, and version
@@ -109,8 +120,10 @@ sequenceDiagram
 
     Service->>Values: Group equivalent terminal results
     Values-->>Service: Resolution groups with root and complete-tree origins
-    Service-->>Docs: Context-grouped resolved candidates
-    Docs-->>User: Raw and final values, references, origins, and color previews
+    Service-->>Controller: Context-grouped resolved candidates
+    Controller->>Model: Build rows, reference chains, actions, and navigation target
+    Model-->>Popup: Presentation data
+    Popup-->>User: One custom Swing hover popup
 
     FS-->>VFS: Relevant package path changed
     VFS->>Cache: Invalidate affected package entries
@@ -122,21 +135,22 @@ Architecture status:
 
 - implemented: package discovery, PSI extraction, context classification, immutable indexing, project-level caching, and targeted VFS invalidation;
 - implemented in Stage 3: balanced `var(...)` parsing, context-aware recursive resolution, structured fallback and cycle results, color detection, and equivalent-result grouping;
-- Stage 3 is complete once the recursive resolution change is merged;
-- next in Stage 4: documentation provider, caret detection, rendering, and navigation.
+- implemented in Stage 4: caret-offset token detection, CSS/SCSS/Less support, debounced hover handling, a custom Swing popup, context comparison rows, resolved values, reference chains, copy, navigation, and color previews;
+- remaining in Stage 4: optional source details and accessibility validation.
 
 Package boundaries:
 
 ```text
 org.taigaui.designtokens
-├── packageinfo  package discovery and installed-package metadata
-├── index        physical declarations, logical variants, classification, and indexing
-├── resolution   pure var parsing, candidate selection, recursive resolution, and grouping
-├── psi          IntelliJ PSI adapter for CSS, SCSS, and Less
-└── project      project service, package cache, VFS invalidation, and resolution entry point
+├── packageinfo    package discovery and installed-package metadata
+├── index          physical declarations, logical variants, classification, and indexing
+├── resolution     pure var parsing, candidate selection, recursive resolution, and grouping
+├── psi            IntelliJ PSI adapter for CSS, SCSS, and Less
+├── project        project service, package cache, VFS invalidation, and resolution entry point
+└── documentation  offset detection, hover controller, Swing model, and Swing popup
 ```
 
-Dependencies point inward: `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` depends on extraction contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. Package discovery, the cache core, and recursive resolution remain independent from PSI types.
+Dependencies point inward: `documentation` consumes the project resolution entry point; `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` depends on extraction contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. Package discovery, the cache core, recursive resolution, offset detection, and popup-model mapping remain independently testable.
 
 The project cache is keyed by normalized real package root and installed version. Multiple logical npm or pnpm paths that point to the same physical package reuse one immutable index. A version change or a logical package pointing to a different real target replaces the old entry.
 
@@ -144,7 +158,7 @@ VFS events only remove affected cache entries. CSS, SCSS, Less, `package.json`, 
 
 Platform classification has no unknown state. A declaration under a `mobile` package path or a mobile `tuiPlatform` or `data-platform` selector is mobile; every other declaration is desktop. Theme may remain unspecified when neither light nor dark context is encoded by the source.
 
-A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate hover entries.
+A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate popup entries.
 
 The value parser scans balanced functions and emits text/reference parts. It resolves several references inside compound values, nested fallbacks, and empty fallbacks without replacing `var(...)` text inside quoted strings or comments. Raw variant values are never mutated.
 
@@ -156,9 +170,13 @@ A `DesignTokenValueResolution` is either resolved or unresolved. Resolved result
 
 `DesignTokenResolutionGroup` collapses equal terminal values for presentation. Hex colors such as `#fff` and `#FFFFFF` share a canonical key. Each group retains root origins separately from all origins reachable through selected references and evaluated fallbacks.
 
+The hover listener only resolves a token when the pointer offset is inside a `--tui-*` name used as the first argument of `var(...)`. It ignores declarations, comments, strings, unrelated custom properties, unknown tokens, and unsupported file types. Nested fallback references and several references in one value are resolved independently.
+
+The Swing popup renders one row per distinct terminal result with `Platform` and `Value` columns. It shows the original CSS color notation, uses the canonical color only for grouping and swatch painting, and displays separate reference chains for distinct results.
+
 ## Development status
 
-Stages 1 and 2 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, and VFS invalidation. Stage 3 adds pure recursive value resolution and exposes grouped results through `DesignTokenIndexService.resolveToken`. The next stage connects these results to WebStorm quick documentation and navigation. See [the implementation roadmap](docs/roadmap.md) for the remaining work.
+Stages 1 through 3 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, VFS invalidation, and pure recursive value resolution. Stage 4 connects those results to one custom Swing hover popup. See [the implementation roadmap](docs/roadmap.md) for the remaining work.
 
 ## Requirements
 
@@ -197,5 +215,14 @@ Run the sandbox IDE or build the distributable plugin:
 ./gradlew runIde
 ./gradlew buildPlugin
 ```
+
+Open a real local project directly in the sandbox:
+
+```bash
+./gradlew runIde \
+  -PdebugProjectPath="/absolute/path/to/project"
+```
+
+See [local debugging](docs/local-debugging.md) for using an installed WebStorm build, attaching a debugger on port 5005, inspecting sandbox logs, and resetting sandbox state.
 
 `runIde` starts an isolated WebStorm instance with the plugin installed. The distributable ZIP is generated under `build/distributions`.

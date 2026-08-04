@@ -177,7 +177,7 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
         assertEquals(listOf(":root"), declarations[1].selectorChain)
     }
 
-    fun testBuildsMobileAndDesktopVariantsFromSelectorsInSameDesktopFile() {
+    fun testBuildsIosAndDesktopVariantsFromSelectorsInSameDesktopFile() {
         val sourceFile = packageRoot.resolve("palette/light.css")
         val declarations =
             extract(
@@ -202,7 +202,7 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
 
         assertEquals(2, variants.size)
         assertEquals(DesignTokenPlatform.DESKTOP, variants[0].context.platform)
-        assertEquals(DesignTokenPlatform.MOBILE, variants[1].context.platform)
+        assertEquals(DesignTokenPlatform.IOS, variants[1].context.platform)
         assertEquals(listOf(":root"), variants[0].origins.single().selectorChain)
         assertEquals(
             listOf(":root", "[tuiPlatform='ios'] &"),

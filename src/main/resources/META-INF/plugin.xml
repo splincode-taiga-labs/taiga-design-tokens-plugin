@@ -5,10 +5,16 @@
 
     <description><![CDATA[
         <p>WebStorm support for Taiga UI design tokens.</p>
-        <p>The plugin reads the installed <code>@taiga-ui/design-tokens</code> package and will provide structured token documentation for CSS custom properties.</p>
+        <p>The plugin reads the installed <code>@taiga-ui/design-tokens</code> package and shows a Swing hover popup with resolved values, reference chains, and color previews.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>JavaScript</depends>
     <depends>com.intellij.css</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <editorFactoryMouseMotionListener
+            implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
+        />
+    </extensions>
 </idea-plugin>

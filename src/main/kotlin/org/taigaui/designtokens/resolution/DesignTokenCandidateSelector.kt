@@ -33,6 +33,8 @@ internal class DesignTokenCandidateSelector(
         when (context.platform) {
             DesignTokenPlatform.DESKTOP -> desktopPrecedence(context.theme)
             DesignTokenPlatform.MOBILE -> mobilePrecedence(context.theme)
+            DesignTokenPlatform.IOS -> platformMobilePrecedence(DesignTokenPlatform.IOS, context.theme)
+            DesignTokenPlatform.ANDROID -> platformMobilePrecedence(DesignTokenPlatform.ANDROID, context.theme)
         }
 
     private fun desktopPrecedence(theme: DesignTokenTheme): List<DesignTokenContext> =
@@ -76,6 +78,31 @@ internal class DesignTokenCandidateSelector(
                         DesignTokenPlatform.DESKTOP,
                         DesignTokenTheme.UNSPECIFIED,
                     ),
+                )
+        }
+
+    private fun platformMobilePrecedence(
+        platform: DesignTokenPlatform,
+        theme: DesignTokenTheme,
+    ): List<DesignTokenContext> =
+        when (theme) {
+            DesignTokenTheme.LIGHT,
+            DesignTokenTheme.DARK,
+            ->
+                listOf(
+                    DesignTokenContext(platform, theme),
+                    DesignTokenContext(platform, DesignTokenTheme.UNSPECIFIED),
+                    DesignTokenContext(DesignTokenPlatform.MOBILE, theme),
+                    DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.UNSPECIFIED),
+                    DesignTokenContext(DesignTokenPlatform.DESKTOP, theme),
+                    DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.UNSPECIFIED),
+                )
+
+            DesignTokenTheme.UNSPECIFIED ->
+                listOf(
+                    DesignTokenContext(platform, DesignTokenTheme.UNSPECIFIED),
+                    DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.UNSPECIFIED),
+                    DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.UNSPECIFIED),
                 )
         }
 }

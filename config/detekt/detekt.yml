@@ -4,6 +4,12 @@ build:
 config:
     validation: true
 
+complexity:
+    TooManyFunctions:
+        excludes:
+            - '**/test/**'
+            - '**/DesignTokenHoverPopupPanel.kt'
+
 style:
     MagicNumber:
         active: false

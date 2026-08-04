@@ -50,12 +50,18 @@ class DesignTokenContextClassifier {
     private fun classifyPlatform(
         markers: Set<String>,
         selectorChain: List<String>,
-    ): DesignTokenPlatform =
-        if (MOBILE_MARKER in markers || selectorChain.containsMatch(MOBILE_PLATFORM_SELECTOR)) {
-            DesignTokenPlatform.MOBILE
-        } else {
-            DesignTokenPlatform.DESKTOP
+    ): DesignTokenPlatform {
+        val hasIos = selectorChain.containsMatch(IOS_PLATFORM_SELECTOR)
+        val hasAndroid = selectorChain.containsMatch(ANDROID_PLATFORM_SELECTOR)
+
+        return when {
+            hasIos && hasAndroid -> DesignTokenPlatform.MOBILE
+            hasIos -> DesignTokenPlatform.IOS
+            hasAndroid -> DesignTokenPlatform.ANDROID
+            MOBILE_MARKER in markers -> DesignTokenPlatform.MOBILE
+            else -> DesignTokenPlatform.DESKTOP
         }
+    }
 
     private fun classifyTheme(
         markers: Set<String>,
@@ -78,10 +84,15 @@ class DesignTokenContextClassifier {
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
 
-        val MOBILE_PLATFORM_SELECTOR =
+        val IOS_PLATFORM_SELECTOR =
             attributeSelector(
                 attribute = "(?:tuiPlatform|data-platform)",
-                value = "(?:android|ios)",
+                value = "ios",
+            )
+        val ANDROID_PLATFORM_SELECTOR =
+            attributeSelector(
+                attribute = "(?:tuiPlatform|data-platform)",
+                value = "android",
             )
         val LIGHT_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "light")
         val DARK_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "dark")

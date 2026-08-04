@@ -1,3 +1,4 @@
+import org.gradle.process.CommandLineArgumentProvider
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -43,6 +44,7 @@ detekt {
 }
 
 val localIdePath = providers.gradleProperty("localIdePath").orNull
+val debugProjectPath = providers.gradleProperty("debugProjectPath")
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
@@ -74,5 +76,17 @@ intellijPlatform {
             sinceBuild = "253"
             untilBuild = provider { null }
         }
+    }
+}
+
+tasks {
+    runIde {
+        argumentProviders.add(
+            CommandLineArgumentProvider {
+                debugProjectPath.orNull
+                    ?.let(::listOf)
+                    .orEmpty()
+            },
+        )
     }
 }

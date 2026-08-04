@@ -3,6 +3,8 @@ package org.taigaui.designtokens.index
 enum class DesignTokenPlatform {
     DESKTOP,
     MOBILE,
+    IOS,
+    ANDROID,
 }
 
 enum class DesignTokenTheme {
