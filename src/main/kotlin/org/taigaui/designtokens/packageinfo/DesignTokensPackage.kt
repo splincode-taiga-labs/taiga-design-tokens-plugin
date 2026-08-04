@@ -16,6 +16,7 @@ data class DesignTokensPackage(
     val version: String,
     val sourcePackages: List<DesignTokenSourcePackage> = emptyList(),
     val cacheVersion: String = version,
+    val discoveryRoot: Path = root,
 ) {
     val effectiveSourcePackages: List<DesignTokenSourcePackage>
         get() =
