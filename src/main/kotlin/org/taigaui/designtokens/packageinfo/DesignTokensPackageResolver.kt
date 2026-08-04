@@ -7,6 +7,22 @@ class DesignTokensPackageResolver(
     private val packageJsonReader: PackageJsonReader = PackageJsonReader(),
 ) {
     fun resolve(start: Path): DesignTokensPackage? {
+        val scopeRoot = findNearestTaigaUiScope(start) ?: return null
+        val sourcePackages = discoverSourcePackages(scopeRoot)
+
+        if (sourcePackages.isEmpty()) {
+            return null
+        }
+
+        return DesignTokensPackage(
+            root = scopeRoot.toAbsolutePath().normalize(),
+            realRoot = scopeRoot.toRealPathOrSelf(),
+            version = sourcePackages.packageSetVersion(),
+            sourcePackages = sourcePackages,
+        )
+    }
+
+    private fun findNearestTaigaUiScope(start: Path): Path? {
         val normalizedStart = start.toAbsolutePath().normalize()
         val startDirectory =
             when {
@@ -15,31 +31,80 @@ class DesignTokensPackageResolver(
                 else -> normalizedStart
             }
 
-        return generateSequence(startDirectory) { it.parent }
-            .map { it.resolve(PACKAGE_JSON) }
-            .firstOrNull { Files.isRegularFile(it) }
-            ?.let(::readPackage)
+        return generateSequence(startDirectory) { directory -> directory.parent }
+            .map { directory -> directory.resolve(TAIGA_UI_SCOPE) }
+            .firstOrNull(Files::isDirectory)
     }
 
-    private fun readPackage(packageJson: Path): DesignTokensPackage? {
-        val version = packageJsonReader.readVersion(packageJson) ?: return null
-        val root = packageJson.parent.toAbsolutePath().normalize()
-        val realRoot = runCatching { root.toRealPath() }.getOrElse { root }
+    private fun discoverSourcePackages(scopeRoot: Path): List<DesignTokenSourcePackage> =
+        runCatching {
+            Files.list(scopeRoot).use { paths ->
+                paths
+                    .filter(Files::isDirectory)
+                    .map(::readSourcePackage)
+                    .filter { sourcePackage -> sourcePackage != null }
+                    .map { sourcePackage -> requireNotNull(sourcePackage) }
+                    .sorted(
+                        compareBy<DesignTokenSourcePackage>(
+                            { sourcePackage -> sourcePackage.name },
+                            { sourcePackage -> sourcePackage.version },
+                            { sourcePackage -> sourcePackage.realRoot.toString() },
+                        ),
+                    ).toList()
+            }
+        }.getOrElse { emptyList() }
 
-        return DesignTokensPackage(
-            root = root,
-            realRoot = realRoot,
-            version = version,
-        )
+    private fun readSourcePackage(logicalRoot: Path): DesignTokenSourcePackage? {
+        val packageJson = logicalRoot.resolve(PACKAGE_JSON)
+        val metadata = packageJsonReader.readMetadata(packageJson) ?: return null
+
+        if (!metadata.name.startsWith(TAIGA_UI_PACKAGE_PREFIX)) {
+            return null
+        }
+
+        val realRoot = logicalRoot.toRealPathOrSelf()
+        val sourceRoots = metadata.resolveSourceRoots(realRoot)
+
+        return sourceRoots
+            .takeIf(List<Path>::isNotEmpty)
+            ?.let { roots ->
+                DesignTokenSourcePackage(
+                    name = metadata.name,
+                    root = logicalRoot.toAbsolutePath().normalize(),
+                    realRoot = realRoot,
+                    version = metadata.version,
+                    sourceRoots = roots,
+                )
+            }
     }
+
+    private fun PackageJsonMetadata.resolveSourceRoots(realRoot: Path): List<Path> =
+        when {
+            name == DESIGN_TOKENS_PACKAGE -> listOf(realRoot)
+            name == STYLES_PACKAGE && exportsPackageRoot -> listOf(realRoot)
+            exportsStyles && Files.isDirectory(realRoot.resolve(STYLES_DIRECTORY)) ->
+                listOf(realRoot.resolve(STYLES_DIRECTORY))
+
+            else -> emptyList()
+        }
+
+    private fun List<DesignTokenSourcePackage>.packageSetVersion(): String =
+        joinToString(separator = "|") { sourcePackage ->
+            val directory = sourcePackage.root.fileName?.toString().orEmpty()
+
+            "${sourcePackage.name}@${sourcePackage.version}:$directory"
+        }
+
+    private fun Path.toRealPathOrSelf(): Path =
+        runCatching { toRealPath() }
+            .getOrElse { toAbsolutePath().normalize() }
 
     private companion object {
-        val PACKAGE_JSON =
-            Path.of(
-                "node_modules",
-                "@taiga-ui",
-                "design-tokens",
-                "package.json",
-            )
+        val TAIGA_UI_SCOPE = Path.of("node_modules", "@taiga-ui")
+        const val PACKAGE_JSON = "package.json"
+        const val STYLES_DIRECTORY = "styles"
+        const val TAIGA_UI_PACKAGE_PREFIX = "@taiga-ui/"
+        const val DESIGN_TOKENS_PACKAGE = "@taiga-ui/design-tokens"
+        const val STYLES_PACKAGE = "@taiga-ui/styles"
     }
 }
