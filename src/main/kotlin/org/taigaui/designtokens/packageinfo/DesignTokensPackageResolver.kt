@@ -92,7 +92,10 @@ class DesignTokensPackageResolver(
 
     private fun List<DesignTokenSourcePackage>.packageSetVersion(): String =
         joinToString(separator = "|") { sourcePackage ->
-            val directory = sourcePackage.root.fileName?.toString().orEmpty()
+            val directory =
+                sourcePackage.root.fileName
+                    ?.toString()
+                    .orEmpty()
 
             "${sourcePackage.name}@${sourcePackage.version}:$directory"
         }
