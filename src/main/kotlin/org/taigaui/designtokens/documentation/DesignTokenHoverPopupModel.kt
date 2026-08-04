@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.documentation
 
+import org.taigaui.designtokens.index.DesignTokenOrigin
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
@@ -10,6 +11,7 @@ import java.util.Locale
 internal data class DesignTokenHoverPopupModel(
     val tokenName: String,
     val description: String?,
+    val sourcePackages: List<String>,
     val rows: List<DesignTokenHoverValueRow>,
     val chains: List<DesignTokenHoverReferenceChain>,
     val navigationTarget: DesignTokenNavigationTarget?,
@@ -18,10 +20,13 @@ internal data class DesignTokenHoverPopupModel(
         fun create(
             tokenName: String,
             groups: List<DesignTokenResolutionGroup>,
-        ): DesignTokenHoverPopupModel =
-            DesignTokenHoverPopupModel(
+        ): DesignTokenHoverPopupModel {
+            val origins = groups.flatMap { group -> group.origins }
+
+            return DesignTokenHoverPopupModel(
                 tokenName = tokenName,
-                description = DesignTokenDescriptionExtractor.extract(groups.flatMap { group -> group.origins }),
+                description = DesignTokenDescriptionExtractor.extract(origins),
+                sourcePackages = origins.sourcePackageNames(),
                 rows = groups.map(DesignTokenResolutionGroup::toHoverValueRow),
                 chains =
                     groups
@@ -29,6 +34,7 @@ internal data class DesignTokenHoverPopupModel(
                         .map { group -> group.toHoverReferenceChain(tokenName) },
                 navigationTarget = groups.firstNotNullOfOrNull(DesignTokenResolutionGroup::navigationTarget),
             )
+        }
     }
 }
 
@@ -54,6 +60,18 @@ internal data class DesignTokenNavigationTarget(
     val sourceFile: Path,
     val line: Int,
 )
+
+private fun List<DesignTokenOrigin>.sourcePackageNames(): List<String> =
+    mapNotNull(DesignTokenOrigin::packageName)
+        .distinct()
+        .sortedWith(compareBy(::sourcePackageRank, String::lowercase))
+
+private fun sourcePackageRank(packageName: String): Int =
+    when (packageName) {
+        "@taiga-ui/design-tokens" -> 0
+        "@taiga-ui/styles" -> 1
+        else -> 2
+    }
 
 private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueRow =
     DesignTokenHoverValueRow(
