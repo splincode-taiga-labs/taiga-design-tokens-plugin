@@ -12,10 +12,15 @@ class DesignTokensPackageScanner(
     )
 
     fun scan(designTokensPackage: DesignTokensPackage): List<DesignTokenDeclaration> =
-        designTokensPackage.effectiveSourcePackages
-            .flatMap(::scan)
-            .distinct()
-            .sortedWith(DECLARATION_COMPARATOR)
+        if (designTokensPackage.sourcePackages.isEmpty()) {
+            sourceFileFinder
+                .find(designTokensPackage.realRoot)
+                .flatMap(sourceExtractor::extract)
+        } else {
+            designTokensPackage.sourcePackages
+                .flatMap(::scan)
+                .distinct()
+        }
 
     private fun scan(sourcePackage: DesignTokenSourcePackage): List<DesignTokenDeclaration> =
         sourcePackage.sourceRoots
@@ -29,15 +34,4 @@ class DesignTokensPackageScanner(
                     packageRoot = sourcePackage.realRoot,
                 )
             }
-
-    private companion object {
-        val DECLARATION_COMPARATOR =
-            compareBy<DesignTokenDeclaration>(
-                { declaration -> declaration.name },
-                { declaration -> declaration.packageName.orEmpty() },
-                { declaration -> declaration.sourceFile.toString() },
-                { declaration -> declaration.line },
-                { declaration -> declaration.value },
-            )
-    }
 }
