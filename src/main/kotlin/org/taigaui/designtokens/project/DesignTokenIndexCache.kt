@@ -33,7 +33,7 @@ internal class DesignTokenIndexCache(
 
     fun getOrBuild(designTokensPackage: DesignTokensPackage): DesignTokenIndex =
         synchronized(lock) {
-            val normalizedPackage = designTokensPackage.normalized()
+            val normalizedPackage = normalizePackage(designTokensPackage)
             val identity = DesignTokensPackageIdentity.from(normalizedPackage)
 
             removeReplacedPackages(
@@ -119,19 +119,19 @@ internal class DesignTokenIndexCache(
     private companion object {
         val STYLESHEET_EXTENSIONS = setOf("css", "less", "scss")
 
-        fun DesignTokensPackage.normalized(): DesignTokensPackage =
-            copy(
-                root = root.toAbsolutePath().normalize(),
-                realRoot = realRoot.toAbsolutePath().normalize(),
-                sourcePackages = sourcePackages.map(DesignTokenSourcePackage::normalized),
+        fun normalizePackage(designTokensPackage: DesignTokensPackage): DesignTokensPackage =
+            designTokensPackage.copy(
+                root = designTokensPackage.root.toAbsolutePath().normalize(),
+                realRoot = designTokensPackage.realRoot.toAbsolutePath().normalize(),
+                sourcePackages = designTokensPackage.sourcePackages.map(::normalizeSourcePackage),
             )
 
-        fun DesignTokenSourcePackage.normalized(): DesignTokenSourcePackage =
-            copy(
-                root = root.toAbsolutePath().normalize(),
-                realRoot = realRoot.toAbsolutePath().normalize(),
+        fun normalizeSourcePackage(sourcePackage: DesignTokenSourcePackage): DesignTokenSourcePackage =
+            sourcePackage.copy(
+                root = sourcePackage.root.toAbsolutePath().normalize(),
+                realRoot = sourcePackage.realRoot.toAbsolutePath().normalize(),
                 sourceRoots =
-                    sourceRoots
+                    sourcePackage.sourceRoots
                         .map(Path::toAbsolutePath)
                         .map(Path::normalize),
             )
