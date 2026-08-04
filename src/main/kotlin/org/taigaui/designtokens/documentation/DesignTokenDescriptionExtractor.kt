@@ -6,7 +6,7 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
 internal object DesignTokenDescriptionExtractor {
-    private val cache = ConcurrentHashMap<DescriptionSource, String>()
+    private val sourceCache = ConcurrentHashMap<Path, SourceSnapshot>()
 
     fun extract(origins: Collection<DesignTokenOrigin>): String? =
         origins
@@ -32,21 +32,24 @@ internal object DesignTokenDescriptionExtractor {
 
     private fun extract(origin: DesignTokenOrigin): String? =
         runCatching {
-            val source =
-                DescriptionSource(
-                    path = origin.sourceFile,
-                    line = origin.line,
-                    modifiedAt = Files.getLastModifiedTime(origin.sourceFile).toMillis(),
-                )
-            val cached =
-                cache.computeIfAbsent(source) {
-                    extract(Files.readAllLines(origin.sourceFile), origin.line)
-                        ?.takeIf(String::isUsefulDescription)
-                        ?: NO_DESCRIPTION
-                }
+            val source = readSource(origin.sourceFile)
 
-            cached.takeUnless { value -> value == NO_DESCRIPTION }
+            extract(source.lines, origin.line)
+                ?.takeIf(String::isUsefulDescription)
         }.getOrNull()
+
+    private fun readSource(path: Path): SourceSnapshot {
+        val modifiedAt = Files.getLastModifiedTime(path).toMillis()
+
+        return sourceCache.compute(path) { _, cached ->
+            cached
+                ?.takeIf { source -> source.modifiedAt == modifiedAt }
+                ?: SourceSnapshot(
+                    modifiedAt = modifiedAt,
+                    lines = Files.readAllLines(path),
+                )
+        } ?: error("Unable to cache token source: $path")
+    }
 
     private fun findTrailingComment(
         lines: List<String>,
@@ -189,10 +192,9 @@ internal object DesignTokenDescriptionExtractor {
         return null
     }
 
-    private data class DescriptionSource(
-        val path: Path,
-        val line: Int,
+    private data class SourceSnapshot(
         val modifiedAt: Long,
+        val lines: List<String>,
     )
 }
 
@@ -233,6 +235,5 @@ private val IGNORED_COMMENT_PREFIXES =
         "todo",
         "fixme",
     )
-private const val NO_DESCRIPTION = "\u0000"
 private const val MAX_DECLARATION_LINES = 12
 private const val BLOCK_COMMENT_END = "*/"
