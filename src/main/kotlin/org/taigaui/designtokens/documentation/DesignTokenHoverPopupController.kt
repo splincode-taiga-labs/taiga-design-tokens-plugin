@@ -124,7 +124,13 @@ internal class DesignTokenHoverPopupController(
                 .takeIf { groups -> groups.isNotEmpty() }
                 ?.let { groups ->
                     PopupData(
-                        key = PopupKey(editor, reference.name),
+                        key =
+                            PopupKey(
+                                editor = editor,
+                                tokenName = reference.name,
+                                offset = reference.range.startOffset,
+                                modificationStamp = editor.document.modificationStamp,
+                            ),
                         model = DesignTokenHoverPopupModel.create(reference.name, groups),
                     )
                 }
@@ -172,7 +178,7 @@ internal class DesignTokenHoverPopupController(
                 .setCancelOnWindowDeactivation(true)
                 .setCancelKeyEnabled(true)
                 .setMovable(false)
-                .setResizable(true)
+                .setResizable(false)
                 .setMinSize(
                     Dimension(
                         minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)),
@@ -274,6 +280,8 @@ internal class DesignTokenHoverPopupController(
     private data class PopupKey(
         val editor: Editor,
         val tokenName: String,
+        val offset: Int,
+        val modificationStamp: Long,
     )
 
     private data class PopupData(
