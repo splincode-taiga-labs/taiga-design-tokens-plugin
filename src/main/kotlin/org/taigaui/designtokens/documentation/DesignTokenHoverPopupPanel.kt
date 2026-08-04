@@ -1,5 +1,7 @@
 package org.taigaui.designtokens.documentation
 
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
@@ -18,10 +20,12 @@ import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import java.awt.RenderingHints
+import java.awt.datatransfer.StringSelection
 import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
 import javax.swing.Box
 import javax.swing.BoxLayout
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollPane
@@ -276,44 +280,45 @@ private fun createValueCell(
     valueWidth: Int,
 ): JComponent {
     val scaledValueWidth = JBUI.scale(valueWidth)
-    val color = row.color
-
-    if (color != null) {
-        val valueLabel =
-            JBLabel(row.resolvedValue).apply {
-                font = CODE_FONT
-                horizontalAlignment = SwingConstants.RIGHT
-            }
-
-        return JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(8), 0)).apply {
-            isOpaque = false
-            preferredSize =
-                Dimension(
-                    scaledValueWidth,
-                    maxOf(valueLabel.preferredSize.height, JBUI.scale(SWATCH_SIZE)),
-                )
-            minimumSize = preferredSize
-            maximumSize = Dimension(scaledValueWidth, preferredSize.height)
-            add(ColorSwatch(color, SWATCH_SIZE))
-            add(valueLabel)
-        }
-    }
-
+    val swatchWidth = if (row.color == null) 0 else JBUI.scale(SWATCH_SIZE + 8)
+    val textWidth = (scaledValueWidth - swatchWidth).coerceAtLeast(JBUI.scale(MIN_VALUE_TEXT_WIDTH))
     val text =
         WrappedTextPane(
             text = row.resolvedValue,
-            width = valueWidth.coerceAtLeast(MIN_VALUE_TEXT_WIDTH),
+            width = JBUI.unscale(textWidth),
             textFont = CODE_FONT,
             textColor = UIUtil.getLabelForeground(),
             alignment = StyleConstants.ALIGN_RIGHT,
+            copyValue = row.resolvedValue,
         )
 
-    return JPanel(BorderLayout()).apply {
+    return JPanel(GridBagLayout()).apply {
         isOpaque = false
-        preferredSize = Dimension(scaledValueWidth, text.preferredSize.height)
+        preferredSize = Dimension(scaledValueWidth, maxOf(text.preferredSize.height, JBUI.scale(SWATCH_SIZE)))
         minimumSize = preferredSize
         maximumSize = Dimension(scaledValueWidth, preferredSize.height)
-        add(text, BorderLayout.CENTER)
+
+        row.color?.let { color ->
+            add(
+                ColorSwatch(color, SWATCH_SIZE),
+                GridBagConstraints().apply {
+                    gridx = 0
+                    weightx = 0.0
+                    anchor = GridBagConstraints.NORTHEAST
+                    insets = Insets(0, 0, 0, JBUI.scale(8))
+                },
+            )
+        }
+
+        add(
+            text,
+            GridBagConstraints().apply {
+                gridx = 1
+                weightx = 1.0
+                fill = GridBagConstraints.HORIZONTAL
+                anchor = GridBagConstraints.EAST
+            },
+        )
     }
 }
 
@@ -482,9 +487,9 @@ private class WrappedTextPane(
     textFont: Font,
     textColor: Color,
     alignment: Int,
+    copyValue: String? = null,
 ) : JTextPane() {
     init {
-        this.text = text
         font = textFont
         foreground = textColor
         isEditable = false
@@ -494,10 +499,18 @@ private class WrappedTextPane(
         margin = Insets(0, 0, 0, 0)
         highlighter = null
 
-        val attributes = SimpleAttributeSet()
+        styledDocument.insertString(0, text, null)
+        copyValue?.let { value ->
+            val componentAttributes = SimpleAttributeSet()
 
-        StyleConstants.setAlignment(attributes, alignment)
-        styledDocument.setParagraphAttributes(0, styledDocument.length, attributes, false)
+            StyleConstants.setComponent(componentAttributes, createCopyButton(value))
+            styledDocument.insertString(styledDocument.length, " ", componentAttributes)
+        }
+
+        val paragraphAttributes = SimpleAttributeSet()
+
+        StyleConstants.setAlignment(paragraphAttributes, alignment)
+        styledDocument.setParagraphAttributes(0, styledDocument.length, paragraphAttributes, false)
 
         val scaledWidth = JBUI.scale(width)
 
@@ -510,6 +523,23 @@ private class WrappedTextPane(
         alignmentX = JComponent.LEFT_ALIGNMENT
     }
 }
+
+private fun createCopyButton(value: String): JButton =
+    JButton(AllIcons.Actions.Copy).apply {
+        toolTipText = "Copy value"
+        isOpaque = false
+        isContentAreaFilled = false
+        isBorderPainted = false
+        isFocusable = true
+        margin = Insets(0, 0, 0, 0)
+        border = JBUI.Borders.emptyLeft(COPY_ICON_GAP)
+        preferredSize = JBUI.size(COPY_BUTTON_WIDTH, COPY_BUTTON_HEIGHT)
+        minimumSize = preferredSize
+        maximumSize = preferredSize
+        addActionListener {
+            CopyPasteManager.getInstance().setContents(StringSelection(value))
+        }
+    }
 
 private class TokenBadge : JComponent() {
     init {
@@ -667,4 +697,7 @@ private const val REFERENCE_MARKER_WIDTH = 18
 private const val TOKEN_BADGE_SIZE = 24
 private const val SWATCH_SIZE = 26
 private const val SMALL_SWATCH_SIZE = 20
+private const val COPY_ICON_GAP = 6
+private const val COPY_BUTTON_WIDTH = 24
+private const val COPY_BUTTON_HEIGHT = 20
 private const val OPAQUE_ALPHA = 255
