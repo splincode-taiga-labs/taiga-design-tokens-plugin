@@ -675,12 +675,14 @@ private class ColorSwatch(
     }
 }
 
-private fun calculateNaturalTextWidth(value: String): Int =
-    JBUI.unscale(
+private fun calculateNaturalTextWidth(value: String): Int {
+    val label =
         JBLabel(value).apply {
             font = CODE_FONT
-        }.preferredSize.width + JBUI.scale(TEXT_WIDTH_PADDING),
-    )
+        }
+
+    return JBUI.unscale(label.preferredSize.width + JBUI.scale(TEXT_WIDTH_PADDING))
+}
 
 private fun calculateValueWidth(popupWidth: Int): Int =
     (JBUI.unscale(popupWidth) - VALUE_COLUMN_RESERVED_WIDTH)
