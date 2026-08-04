@@ -10,4 +10,5 @@ data class DesignTokenDeclaration(
     val selectorChain: List<String> = emptyList(),
     val packageName: String? = null,
     val packageVersion: String? = null,
+    val packageRoot: Path? = null,
 )
