@@ -17,7 +17,7 @@ internal data class DesignTokensPackageIdentity(
         fun from(designTokensPackage: DesignTokensPackage): DesignTokensPackageIdentity =
             DesignTokensPackageIdentity(
                 realRoot = designTokensPackage.realRoot.toAbsolutePath().normalize(),
-                version = designTokensPackage.version,
+                version = designTokensPackage.cacheVersion,
             )
     }
 }
