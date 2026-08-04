@@ -27,7 +27,11 @@ class DesignTokenIndex private constructor(
                     val key =
                         VariantKey(
                             name = declaration.name,
-                            context = contextClassifier.classify(packageRoot, declaration),
+                            context =
+                                contextClassifier.classify(
+                                    declaration.packageRoot ?: packageRoot,
+                                    declaration,
+                                ),
                             rawValue = declaration.value,
                         )
                     val origin =
