@@ -128,7 +128,7 @@ internal class DesignTokenHoverPopupController(
                             PopupKey(
                                 editor = editor,
                                 tokenName = reference.name,
-                                offset = reference.range.startOffset,
+                                offset = reference.startOffset,
                                 modificationStamp = editor.document.modificationStamp,
                             ),
                         model = DesignTokenHoverPopupModel.create(reference.name, groups),
