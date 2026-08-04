@@ -123,6 +123,7 @@ internal class DesignTokenIndexCache(
             designTokensPackage.copy(
                 root = designTokensPackage.root.toAbsolutePath().normalize(),
                 realRoot = designTokensPackage.realRoot.toAbsolutePath().normalize(),
+                discoveryRoot = designTokensPackage.discoveryRoot.toAbsolutePath().normalize(),
                 sourcePackages = designTokensPackage.sourcePackages.map(::normalizeSourcePackage),
             )
 
@@ -140,6 +141,7 @@ internal class DesignTokenIndexCache(
             buildSet {
                 add(root)
                 add(realRoot)
+                add(discoveryRoot)
                 effectiveSourcePackages.forEach { sourcePackage ->
                     add(sourcePackage.root)
                     add(sourcePackage.realRoot)
