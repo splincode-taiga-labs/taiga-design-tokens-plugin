@@ -8,4 +8,6 @@ data class DesignTokenDeclaration(
     val sourceFile: Path,
     val line: Int,
     val selectorChain: List<String> = emptyList(),
+    val packageName: String? = null,
+    val packageVersion: String? = null,
 )
