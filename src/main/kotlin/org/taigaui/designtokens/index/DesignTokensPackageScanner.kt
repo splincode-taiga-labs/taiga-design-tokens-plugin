@@ -26,6 +26,7 @@ class DesignTokensPackageScanner(
                 declaration.copy(
                     packageName = sourcePackage.name,
                     packageVersion = sourcePackage.version,
+                    packageRoot = sourcePackage.realRoot,
                 )
             }
 
