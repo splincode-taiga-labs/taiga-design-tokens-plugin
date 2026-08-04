@@ -139,11 +139,12 @@ private fun createHeaderContent(
             },
         )
         add(Box.createVerticalStrut(JBUI.scale(3)))
-        add(createSubtitle(model.description, descriptionWidth))
+        add(createSubtitle(model.description, model.sourcePackages, descriptionWidth))
     }
 
 private fun createSubtitle(
     description: String?,
+    sourcePackages: List<String>,
     descriptionWidth: Int,
 ): JComponent =
     JPanel().apply {
@@ -151,9 +152,11 @@ private fun createSubtitle(
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
 
+        val packageLabel = sourcePackages.ifEmpty { listOf(DEFAULT_SOURCE_PACKAGE) }.joinToString(" · ")
+
         if (description == null) {
             add(
-                JBLabel("Design token  ·  @taiga-ui/design-tokens").apply {
+                JBLabel("Design token  ·  $packageLabel").apply {
                     foreground = UIUtil.getContextHelpForeground()
                     alignmentX = JComponent.LEFT_ALIGNMENT
                 },
@@ -170,7 +173,7 @@ private fun createSubtitle(
             )
             add(Box.createVerticalStrut(JBUI.scale(2)))
             add(
-                JBLabel("@taiga-ui/design-tokens").apply {
+                JBLabel(packageLabel).apply {
                     foreground = UIUtil.getContextHelpForeground()
                     alignmentX = JComponent.LEFT_ALIGNMENT
                 },
@@ -212,3 +215,4 @@ private const val DESCRIPTION_RESERVED_WIDTH = 185
 private const val MIN_DESCRIPTION_WIDTH = 240
 private const val REFERENCE_RESERVED_WIDTH = 58
 private const val MIN_REFERENCE_WIDTH = 340
+private const val DEFAULT_SOURCE_PACKAGE = "@taiga-ui/design-tokens"
