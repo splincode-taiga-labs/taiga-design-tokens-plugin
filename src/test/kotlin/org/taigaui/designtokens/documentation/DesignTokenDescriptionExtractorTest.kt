@@ -3,6 +3,10 @@ package org.taigaui.designtokens.documentation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.taigaui.designtokens.index.DesignTokenOrigin
+import org.taigaui.designtokens.index.DesignTokenSourceFormat
+import java.nio.file.Files
+import java.nio.file.attribute.FileTime
 
 class DesignTokenDescriptionExtractorTest {
     @Test
@@ -93,5 +97,29 @@ class DesignTokenDescriptionExtractorTest {
             )
 
         assertNull(description)
+    }
+
+    @Test
+    fun `refreshes a cached source after the file changes`() {
+        val sourceFile = Files.createTempFile("design-token-description", ".css")
+        val origin =
+            DesignTokenOrigin(
+                sourceFile = sourceFile,
+                line = 1,
+                format = DesignTokenSourceFormat.CSS,
+                selectorChain = listOf(":root"),
+            )
+
+        try {
+            Files.writeString(sourceFile, "--tui-token: #fff; /* First description */")
+            assertEquals("First description", DesignTokenDescriptionExtractor.extract(listOf(origin)))
+
+            Files.writeString(sourceFile, "--tui-token: #fff; /* Updated description */")
+            Files.setLastModifiedTime(sourceFile, FileTime.fromMillis(System.currentTimeMillis() + 2_000))
+
+            assertEquals("Updated description", DesignTokenDescriptionExtractor.extract(listOf(origin)))
+        } finally {
+            Files.deleteIfExists(sourceFile)
+        }
     }
 }
