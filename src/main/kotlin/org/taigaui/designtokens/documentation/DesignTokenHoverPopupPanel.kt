@@ -288,8 +288,11 @@ private fun createValueCell(
             textFont = CODE_FONT,
             textColor = UIUtil.getLabelForeground(),
             alignment = StyleConstants.ALIGN_RIGHT,
-            leadingComponent = row.color?.let { color -> ColorSwatch(color, SWATCH_SIZE) },
-            copyValue = row.resolvedValue,
+            inlineContent =
+                WrappedInlineContent(
+                    leadingComponent = row.color?.let { color -> ColorSwatch(color, SWATCH_SIZE) },
+                    copyValue = row.resolvedValue,
+                ),
         )
 
     return JPanel(BorderLayout()).apply {
@@ -460,14 +463,18 @@ private class RoundedRowPanel : JPanel() {
     }
 }
 
+private data class WrappedInlineContent(
+    val leadingComponent: JComponent? = null,
+    val copyValue: String? = null,
+)
+
 private class WrappedTextPane(
     text: String,
     width: Int,
     textFont: Font,
     textColor: Color,
     alignment: Int,
-    leadingComponent: JComponent? = null,
-    copyValue: String? = null,
+    inlineContent: WrappedInlineContent? = null,
 ) : JTextPane() {
     init {
         font = textFont
@@ -479,12 +486,12 @@ private class WrappedTextPane(
         margin = Insets(0, 0, 0, 0)
         highlighter = null
 
-        leadingComponent?.let { component ->
+        inlineContent?.leadingComponent?.let { component ->
             insertInlineComponent(component)
             styledDocument.insertString(styledDocument.length, NON_BREAKING_SPACE, null)
         }
         styledDocument.insertString(styledDocument.length, text, null)
-        copyValue?.let { value ->
+        inlineContent?.copyValue?.let { value ->
             styledDocument.insertString(styledDocument.length, NON_BREAKING_SPACE, null)
             insertInlineComponent(createCopyButton(value))
         }
