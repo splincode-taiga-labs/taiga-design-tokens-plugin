@@ -6,21 +6,26 @@ import java.nio.file.Path
 class DesignTokensPackageResolver(
     private val packageJsonReader: PackageJsonReader = PackageJsonReader(),
 ) {
-    fun resolve(start: Path): DesignTokensPackage? {
-        val scopeRoot = findNearestTaigaUiScope(start) ?: return null
-        val sourcePackages = discoverSourcePackages(scopeRoot)
+    fun resolve(start: Path): DesignTokensPackage? =
+        findNearestTaigaUiScope(start)
+            ?.let { scopeRoot ->
+                val sourcePackages = discoverSourcePackages(scopeRoot)
 
-        if (sourcePackages.isEmpty()) {
-            return null
-        }
+                sourcePackages
+                    .takeIf(List<DesignTokenSourcePackage>::isNotEmpty)
+                    ?.let { packages -> createPackageSet(scopeRoot, packages) }
+            }
 
-        return DesignTokensPackage(
+    private fun createPackageSet(
+        scopeRoot: Path,
+        sourcePackages: List<DesignTokenSourcePackage>,
+    ): DesignTokensPackage =
+        DesignTokensPackage(
             root = scopeRoot.toAbsolutePath().normalize(),
             realRoot = scopeRoot.toRealPathOrSelf(),
             version = sourcePackages.packageSetVersion(),
             sourcePackages = sourcePackages,
         )
-    }
 
     private fun findNearestTaigaUiScope(start: Path): Path? {
         val normalizedStart = start.toAbsolutePath().normalize()
@@ -44,24 +49,21 @@ class DesignTokensPackageResolver(
                     .map(::readSourcePackage)
                     .filter { sourcePackage -> sourcePackage != null }
                     .map { sourcePackage -> requireNotNull(sourcePackage) }
-                    .sorted(
-                        compareBy<DesignTokenSourcePackage>(
-                            { sourcePackage -> sourcePackage.name },
-                            { sourcePackage -> sourcePackage.version },
-                            { sourcePackage -> sourcePackage.realRoot.toString() },
-                        ),
-                    ).toList()
+                    .sorted(SOURCE_PACKAGE_COMPARATOR)
+                    .toList()
             }
         }.getOrElse { emptyList() }
 
-    private fun readSourcePackage(logicalRoot: Path): DesignTokenSourcePackage? {
-        val packageJson = logicalRoot.resolve(PACKAGE_JSON)
-        val metadata = packageJsonReader.readMetadata(packageJson) ?: return null
+    private fun readSourcePackage(logicalRoot: Path): DesignTokenSourcePackage? =
+        packageJsonReader
+            .readMetadata(logicalRoot.resolve(PACKAGE_JSON))
+            ?.takeIf { metadata -> metadata.name.startsWith(TAIGA_UI_PACKAGE_PREFIX) }
+            ?.let { metadata -> createSourcePackage(logicalRoot, metadata) }
 
-        if (!metadata.name.startsWith(TAIGA_UI_PACKAGE_PREFIX)) {
-            return null
-        }
-
+    private fun createSourcePackage(
+        logicalRoot: Path,
+        metadata: PackageJsonMetadata,
+    ): DesignTokenSourcePackage? {
         val realRoot = logicalRoot.toRealPathOrSelf()
         val sourceRoots = metadata.resolveSourceRoots(realRoot)
 
@@ -101,6 +103,12 @@ class DesignTokensPackageResolver(
 
     private companion object {
         val TAIGA_UI_SCOPE = Path.of("node_modules", "@taiga-ui")
+        val SOURCE_PACKAGE_COMPARATOR =
+            compareBy<DesignTokenSourcePackage>(
+                { sourcePackage -> sourcePackage.name },
+                { sourcePackage -> sourcePackage.version },
+                { sourcePackage -> sourcePackage.realRoot.toString() },
+            )
         const val PACKAGE_JSON = "package.json"
         const val STYLES_DIRECTORY = "styles"
         const val TAIGA_UI_PACKAGE_PREFIX = "@taiga-ui/"
