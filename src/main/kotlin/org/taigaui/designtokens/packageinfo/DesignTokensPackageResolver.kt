@@ -13,19 +13,20 @@ class DesignTokensPackageResolver(
 
                 sourcePackages
                     .takeIf(List<DesignTokenSourcePackage>::isNotEmpty)
-                    ?.let { packages -> createPackageSet(scopeRoot, packages) }
+                    ?.let(::createPackageSet)
             }
 
-    private fun createPackageSet(
-        scopeRoot: Path,
-        sourcePackages: List<DesignTokenSourcePackage>,
-    ): DesignTokensPackage =
-        DesignTokensPackage(
-            root = scopeRoot.toAbsolutePath().normalize(),
-            realRoot = scopeRoot.toRealPathOrSelf(),
-            version = sourcePackages.packageSetVersion(),
+    private fun createPackageSet(sourcePackages: List<DesignTokenSourcePackage>): DesignTokensPackage {
+        val primary = sourcePackages.minBy(::sourcePackageRank)
+
+        return DesignTokensPackage(
+            root = primary.root,
+            realRoot = primary.realRoot,
+            version = primary.version,
             sourcePackages = sourcePackages,
+            cacheVersion = sourcePackages.packageSetVersion(),
         )
+    }
 
     private fun findNearestTaigaUiScope(start: Path): Path? {
         val normalizedStart = start.toAbsolutePath().normalize()
@@ -88,6 +89,13 @@ class DesignTokensPackageResolver(
                 listOf(realRoot.resolve(STYLES_DIRECTORY))
 
             else -> emptyList()
+        }
+
+    private fun sourcePackageRank(sourcePackage: DesignTokenSourcePackage): Int =
+        when (sourcePackage.name) {
+            DESIGN_TOKENS_PACKAGE -> 0
+            STYLES_PACKAGE -> 1
+            else -> 2
         }
 
     private fun List<DesignTokenSourcePackage>.packageSetVersion(): String =
