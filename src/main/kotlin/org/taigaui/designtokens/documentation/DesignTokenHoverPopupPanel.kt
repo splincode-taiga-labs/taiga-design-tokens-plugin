@@ -33,6 +33,7 @@ import javax.swing.JSeparator
 import javax.swing.JTextPane
 import javax.swing.SwingConstants
 import javax.swing.SwingUtilities
+import javax.swing.Timer
 import javax.swing.text.SimpleAttributeSet
 import javax.swing.text.StyleConstants
 
@@ -280,45 +281,23 @@ private fun createValueCell(
     valueWidth: Int,
 ): JComponent {
     val scaledValueWidth = JBUI.scale(valueWidth)
-    val swatchWidth = if (row.color == null) 0 else JBUI.scale(SWATCH_SIZE + 8)
-    val textWidth = (scaledValueWidth - swatchWidth).coerceAtLeast(JBUI.scale(MIN_VALUE_TEXT_WIDTH))
     val text =
         WrappedTextPane(
             text = row.resolvedValue,
-            width = JBUI.unscale(textWidth),
+            width = valueWidth.coerceAtLeast(MIN_VALUE_TEXT_WIDTH),
             textFont = CODE_FONT,
             textColor = UIUtil.getLabelForeground(),
             alignment = StyleConstants.ALIGN_RIGHT,
+            leadingComponent = row.color?.let { color -> ColorSwatch(color, SWATCH_SIZE) },
             copyValue = row.resolvedValue,
         )
 
-    return JPanel(GridBagLayout()).apply {
+    return JPanel(BorderLayout()).apply {
         isOpaque = false
-        preferredSize = Dimension(scaledValueWidth, maxOf(text.preferredSize.height, JBUI.scale(SWATCH_SIZE)))
+        preferredSize = Dimension(scaledValueWidth, text.preferredSize.height)
         minimumSize = preferredSize
         maximumSize = Dimension(scaledValueWidth, preferredSize.height)
-
-        row.color?.let { color ->
-            add(
-                ColorSwatch(color, SWATCH_SIZE),
-                GridBagConstraints().apply {
-                    gridx = 0
-                    weightx = 0.0
-                    anchor = GridBagConstraints.NORTHEAST
-                    insets = Insets(0, 0, 0, JBUI.scale(8))
-                },
-            )
-        }
-
-        add(
-            text,
-            GridBagConstraints().apply {
-                gridx = 1
-                weightx = 1.0
-                fill = GridBagConstraints.HORIZONTAL
-                anchor = GridBagConstraints.EAST
-            },
-        )
+        add(text, BorderLayout.CENTER)
     }
 }
 
@@ -487,6 +466,7 @@ private class WrappedTextPane(
     textFont: Font,
     textColor: Color,
     alignment: Int,
+    leadingComponent: JComponent? = null,
     copyValue: String? = null,
 ) : JTextPane() {
     init {
@@ -499,12 +479,14 @@ private class WrappedTextPane(
         margin = Insets(0, 0, 0, 0)
         highlighter = null
 
-        styledDocument.insertString(0, text, null)
+        leadingComponent?.let { component ->
+            insertInlineComponent(component)
+            styledDocument.insertString(styledDocument.length, NON_BREAKING_SPACE, null)
+        }
+        styledDocument.insertString(styledDocument.length, text, null)
         copyValue?.let { value ->
-            val componentAttributes = SimpleAttributeSet()
-
-            StyleConstants.setComponent(componentAttributes, createCopyButton(value))
-            styledDocument.insertString(styledDocument.length, " ", componentAttributes)
+            styledDocument.insertString(styledDocument.length, NON_BREAKING_SPACE, null)
+            insertInlineComponent(createCopyButton(value))
         }
 
         val paragraphAttributes = SimpleAttributeSet()
@@ -522,24 +504,50 @@ private class WrappedTextPane(
         maximumSize = Dimension(scaledWidth, calculatedHeight)
         alignmentX = JComponent.LEFT_ALIGNMENT
     }
+
+    private fun insertInlineComponent(component: JComponent) {
+        val componentAttributes = SimpleAttributeSet()
+
+        component.alignmentY = JComponent.CENTER_ALIGNMENT
+        StyleConstants.setComponent(componentAttributes, component)
+        styledDocument.insertString(styledDocument.length, " ", componentAttributes)
+    }
 }
 
-private fun createCopyButton(value: String): JButton =
-    JButton(AllIcons.Actions.Copy).apply {
-        toolTipText = "Copy value"
-        isOpaque = false
-        isContentAreaFilled = false
-        isBorderPainted = false
-        isFocusable = true
-        margin = Insets(0, 0, 0, 0)
-        border = JBUI.Borders.emptyLeft(COPY_ICON_GAP)
-        preferredSize = JBUI.size(COPY_BUTTON_WIDTH, COPY_BUTTON_HEIGHT)
-        minimumSize = preferredSize
-        maximumSize = preferredSize
-        addActionListener {
-            CopyPasteManager.getInstance().setContents(StringSelection(value))
+private fun createCopyButton(value: String): JButton {
+    val button =
+        JButton(AllIcons.Actions.Copy).apply {
+            toolTipText = "Copy value"
+            isOpaque = false
+            isContentAreaFilled = false
+            isBorderPainted = false
+            isFocusable = true
+            horizontalAlignment = SwingConstants.CENTER
+            verticalAlignment = SwingConstants.CENTER
+            iconTextGap = 0
+            margin = Insets(0, 0, 0, 0)
+            border = JBUI.Borders.empty()
+            preferredSize = JBUI.size(COPY_BUTTON_SIZE, COPY_BUTTON_SIZE)
+            minimumSize = preferredSize
+            maximumSize = preferredSize
         }
+    val resetTimer =
+        Timer(COPY_FEEDBACK_DURATION_MS) {
+            button.icon = AllIcons.Actions.Copy
+            button.toolTipText = "Copy value"
+        }.apply {
+            isRepeats = false
+        }
+
+    button.addActionListener {
+        CopyPasteManager.getInstance().setContents(StringSelection(value))
+        button.icon = AllIcons.Actions.Checked
+        button.toolTipText = "Copied"
+        resetTimer.restart()
     }
+
+    return button
+}
 
 private class TokenBadge : JComponent() {
     init {
@@ -595,6 +603,7 @@ private class ColorSwatch(
         preferredSize = JBUI.size(size, size)
         minimumSize = preferredSize
         maximumSize = preferredSize
+        alignmentY = CENTER_ALIGNMENT
 
         val alpha = formatAlpha(swatchColor.alpha)
 
@@ -697,7 +706,7 @@ private const val REFERENCE_MARKER_WIDTH = 18
 private const val TOKEN_BADGE_SIZE = 24
 private const val SWATCH_SIZE = 26
 private const val SMALL_SWATCH_SIZE = 20
-private const val COPY_ICON_GAP = 6
-private const val COPY_BUTTON_WIDTH = 24
-private const val COPY_BUTTON_HEIGHT = 20
+private const val COPY_BUTTON_SIZE = 20
+private const val COPY_FEEDBACK_DURATION_MS = 2_000
 private const val OPAQUE_ALPHA = 255
+private const val NON_BREAKING_SPACE = "\u00A0"
