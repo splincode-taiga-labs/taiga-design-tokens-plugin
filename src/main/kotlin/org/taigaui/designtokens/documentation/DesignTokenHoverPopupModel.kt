@@ -1,6 +1,5 @@
 package org.taigaui.designtokens.documentation
 
-import org.taigaui.designtokens.index.DesignTokenOrigin
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
@@ -26,7 +25,7 @@ internal data class DesignTokenHoverPopupModel(
             return DesignTokenHoverPopupModel(
                 tokenName = tokenName,
                 description = DesignTokenDescriptionExtractor.extract(origins),
-                sourcePackages = origins.sourcePackageNames(),
+                sourcePackages = origins.hoverSourcePackageNames(),
                 rows = groups.map(DesignTokenResolutionGroup::toHoverValueRow),
                 chains =
                     groups
@@ -60,18 +59,6 @@ internal data class DesignTokenNavigationTarget(
     val sourceFile: Path,
     val line: Int,
 )
-
-private fun List<DesignTokenOrigin>.sourcePackageNames(): List<String> =
-    mapNotNull(DesignTokenOrigin::packageName)
-        .distinct()
-        .sortedWith(compareBy(::sourcePackageRank, String::lowercase))
-
-private fun sourcePackageRank(packageName: String): Int =
-    when (packageName) {
-        "@taiga-ui/design-tokens" -> 0
-        "@taiga-ui/styles" -> 1
-        else -> 2
-    }
 
 private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueRow =
     DesignTokenHoverValueRow(
