@@ -13,17 +13,25 @@ data class PackageJsonMetadata(
 class PackageJsonReader {
     fun readVersion(packageJson: Path): String? = readMetadata(packageJson)?.version
 
-    fun readMetadata(packageJson: Path): PackageJsonMetadata? {
-        val content = runCatching { Files.readString(packageJson) }.getOrNull() ?: return null
-        val name = content.readProperty(NAME_PROPERTY) ?: return null
-        val version = content.readProperty(VERSION_PROPERTY) ?: return null
+    fun readMetadata(packageJson: Path): PackageJsonMetadata? =
+        runCatching { Files.readString(packageJson) }
+            .getOrNull()
+            ?.let(::parseMetadata)
 
-        return PackageJsonMetadata(
-            name = name,
-            version = version,
-            exportsStyles = STYLES_EXPORT.containsMatchIn(content),
-            exportsPackageRoot = PACKAGE_ROOT_EXPORT.containsMatchIn(content),
-        )
+    private fun parseMetadata(content: String): PackageJsonMetadata? {
+        val name = content.readProperty(NAME_PROPERTY)
+        val version = content.readProperty(VERSION_PROPERTY)
+
+        return if (name == null || version == null) {
+            null
+        } else {
+            PackageJsonMetadata(
+                name = name,
+                version = version,
+                exportsStyles = STYLES_EXPORT.containsMatchIn(content),
+                exportsPackageRoot = PACKAGE_ROOT_EXPORT.containsMatchIn(content),
+            )
+        }
     }
 
     private fun String.readProperty(pattern: Regex): String? =
