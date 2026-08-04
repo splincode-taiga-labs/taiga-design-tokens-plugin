@@ -13,10 +13,13 @@ class DesignTokensPackageResolver(
 
                 sourcePackages
                     .takeIf(List<DesignTokenSourcePackage>::isNotEmpty)
-                    ?.let(::createPackageSet)
+                    ?.let { packages -> createPackageSet(scopeRoot, packages) }
             }
 
-    private fun createPackageSet(sourcePackages: List<DesignTokenSourcePackage>): DesignTokensPackage {
+    private fun createPackageSet(
+        scopeRoot: Path,
+        sourcePackages: List<DesignTokenSourcePackage>,
+    ): DesignTokensPackage {
         val primary = sourcePackages.minBy(::sourcePackageRank)
 
         return DesignTokensPackage(
@@ -25,6 +28,7 @@ class DesignTokensPackageResolver(
             version = primary.version,
             sourcePackages = sourcePackages,
             cacheVersion = sourcePackages.packageSetVersion(),
+            discoveryRoot = scopeRoot.toAbsolutePath().normalize(),
         )
     }
 
