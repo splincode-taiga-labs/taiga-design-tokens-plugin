@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.index
 
+import org.taigaui.designtokens.packageinfo.DesignTokenSourcePackage
 import org.taigaui.designtokens.packageinfo.DesignTokensPackage
 
 class DesignTokensPackageScanner(
@@ -11,7 +12,31 @@ class DesignTokensPackageScanner(
     )
 
     fun scan(designTokensPackage: DesignTokensPackage): List<DesignTokenDeclaration> =
-        sourceFileFinder
-            .find(designTokensPackage.realRoot)
+        designTokensPackage.effectiveSourcePackages
+            .flatMap(::scan)
+            .distinct()
+            .sortedWith(DECLARATION_COMPARATOR)
+
+    private fun scan(sourcePackage: DesignTokenSourcePackage): List<DesignTokenDeclaration> =
+        sourcePackage.sourceRoots
+            .flatMap(sourceFileFinder::find)
+            .distinct()
             .flatMap(sourceExtractor::extract)
+            .map { declaration ->
+                declaration.copy(
+                    packageName = sourcePackage.name,
+                    packageVersion = sourcePackage.version,
+                )
+            }
+
+    private companion object {
+        val DECLARATION_COMPARATOR =
+            compareBy<DesignTokenDeclaration>(
+                { declaration -> declaration.name },
+                { declaration -> declaration.packageName.orEmpty() },
+                { declaration -> declaration.sourceFile.toString() },
+                { declaration -> declaration.line },
+                { declaration -> declaration.value },
+            )
+    }
 }
