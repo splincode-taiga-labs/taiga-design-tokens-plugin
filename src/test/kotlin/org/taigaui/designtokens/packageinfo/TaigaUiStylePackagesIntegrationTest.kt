@@ -19,10 +19,11 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
     }
 
     override fun tearDown() {
-        runAll(
-            { projectRoot.toFile().deleteRecursively() },
-            { super.tearDown() },
-        )
+        try {
+            projectRoot.toFile().deleteRecursively()
+        } finally {
+            super.tearDown()
+        }
     }
 
     fun testResolvesCrossPackageVariablesFromTaigaUi4Layout() {
