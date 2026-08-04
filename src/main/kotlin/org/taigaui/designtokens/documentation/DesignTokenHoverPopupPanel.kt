@@ -280,27 +280,61 @@ private fun createValueCell(
     row: DesignTokenHoverValueRow,
     valueWidth: Int,
 ): JComponent {
-    val scaledValueWidth = JBUI.scale(valueWidth)
+    val color = row.color?.let { value -> ColorSwatch(value, SWATCH_SIZE) }
+    val copyButton = createCopyButton(row.resolvedValue)
+    val fixedWidth =
+        COPY_BUTTON_SIZE + VALUE_ITEM_GAP +
+            if (color == null) {
+                0
+            } else {
+                SWATCH_SIZE + VALUE_ITEM_GAP
+            }
+    val maxTextWidth = (valueWidth - fixedWidth).coerceAtLeast(MIN_VALUE_TEXT_WIDTH)
+    val textWidth =
+        calculateNaturalTextWidth(row.resolvedValue)
+            .coerceIn(MIN_SINGLE_LINE_TEXT_WIDTH, maxTextWidth)
     val text =
         WrappedTextPane(
             text = row.resolvedValue,
-            width = valueWidth.coerceAtLeast(MIN_VALUE_TEXT_WIDTH),
+            width = textWidth,
             textFont = CODE_FONT,
             textColor = UIUtil.getLabelForeground(),
             alignment = StyleConstants.ALIGN_RIGHT,
-            inlineContent =
-                WrappedInlineContent(
-                    leadingComponent = row.color?.let { color -> ColorSwatch(color, SWATCH_SIZE) },
-                    copyValue = row.resolvedValue,
-                ),
         )
 
-    return JPanel(BorderLayout()).apply {
+    return JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.X_AXIS)
         isOpaque = false
-        preferredSize = Dimension(scaledValueWidth, text.preferredSize.height)
+
+        color?.let { component ->
+            component.alignmentY = JComponent.CENTER_ALIGNMENT
+            add(component)
+            add(Box.createHorizontalStrut(JBUI.scale(VALUE_ITEM_GAP)))
+        }
+
+        text.alignmentY = JComponent.CENTER_ALIGNMENT
+        copyButton.alignmentY = JComponent.CENTER_ALIGNMENT
+        add(text)
+        add(Box.createHorizontalStrut(JBUI.scale(VALUE_ITEM_GAP)))
+        add(copyButton)
+
+        val contentWidth =
+            text.preferredSize.width + copyButton.preferredSize.width + JBUI.scale(VALUE_ITEM_GAP) +
+                if (color == null) {
+                    0
+                } else {
+                    color.preferredSize.width + JBUI.scale(VALUE_ITEM_GAP)
+                }
+        val contentHeight =
+            maxOf(
+                text.preferredSize.height,
+                copyButton.preferredSize.height,
+                color?.preferredSize?.height ?: 0,
+            )
+
+        preferredSize = Dimension(contentWidth, contentHeight)
         minimumSize = preferredSize
-        maximumSize = Dimension(scaledValueWidth, preferredSize.height)
-        add(text, BorderLayout.CENTER)
+        maximumSize = preferredSize
     }
 }
 
@@ -463,18 +497,12 @@ private class RoundedRowPanel : JPanel() {
     }
 }
 
-private data class WrappedInlineContent(
-    val leadingComponent: JComponent? = null,
-    val copyValue: String? = null,
-)
-
 private class WrappedTextPane(
     text: String,
     width: Int,
     textFont: Font,
     textColor: Color,
     alignment: Int,
-    inlineContent: WrappedInlineContent? = null,
 ) : JTextPane() {
     init {
         font = textFont
@@ -486,15 +514,7 @@ private class WrappedTextPane(
         margin = Insets(0, 0, 0, 0)
         highlighter = null
 
-        inlineContent?.leadingComponent?.let { component ->
-            insertInlineComponent(component)
-            styledDocument.insertString(styledDocument.length, NON_BREAKING_SPACE, null)
-        }
-        styledDocument.insertString(styledDocument.length, text, null)
-        inlineContent?.copyValue?.let { value ->
-            styledDocument.insertString(styledDocument.length, NON_BREAKING_SPACE, null)
-            insertInlineComponent(createCopyButton(value))
-        }
+        styledDocument.insertString(0, text, null)
 
         val paragraphAttributes = SimpleAttributeSet()
 
@@ -510,14 +530,7 @@ private class WrappedTextPane(
         minimumSize = preferredSize
         maximumSize = Dimension(scaledWidth, calculatedHeight)
         alignmentX = JComponent.LEFT_ALIGNMENT
-    }
-
-    private fun insertInlineComponent(component: JComponent) {
-        val componentAttributes = SimpleAttributeSet()
-
-        component.alignmentY = JComponent.CENTER_ALIGNMENT
-        StyleConstants.setComponent(componentAttributes, component)
-        styledDocument.insertString(styledDocument.length, " ", componentAttributes)
+        alignmentY = JComponent.CENTER_ALIGNMENT
     }
 }
 
@@ -537,6 +550,7 @@ private fun createCopyButton(value: String): JButton {
             preferredSize = JBUI.size(COPY_BUTTON_SIZE, COPY_BUTTON_SIZE)
             minimumSize = preferredSize
             maximumSize = preferredSize
+            alignmentY = JComponent.CENTER_ALIGNMENT
         }
     val resetTimer =
         Timer(COPY_FEEDBACK_DURATION_MS) {
@@ -661,6 +675,13 @@ private class ColorSwatch(
     }
 }
 
+private fun calculateNaturalTextWidth(value: String): Int =
+    JBUI.unscale(
+        JBLabel(value).apply {
+            font = CODE_FONT
+        }.preferredSize.width + JBUI.scale(TEXT_WIDTH_PADDING),
+    )
+
 private fun calculateValueWidth(popupWidth: Int): Int =
     (JBUI.unscale(popupWidth) - VALUE_COLUMN_RESERVED_WIDTH)
         .coerceIn(MIN_VALUE_COLUMN_WIDTH, MAX_VALUE_COLUMN_WIDTH)
@@ -703,6 +724,9 @@ private const val VALUE_COLUMN_RESERVED_WIDTH = 270
 private const val MIN_VALUE_COLUMN_WIDTH = 210
 private const val MAX_VALUE_COLUMN_WIDTH = 300
 private const val MIN_VALUE_TEXT_WIDTH = 150
+private const val MIN_SINGLE_LINE_TEXT_WIDTH = 24
+private const val VALUE_ITEM_GAP = 8
+private const val TEXT_WIDTH_PADDING = 2
 private const val DESCRIPTION_RESERVED_WIDTH = 185
 private const val MIN_DESCRIPTION_WIDTH = 240
 private const val REFERENCE_RESERVED_WIDTH = 58
@@ -716,4 +740,3 @@ private const val SMALL_SWATCH_SIZE = 20
 private const val COPY_BUTTON_SIZE = 20
 private const val COPY_FEEDBACK_DURATION_MS = 2_000
 private const val OPAQUE_ALPHA = 255
-private const val NON_BREAKING_SPACE = "\u00A0"
