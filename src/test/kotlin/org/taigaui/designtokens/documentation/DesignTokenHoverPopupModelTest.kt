@@ -24,11 +24,14 @@ class DesignTokenHoverPopupModelTest {
     @Test
     fun `keeps a direct final value once`() {
         val model = DesignTokenHoverPopupModel.create(TOKEN, listOf(group(resolved("#fff", "#fff"))))
-        val row = model.rows.single()
+        val section = model.sections.single()
+        val row = section.rows.single()
 
+        assertEquals(DESIGN_TOKENS_PACKAGE, section.packageName)
         assertEquals("#fff", row.resolvedValue)
         assertNotNull(row.color)
-        assertTrue(model.chains.isEmpty())
+        assertNotNull(row.navigationTarget)
+        assertTrue(section.chains.isEmpty())
         assertNull(model.description)
     }
 
@@ -62,15 +65,56 @@ class DesignTokenHoverPopupModelTest {
                     ),
             )
         val model = DesignTokenHoverPopupModel.create(TOKEN, listOf(group(rootResult)))
-        val row = model.rows.single()
-        val chain = model.chains.single()
+        val section = model.sections.single()
+        val row = section.rows.single()
+        val chain = section.chains.single()
 
         assertEquals("🖥️ Desktop · Light ☀️", row.platform)
         assertEquals(cssColor, row.resolvedValue)
+        assertNotNull(row.color)
         assertEquals(
             listOf(TOKEN, "--tui-const-black-alpha-54", cssColor),
             chain.lines.map(DesignTokenHoverReferenceLine::text),
         )
+    }
+
+    @Test
+    fun `creates a swatch for rgba terminal values`() {
+        val rgba = "rgba(255, 255, 255, 0.72)"
+        val row =
+            DesignTokenHoverPopupModel
+                .create(TOKEN, listOf(group(resolved(rgba, rgba, rgba, rgba))))
+                .sections
+                .single()
+                .rows
+                .single()
+        val color = requireNotNull(row.color)
+
+        assertEquals(255, color.red)
+        assertEquals(255, color.green)
+        assertEquals(255, color.blue)
+        assertEquals(184, color.alpha)
+    }
+
+    @Test
+    fun `groups values and chains by source package`() {
+        val designTokensGroup =
+            group(
+                result = resolved("#fff", "#fff"),
+                packageName = DESIGN_TOKENS_PACKAGE,
+            )
+        val coreResult =
+            resolved("rgba(0, 0, 0, 0.65)", "rgba(0, 0, 0, 0.65)")
+        val coreGroup =
+            group(
+                result = coreResult,
+                packageName = CORE_PACKAGE,
+            )
+        val model = DesignTokenHoverPopupModel.create(TOKEN, listOf(coreGroup, designTokensGroup))
+
+        assertEquals(listOf(DESIGN_TOKENS_PACKAGE, CORE_PACKAGE), model.sections.map { it.packageName })
+        assertEquals("#fff", model.sections[0].rows.single().resolvedValue)
+        assertEquals("rgba(0, 0, 0, 0.65)", model.sections[1].rows.single().resolvedValue)
     }
 
     @Test
@@ -81,7 +125,10 @@ class DesignTokenHoverPopupModelTest {
                 listOf(group(resolved("#fff", "#fff"), ALL_CONTEXTS)),
             )
 
-        assertEquals("All platforms · Light ☀️ and dark 🌚", model.rows.single().platform)
+        assertEquals(
+            "All platforms · Light ☀️ and dark 🌚",
+            model.sections.single().rows.single().platform,
+        )
     }
 
     @Test
@@ -92,7 +139,10 @@ class DesignTokenHoverPopupModelTest {
                 listOf(group(resolved("#fff", "#fff"), listOf(LIGHT_DESKTOP, DARK_MOBILE))),
             )
 
-        assertEquals("🖥️ Desktop · Light ☀️, 📱 Mobile · Dark 🌚", model.rows.single().platform)
+        assertEquals(
+            "🖥️ Desktop · Light ☀️, 📱 Mobile · Dark 🌚",
+            model.sections.single().rows.single().platform,
+        )
     }
 
     @Test
@@ -106,7 +156,13 @@ class DesignTokenHoverPopupModelTest {
                         requestedContext = LIGHT_DESKTOP,
                     ),
             )
-        val row = DesignTokenHoverPopupModel.create(TOKEN, listOf(group(result))).rows.single()
+        val row =
+            DesignTokenHoverPopupModel
+                .create(TOKEN, listOf(group(result)))
+                .sections
+                .single()
+                .rows
+                .single()
 
         assertEquals("Missing reference: --tui-missing", row.resolvedValue)
     }
@@ -114,11 +170,18 @@ class DesignTokenHoverPopupModelTest {
     private fun group(
         result: DesignTokenValueResolution,
         contexts: List<DesignTokenContext> = listOf(LIGHT_DESKTOP),
+        packageName: String = DESIGN_TOKENS_PACKAGE,
     ): DesignTokenResolutionGroup =
         DesignTokenResolutionGroup(
             contexts.map { context ->
                 DesignTokenVariantResolution(
-                    variant = variant(TOKEN, result.rawValue, context = context),
+                    variant =
+                        variant(
+                            name = TOKEN,
+                            rawValue = result.rawValue,
+                            context = context,
+                            packageName = packageName,
+                        ),
                     result = result,
                 )
             },
@@ -157,6 +220,7 @@ class DesignTokenHoverPopupModelTest {
         rawValue: String,
         line: Int = 1,
         context: DesignTokenContext = LIGHT_DESKTOP,
+        packageName: String = DESIGN_TOKENS_PACKAGE,
     ): DesignTokenVariant =
         DesignTokenVariant(
             name = name,
@@ -169,12 +233,16 @@ class DesignTokenHoverPopupModelTest {
                         line = line,
                         format = DesignTokenSourceFormat.CSS,
                         selectorChain = listOf(":root", "[tuiTheme='light']"),
+                        packageName = packageName,
+                        packageVersion = "1.0.0",
                     ),
                 ),
         )
 
     private companion object {
         const val TOKEN = "--tui-text-secondary"
+        const val DESIGN_TOKENS_PACKAGE = "@taiga-ui/design-tokens"
+        const val CORE_PACKAGE = "@taiga-ui/core"
         val LIGHT_DESKTOP = DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.LIGHT)
         val DARK_DESKTOP = DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.DARK)
         val LIGHT_MOBILE = DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.LIGHT)
