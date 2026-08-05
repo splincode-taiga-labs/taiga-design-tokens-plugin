@@ -3,6 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "dependencies": {
+        "@angular/cdk": "19.2.19",
         "@angular/common": "19.2.21",
         "@angular/core": "19.2.21",
         "@angular/forms": "19.2.21",
