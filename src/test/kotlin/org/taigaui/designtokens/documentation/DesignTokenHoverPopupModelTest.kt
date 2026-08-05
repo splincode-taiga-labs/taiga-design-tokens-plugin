@@ -111,10 +111,21 @@ class DesignTokenHoverPopupModelTest {
                 packageName = CORE_PACKAGE,
             )
         val model = DesignTokenHoverPopupModel.create(TOKEN, listOf(coreGroup, designTokensGroup))
+        val packageNames = model.sections.map { section -> section.packageName }
+        val designTokensValue =
+            model.sections[0]
+                .rows
+                .single()
+                .resolvedValue
+        val coreValue =
+            model.sections[1]
+                .rows
+                .single()
+                .resolvedValue
 
-        assertEquals(listOf(DESIGN_TOKENS_PACKAGE, CORE_PACKAGE), model.sections.map { it.packageName })
-        assertEquals("#fff", model.sections[0].rows.single().resolvedValue)
-        assertEquals("rgba(0, 0, 0, 0.65)", model.sections[1].rows.single().resolvedValue)
+        assertEquals(listOf(DESIGN_TOKENS_PACKAGE, CORE_PACKAGE), packageNames)
+        assertEquals("#fff", designTokensValue)
+        assertEquals("rgba(0, 0, 0, 0.65)", coreValue)
     }
 
     @Test
@@ -124,11 +135,14 @@ class DesignTokenHoverPopupModelTest {
                 TOKEN,
                 listOf(group(resolved("#fff", "#fff"), ALL_CONTEXTS)),
             )
+        val platform =
+            model.sections
+                .single()
+                .rows
+                .single()
+                .platform
 
-        assertEquals(
-            "All platforms · Light ☀️ and dark 🌚",
-            model.sections.single().rows.single().platform,
-        )
+        assertEquals("All platforms · Light ☀️ and dark 🌚", platform)
     }
 
     @Test
@@ -138,11 +152,14 @@ class DesignTokenHoverPopupModelTest {
                 TOKEN,
                 listOf(group(resolved("#fff", "#fff"), listOf(LIGHT_DESKTOP, DARK_MOBILE))),
             )
+        val platform =
+            model.sections
+                .single()
+                .rows
+                .single()
+                .platform
 
-        assertEquals(
-            "🖥️ Desktop · Light ☀️, 📱 Mobile · Dark 🌚",
-            model.sections.single().rows.single().platform,
-        )
+        assertEquals("🖥️ Desktop · Light ☀️, 📱 Mobile · Dark 🌚", platform)
     }
 
     @Test
