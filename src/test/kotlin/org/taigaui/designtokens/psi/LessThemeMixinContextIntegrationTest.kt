@@ -6,7 +6,6 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenTheme
 import java.nio.file.Files
-import java.nio.file.Path
 
 class LessThemeMixinContextIntegrationTest : BasePlatformTestCase() {
     fun testClassifiesVariablesInsideLightAndDarkMixins() {
