@@ -23,8 +23,11 @@ jobs:
                   node-version: 22
                   cache: npm
 
-            - name: Install npm fixtures
-              run: npm run install:fixtures
+            - name: Install root npm fixture
+              run: npm ci
+
+            - name: Install Taiga UI version workspaces
+              run: npm run install:fixtures --prefix test-fixtures
 
             - name: Set up Java
               uses: actions/setup-java@v4
