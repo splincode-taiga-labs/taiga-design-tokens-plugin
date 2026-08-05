@@ -21,7 +21,7 @@ import javax.swing.text.StyleConstants
 internal class DesignTokenHoverPopupPanel(
     private val model: DesignTokenHoverPopupModel,
     private val popupWidth: Int,
-    onNavigate: () -> Unit,
+    onNavigate: (DesignTokenNavigationTarget) -> Unit,
     onReportBug: () -> Unit,
     private val onPreferredSizeChanged: (Dimension) -> Unit,
 ) : JPanel(BorderLayout()) {
@@ -40,17 +40,23 @@ internal class DesignTokenHoverPopupPanel(
         val descriptionWidth = calculateDescriptionWidth(popupWidth)
         val referenceWidth = calculateReferenceWidth(popupWidth)
 
-        contentPanel.add(createHeader(model, descriptionWidth, onNavigate))
+        contentPanel.add(createHeader(model, descriptionWidth))
         contentPanel.add(Box.createVerticalStrut(JBUI.scale(14)))
-        contentPanel.add(createDesignTokenValueTable(model.rows, valueWidth))
+        contentPanel.add(
+            createDesignTokenValueSections(
+                sections = model.sections,
+                valueWidth = valueWidth,
+                onNavigate = onNavigate,
+            ),
+        )
 
-        if (model.chains.isNotEmpty()) {
+        if (model.referenceChainCount > 0) {
             contentPanel.add(Box.createVerticalStrut(JBUI.scale(12)))
             contentPanel.add(JSeparator())
             contentPanel.add(Box.createVerticalStrut(JBUI.scale(8)))
             contentPanel.add(
                 createDesignTokenReferenceAccordion(
-                    chains = model.chains,
+                    sections = model.sections,
                     referenceWidth = referenceWidth,
                     onExpandedChanged = ::setReferenceExpanded,
                 ),
@@ -105,25 +111,12 @@ private fun createScrollPane(content: JComponent): JComponent =
 private fun createHeader(
     model: DesignTokenHoverPopupModel,
     descriptionWidth: Int,
-    onNavigate: () -> Unit,
 ): JComponent =
     JPanel(BorderLayout(JBUI.scale(10), 0)).apply {
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-
         add(TokenBadge(), BorderLayout.WEST)
         add(createHeaderContent(model, descriptionWidth), BorderLayout.CENTER)
-        add(
-            JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
-                isOpaque = false
-                add(
-                    ActionLink("Go to definition") { onNavigate() }.apply {
-                        isEnabled = model.navigationTarget != null
-                    },
-                )
-            },
-            BorderLayout.EAST,
-        )
     }
 
 private fun createHeaderContent(
@@ -139,12 +132,11 @@ private fun createHeaderContent(
             },
         )
         add(Box.createVerticalStrut(JBUI.scale(3)))
-        add(createSubtitle(model.description, model.sourcePackages, descriptionWidth))
+        add(createSubtitle(model.description, descriptionWidth))
     }
 
 private fun createSubtitle(
     description: String?,
-    sourcePackages: List<String>,
     descriptionWidth: Int,
 ): JComponent =
     JPanel().apply {
@@ -152,11 +144,9 @@ private fun createSubtitle(
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
 
-        val packageLabel = sourcePackages.ifEmpty { listOf(DEFAULT_SOURCE_PACKAGE) }.joinToString(" · ")
-
         if (description == null) {
             add(
-                JBLabel("Design token  ·  $packageLabel").apply {
+                JBLabel("Taiga UI design token").apply {
                     foreground = UIUtil.getContextHelpForeground()
                     alignmentX = JComponent.LEFT_ALIGNMENT
                 },
@@ -173,7 +163,7 @@ private fun createSubtitle(
             )
             add(Box.createVerticalStrut(JBUI.scale(2)))
             add(
-                JBLabel(packageLabel).apply {
+                JBLabel("Taiga UI design token").apply {
                     foreground = UIUtil.getContextHelpForeground()
                     alignmentX = JComponent.LEFT_ALIGNMENT
                 },
@@ -215,4 +205,3 @@ private const val DESCRIPTION_RESERVED_WIDTH = 185
 private const val MIN_DESCRIPTION_WIDTH = 240
 private const val REFERENCE_RESERVED_WIDTH = 58
 private const val MIN_REFERENCE_WIDTH = 340
-private const val DEFAULT_SOURCE_PACKAGE = "@taiga-ui/design-tokens"
