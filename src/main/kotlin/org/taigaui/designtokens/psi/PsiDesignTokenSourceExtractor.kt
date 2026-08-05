@@ -97,7 +97,7 @@ class PsiDesignTokenSourceExtractor(
 
     private fun CssDeclaration.contextChain(): List<String> =
         generateSequence(parent, PsiElement::getParent)
-            .mapNotNull(PsiElement::contextMarker)
+            .mapNotNull { element -> element.contextMarker() }
             .distinct()
             .toList()
             .asReversed()
