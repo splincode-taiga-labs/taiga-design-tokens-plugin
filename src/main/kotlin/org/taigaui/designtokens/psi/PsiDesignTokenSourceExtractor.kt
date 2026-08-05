@@ -81,7 +81,7 @@ class PsiDesignTokenSourceExtractor(
                 value = rawValue,
                 sourceFile = sourceFile,
                 line = line,
-                selectorChain = selectorChain(),
+                selectorChain = contextChain(),
             )
         } else {
             null
@@ -95,16 +95,34 @@ class PsiDesignTokenSourceExtractor(
             .joinToString(separator = "", transform = PsiElement::getText)
             .trim()
 
-    private fun CssDeclaration.selectorChain(): List<String> =
+    private fun CssDeclaration.contextChain(): List<String> =
         generateSequence(parent, PsiElement::getParent)
-            .filterIsInstance<CssRuleset>()
-            .mapNotNull { ruleset ->
-                ruleset.selectorList
+            .mapNotNull(PsiElement::contextMarker)
+            .distinct()
+            .toList()
+            .asReversed()
+
+    private fun PsiElement.contextMarker(): String? =
+        when (this) {
+            is CssRuleset ->
+                selectorList
                     ?.text
                     ?.trim()
                     ?.takeIf(String::isNotEmpty)
-            }.toList()
-            .asReversed()
+
+            else -> lessThemeMixinMarker()
+        }
+
+    private fun PsiElement.lessThemeMixinMarker(): String? {
+        val header = text.substringBefore(BLOCK_START, missingDelimiterValue = "").trim()
+
+        return LESS_THEME_MIXIN
+            .matchEntire(header)
+            ?.groupValues
+            ?.get(1)
+            ?.lowercase()
+            ?.let { theme -> ".$theme()" }
+    }
 
     private fun lineNumber(
         content: String,
@@ -114,5 +132,7 @@ class PsiDesignTokenSourceExtractor(
     private companion object {
         const val TOKEN_PREFIX = "--tui-"
         const val COLON = ":"
+        const val BLOCK_START = "{"
+        val LESS_THEME_MIXIN = Regex("""\.(light|dark)\s*\(\s*\)""", RegexOption.IGNORE_CASE)
     }
 }
