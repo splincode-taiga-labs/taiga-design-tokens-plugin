@@ -3,13 +3,6 @@
     "version": "0.1.0",
     "private": true,
     "description": "NPM fixtures used by integration tests for the Taiga UI Design Tokens plugin.",
-    "workspaces": [
-        "test-fixtures/taiga-ui-v4",
-        "test-fixtures/taiga-ui-v5"
-    ],
-    "scripts": {
-        "install:fixtures": "npm install --ignore-scripts --no-audit --no-fund --install-strategy=nested"
-    },
     "devDependencies": {
         "@taiga-ui/design-tokens": "0.310.0"
     }
