@@ -16,7 +16,6 @@ import java.awt.RenderingHints
 import java.awt.datatransfer.StringSelection
 import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
-import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -275,7 +274,6 @@ internal val DESIGN_TOKEN_POPUP_LINK_COLOR = JBColor(Color(45, 108, 223), Color(
 internal val DESIGN_TOKEN_POPUP_CODE_FONT = Font(Font.MONOSPACED, Font.PLAIN, JBUI.scale(13))
 internal const val DESIGN_TOKEN_POPUP_SWATCH_SIZE = 26
 internal const val DESIGN_TOKEN_POPUP_SMALL_SWATCH_SIZE = 20
-internal const val DESIGN_TOKEN_POPUP_COPY_BUTTON_SIZE = 20
 
 private val ROW_BACKGROUND = JBColor(Color(255, 255, 255), Color(43, 46, 52))
 private val ROW_BORDER = JBColor(Color(220, 223, 229), Color(65, 69, 77))
