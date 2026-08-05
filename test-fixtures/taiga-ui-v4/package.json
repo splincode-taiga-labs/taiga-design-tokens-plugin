@@ -1,0 +1,9 @@
+{
+    "name": "taiga-ui-v4-fixture",
+    "version": "0.0.0",
+    "private": true,
+    "dependencies": {
+        "@taiga-ui/core": "4.93.0",
+        "@taiga-ui/design-tokens": "0.248.0"
+    }
+}
