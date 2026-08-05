@@ -60,9 +60,7 @@ private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueR
         navigationTarget = navigationTarget(),
     )
 
-private fun DesignTokenResolutionGroup.toHoverReferenceChain(
-    tokenName: String,
-): DesignTokenHoverReferenceChain =
+private fun DesignTokenResolutionGroup.toHoverReferenceChain(tokenName: String): DesignTokenHoverReferenceChain =
     DesignTokenHoverReferenceChain(
         platform =
             resolutions
