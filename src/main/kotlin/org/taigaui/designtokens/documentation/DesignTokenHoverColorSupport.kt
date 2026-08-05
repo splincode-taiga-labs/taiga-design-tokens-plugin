@@ -52,7 +52,8 @@ private fun String.toRgbColorOrNull(): Color? =
 
 private fun RgbFunction.toColorOrNull(): Color? {
     val components =
-        channels.map(String::toRgbChannelOrNull)
+        channels
+            .map(String::toRgbChannelOrNull)
             .takeIf { values -> values.size == RGB_CHANNEL_COUNT }
             ?.takeIf { values -> values.all { value -> value != null } }
             ?.map { value -> requireNotNull(value) }
