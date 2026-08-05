@@ -44,6 +44,7 @@ class PsiDesignTokenSourceExtractor(
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val declarations = mutableListOf<DesignTokenDeclaration>()
         val document = PsiDocumentManager.getInstance(project).getDocument(psiFile)
+        val content = psiFile.text
 
         psiFile.accept(
             object : PsiRecursiveElementWalkingVisitor() {
@@ -52,11 +53,12 @@ class PsiDesignTokenSourceExtractor(
                         element
                             .toDesignTokenDeclaration(
                                 sourceFile = normalizedSourceFile,
+                                content = content,
                                 line =
                                     document
                                         ?.getLineNumber(element.textOffset)
                                         ?.plus(1)
-                                        ?: lineNumber(psiFile.text, element.textOffset),
+                                        ?: lineNumber(content, element.textOffset),
                             )?.let(declarations::add)
                     }
 
@@ -70,6 +72,7 @@ class PsiDesignTokenSourceExtractor(
 
     private fun CssDeclaration.toDesignTokenDeclaration(
         sourceFile: Path,
+        content: String,
         line: Int,
     ): DesignTokenDeclaration? {
         val tokenName = propertyName
@@ -81,7 +84,7 @@ class PsiDesignTokenSourceExtractor(
                 value = rawValue,
                 sourceFile = sourceFile,
                 line = line,
-                selectorChain = contextChain(),
+                selectorChain = contextChain(content),
             )
         } else {
             null
@@ -95,34 +98,22 @@ class PsiDesignTokenSourceExtractor(
             .joinToString(separator = "", transform = PsiElement::getText)
             .trim()
 
-    private fun CssDeclaration.contextChain(): List<String> =
-        generateSequence(parent, PsiElement::getParent)
-            .mapNotNull { element -> element.contextMarker() }
-            .distinct()
-            .toList()
-            .asReversed()
+    private fun CssDeclaration.contextChain(content: String): List<String> =
+        buildList {
+            addAll(cssSelectorChain())
+            LessThemeMixinContextFinder.find(content, textOffset)?.let(::add)
+        }.distinct()
 
-    private fun PsiElement.contextMarker(): String? =
-        when (this) {
-            is CssRuleset ->
-                selectorList
+    private fun CssDeclaration.cssSelectorChain(): List<String> =
+        generateSequence(parent, PsiElement::getParent)
+            .mapNotNull { element ->
+                (element as? CssRuleset)
+                    ?.selectorList
                     ?.text
                     ?.trim()
                     ?.takeIf(String::isNotEmpty)
-
-            else -> lessThemeMixinMarker()
-        }
-
-    private fun PsiElement.lessThemeMixinMarker(): String? {
-        val header = text.substringBefore(BLOCK_START, missingDelimiterValue = "").trim()
-
-        return LESS_THEME_MIXIN
-            .matchEntire(header)
-            ?.groupValues
-            ?.get(1)
-            ?.lowercase()
-            ?.let { theme -> ".$theme()" }
-    }
+            }.toList()
+            .asReversed()
 
     private fun lineNumber(
         content: String,
@@ -132,7 +123,5 @@ class PsiDesignTokenSourceExtractor(
     private companion object {
         const val TOKEN_PREFIX = "--tui-"
         const val COLON = ":"
-        const val BLOCK_START = "{"
-        val LESS_THEME_MIXIN = Regex("""\.(light|dark)\s*\(\s*\)""", RegexOption.IGNORE_CASE)
     }
 }
