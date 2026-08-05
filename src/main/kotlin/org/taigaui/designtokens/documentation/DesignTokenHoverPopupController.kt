@@ -155,7 +155,7 @@ internal class DesignTokenHoverPopupController(
             DesignTokenHoverPopupPanel(
                 model = data.model,
                 popupWidth = popupWidth,
-                onNavigate = { navigateToDefinition(data.model.navigationTarget) },
+                onNavigate = ::navigateToDefinition,
                 onReportBug = ::reportBug,
                 onPreferredSizeChanged = { size ->
                     popupReference
@@ -226,14 +226,13 @@ internal class DesignTokenHoverPopupController(
             .coerceAtLeast(minimumWidth.coerceAtMost(availableWidth))
     }
 
-    private fun navigateToDefinition(target: DesignTokenNavigationTarget?) {
-        val validTarget = target ?: return
-        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(validTarget.sourceFile) ?: return
+    private fun navigateToDefinition(target: DesignTokenNavigationTarget) {
+        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target.sourceFile) ?: return
 
         OpenFileDescriptor(
             project,
             file,
-            (validTarget.line - 1).coerceAtLeast(0),
+            (target.line - 1).coerceAtLeast(0),
             0,
         ).navigate(true)
         hidePopup()
