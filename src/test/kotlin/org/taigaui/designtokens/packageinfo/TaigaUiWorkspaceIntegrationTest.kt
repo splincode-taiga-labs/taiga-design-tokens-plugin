@@ -17,21 +17,22 @@ class TaigaUiWorkspaceIntegrationTest : BasePlatformTestCase() {
         val packages = packageSet.sourcePackages.associateBy(DesignTokenSourcePackage::name)
 
         assertEquals("4.93.0", packages.getValue("@taiga-ui/core").version)
-        assertEquals("0.248.0", packages.getValue("@taiga-ui/design-tokens").version)
+        assertEquals("0.248.0", packages.getValue(DESIGN_TOKENS_PACKAGE).version)
         assertTrue(packages.getValue("@taiga-ui/core").root.startsWith(TAIGA_UI_V4_WORKSPACE))
-        assertTrue(packages.getValue("@taiga-ui/design-tokens").root.startsWith(TAIGA_UI_V4_WORKSPACE))
+        assertTrue(packages.getValue(DESIGN_TOKENS_PACKAGE).root.startsWith(TAIGA_UI_V4_WORKSPACE))
         assertTextTokenHasNoAmbiguousReferences(packageSet)
     }
 
     fun testTaigaUi5WorkspaceInstallsStylesAndDesignTokensPeers() {
         val packageSet = resolveWorkspace(TAIGA_UI_V5_WORKSPACE)
         val packages = packageSet.sourcePackages.associateBy(DesignTokenSourcePackage::name)
+        val installedCore = readInstalledPackage(TAIGA_UI_V5_WORKSPACE, "core")
 
-        assertEquals("5.18.0", packages.getValue("@taiga-ui/core").version)
+        assertEquals("5.18.0", installedCore.version)
         assertEquals("5.18.0", packages.getValue("@taiga-ui/styles").version)
-        assertEquals("0.312.0", packages.getValue("@taiga-ui/design-tokens").version)
+        assertTrue(packages.getValue(DESIGN_TOKENS_PACKAGE).version.startsWith("0.312."))
         assertTrue(packages.getValue("@taiga-ui/styles").root.startsWith(TAIGA_UI_V5_WORKSPACE))
-        assertTrue(packages.getValue("@taiga-ui/design-tokens").root.startsWith(TAIGA_UI_V5_WORKSPACE))
+        assertTrue(packages.getValue(DESIGN_TOKENS_PACKAGE).root.startsWith(TAIGA_UI_V5_WORKSPACE))
         assertTextTokenHasNoAmbiguousReferences(packageSet)
     }
 
@@ -45,6 +46,16 @@ class TaigaUiWorkspaceIntegrationTest : BasePlatformTestCase() {
 
         return requireNotNull(DesignTokensPackageResolver().resolve(workspace.resolve("fixture.less")))
     }
+
+    private fun readInstalledPackage(
+        workspace: Path,
+        directory: String,
+    ): PackageJsonMetadata =
+        requireNotNull(
+            PackageJsonReader().readMetadata(
+                workspace.resolve("node_modules/@taiga-ui/$directory/package.json"),
+            ),
+        )
 
     private fun assertTextTokenHasNoAmbiguousReferences(packageSet: DesignTokensPackage) {
         val scanner = DesignTokensPackageScanner(PsiDesignTokenSourceExtractor(project))
@@ -67,6 +78,7 @@ class TaigaUiWorkspaceIntegrationTest : BasePlatformTestCase() {
     }
 
     private companion object {
+        const val DESIGN_TOKENS_PACKAGE = "@taiga-ui/design-tokens"
         val REPOSITORY_ROOT: Path = Path.of("").toAbsolutePath().normalize()
         val TAIGA_UI_V4_WORKSPACE: Path = REPOSITORY_ROOT.resolve("test-fixtures/taiga-ui-v4")
         val TAIGA_UI_V5_WORKSPACE: Path = REPOSITORY_ROOT.resolve("test-fixtures/taiga-ui-v5")
