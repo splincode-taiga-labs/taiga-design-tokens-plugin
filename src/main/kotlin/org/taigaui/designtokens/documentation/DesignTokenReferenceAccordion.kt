@@ -13,7 +13,7 @@ import javax.swing.JSeparator
 import javax.swing.text.StyleConstants
 
 internal fun createDesignTokenReferenceAccordion(
-    chains: List<DesignTokenHoverReferenceChain>,
+    sections: List<DesignTokenHoverPackageSection>,
     referenceWidth: Int,
     onExpandedChanged: (Boolean) -> Unit,
 ): JComponent =
@@ -22,6 +22,8 @@ internal fun createDesignTokenReferenceAccordion(
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
 
+        val sectionsWithChains = sections.filter { section -> section.chains.isNotEmpty() }
+        val chainCount = sectionsWithChains.sumOf { section -> section.chains.size }
         val body =
             JPanel().apply {
                 layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -29,25 +31,25 @@ internal fun createDesignTokenReferenceAccordion(
                 alignmentX = JComponent.LEFT_ALIGNMENT
                 isVisible = false
 
-                chains.forEachIndexed { index, chain ->
-                    add(createReferenceChain(chain, referenceWidth))
+                sectionsWithChains.forEachIndexed { index, section ->
+                    add(createPackageReferenceSection(section, referenceWidth))
 
-                    if (index != chains.lastIndex) {
-                        add(Box.createVerticalStrut(JBUI.scale(8)))
+                    if (index != sectionsWithChains.lastIndex) {
+                        add(Box.createVerticalStrut(JBUI.scale(10)))
                         add(JSeparator())
-                        add(Box.createVerticalStrut(JBUI.scale(8)))
+                        add(Box.createVerticalStrut(JBUI.scale(10)))
                     }
                 }
             }
         lateinit var toggle: ActionLink
         toggle =
-            ActionLink(collapsedReferenceTitle(chains.size)) {
+            ActionLink(collapsedReferenceTitle(chainCount)) {
                 body.isVisible = !body.isVisible
                 toggle.text =
                     if (body.isVisible) {
-                        expandedReferenceTitle(chains.size)
+                        expandedReferenceTitle(chainCount)
                     } else {
-                        collapsedReferenceTitle(chains.size)
+                        collapsedReferenceTitle(chainCount)
                     }
                 revalidate()
                 repaint()
@@ -60,6 +62,33 @@ internal fun createDesignTokenReferenceAccordion(
         add(toggle)
         add(Box.createVerticalStrut(JBUI.scale(8)))
         add(body)
+    }
+
+private fun createPackageReferenceSection(
+    section: DesignTokenHoverPackageSection,
+    referenceWidth: Int,
+): JComponent =
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+        add(
+            JBLabel(section.packageName).apply {
+                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(14f).toFloat())
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            },
+        )
+        add(Box.createVerticalStrut(JBUI.scale(8)))
+
+        section.chains.forEachIndexed { index, chain ->
+            add(createReferenceChain(chain, referenceWidth))
+
+            if (index != section.chains.lastIndex) {
+                add(Box.createVerticalStrut(JBUI.scale(8)))
+                add(JSeparator())
+                add(Box.createVerticalStrut(JBUI.scale(8)))
+            }
+        }
     }
 
 private fun createReferenceChain(
