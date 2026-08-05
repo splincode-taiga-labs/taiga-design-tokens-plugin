@@ -16,6 +16,7 @@ import java.awt.RenderingHints
 import java.awt.datatransfer.StringSelection
 import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
+import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -74,20 +75,7 @@ internal class CopyValueButton(
         }
 
     init {
-        toolTipText = "Copy value"
-        isOpaque = false
-        isContentAreaFilled = false
-        isBorderPainted = false
-        isFocusable = true
-        horizontalAlignment = SwingConstants.CENTER
-        verticalAlignment = SwingConstants.CENTER
-        iconTextGap = 0
-        margin = Insets(0, 0, 0, 0)
-        border = JBUI.Borders.empty()
-        preferredSize = JBUI.size(COPY_BUTTON_SIZE, COPY_BUTTON_SIZE)
-        minimumSize = preferredSize
-        maximumSize = preferredSize
-        alignmentY = JComponent.CENTER_ALIGNMENT
+        configurePopupIconButton("Copy value")
 
         addActionListener {
             CopyPasteManager.getInstance().setContents(StringSelection(value))
@@ -96,6 +84,32 @@ internal class CopyValueButton(
             resetTimer.restart()
         }
     }
+}
+
+internal class NavigateToDefinitionButton(
+    onNavigate: () -> Unit,
+) : JButton(AllIcons.Actions.EditSource) {
+    init {
+        configurePopupIconButton("Go to definition")
+        addActionListener { onNavigate() }
+    }
+}
+
+private fun JButton.configurePopupIconButton(tooltip: String) {
+    toolTipText = tooltip
+    isOpaque = false
+    isContentAreaFilled = false
+    isBorderPainted = false
+    isFocusable = true
+    horizontalAlignment = SwingConstants.CENTER
+    verticalAlignment = SwingConstants.CENTER
+    iconTextGap = 0
+    margin = Insets(0, 0, 0, 0)
+    border = JBUI.Borders.empty()
+    preferredSize = JBUI.size(POPUP_ICON_BUTTON_SIZE, POPUP_ICON_BUTTON_SIZE)
+    minimumSize = preferredSize
+    maximumSize = preferredSize
+    alignmentY = JComponent.CENTER_ALIGNMENT
 }
 
 internal class TokenBadge : JComponent() {
@@ -271,7 +285,7 @@ private val CHECKER_DARK = Color(185, 185, 185)
 private val SWATCH_BORDER = JBColor(Color(110, 110, 110), Color(170, 170, 170))
 
 private const val TOKEN_BADGE_SIZE = 24
-private const val COPY_BUTTON_SIZE = 20
+private const val POPUP_ICON_BUTTON_SIZE = 20
 private const val COPY_FEEDBACK_DURATION_MS = 2_000
 private const val TEXT_WIDTH_PADDING = 2
 private const val OPAQUE_ALPHA = 255
