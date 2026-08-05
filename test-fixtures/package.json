@@ -1,0 +1,12 @@
+{
+    "name": "taiga-ui-version-fixtures",
+    "version": "0.0.0",
+    "private": true,
+    "workspaces": [
+        "taiga-ui-v4",
+        "taiga-ui-v5"
+    ],
+    "scripts": {
+        "install:fixtures": "npm install --ignore-scripts --no-audit --no-fund --install-strategy=nested --package-lock=false"
+    }
+}
