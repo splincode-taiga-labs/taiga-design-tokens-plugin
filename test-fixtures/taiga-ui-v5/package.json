@@ -1,0 +1,8 @@
+{
+    "name": "taiga-ui-v5-fixture",
+    "version": "0.0.0",
+    "private": true,
+    "dependencies": {
+        "@taiga-ui/core": "5.18.0"
+    }
+}
