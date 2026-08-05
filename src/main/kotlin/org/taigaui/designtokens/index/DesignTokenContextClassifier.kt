@@ -67,8 +67,14 @@ class DesignTokenContextClassifier {
         markers: Set<String>,
         selectorChain: List<String>,
     ): DesignTokenTheme {
-        val hasLight = LIGHT_MARKER in markers || selectorChain.containsMatch(LIGHT_THEME_SELECTOR)
-        val hasDark = DARK_MARKER in markers || selectorChain.containsMatch(DARK_THEME_SELECTOR)
+        val hasLight =
+            LIGHT_MARKER in markers ||
+                selectorChain.containsMatch(LIGHT_THEME_SELECTOR) ||
+                selectorChain.containsMatch(LIGHT_THEME_MIXIN)
+        val hasDark =
+            DARK_MARKER in markers ||
+                selectorChain.containsMatch(DARK_THEME_SELECTOR) ||
+                selectorChain.containsMatch(DARK_THEME_MIXIN)
 
         return when {
             hasLight && !hasDark -> DesignTokenTheme.LIGHT
@@ -96,6 +102,8 @@ class DesignTokenContextClassifier {
             )
         val LIGHT_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "light")
         val DARK_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "dark")
+        val LIGHT_THEME_MIXIN = Regex("""\.light\s*\(""", RegexOption.IGNORE_CASE)
+        val DARK_THEME_MIXIN = Regex("""\.dark\s*\(""", RegexOption.IGNORE_CASE)
 
         fun attributeSelector(
             attribute: String,
