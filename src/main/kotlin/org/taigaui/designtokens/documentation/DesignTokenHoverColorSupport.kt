@@ -51,15 +51,15 @@ private fun String.toRgbColorOrNull(): Color? =
         ?.toColorOrNull()
 
 private fun RgbFunction.toColorOrNull(): Color? {
-    val red = channels.getOrNull(0)?.toRgbChannelOrNull()
-    val green = channels.getOrNull(1)?.toRgbChannelOrNull()
-    val blue = channels.getOrNull(2)?.toRgbChannelOrNull()
-    val alpha = alpha?.toAlphaChannelOrNull() ?: OPAQUE_ALPHA
+    val components =
+        channels.map(String::toRgbChannelOrNull)
+            .takeIf { values -> values.size == RGB_CHANNEL_COUNT }
+            ?.takeIf { values -> values.all { value -> value != null } }
+            ?.map { value -> requireNotNull(value) }
+    val alphaValue = alpha?.toAlphaChannelOrNull() ?: OPAQUE_ALPHA
 
-    return if (channels.size == RGB_CHANNEL_COUNT && red != null && green != null && blue != null) {
-        Color(red, green, blue, alpha)
-    } else {
-        null
+    return components?.let { values ->
+        Color(values[0], values[1], values[2], alphaValue)
     }
 }
 
