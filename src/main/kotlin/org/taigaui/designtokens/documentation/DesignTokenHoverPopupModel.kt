@@ -1,46 +1,62 @@
 package org.taigaui.designtokens.documentation
 
+import org.taigaui.designtokens.index.DesignTokenOrigin
+import org.taigaui.designtokens.resolution.DesignTokenColorValue
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
+import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
 import java.awt.Color
 import java.nio.file.Path
 import java.util.Locale
+import kotlin.math.roundToInt
 
 internal data class DesignTokenHoverPopupModel(
     val tokenName: String,
     val description: String?,
-    val sourcePackages: List<String>,
-    val rows: List<DesignTokenHoverValueRow>,
-    val chains: List<DesignTokenHoverReferenceChain>,
-    val navigationTarget: DesignTokenNavigationTarget?,
+    val sections: List<DesignTokenHoverPackageSection>,
 ) {
+    val referenceChainCount: Int = sections.sumOf { section -> section.chains.size }
+
     companion object {
         fun create(
             tokenName: String,
             groups: List<DesignTokenResolutionGroup>,
         ): DesignTokenHoverPopupModel {
             val origins = groups.flatMap { group -> group.origins }
+            val packageGroups = groups.splitBySourcePackage()
 
             return DesignTokenHoverPopupModel(
                 tokenName = tokenName,
                 description = DesignTokenDescriptionExtractor.extract(origins),
-                sourcePackages = origins.hoverSourcePackageNames(),
-                rows = groups.map(DesignTokenResolutionGroup::toHoverValueRow),
-                chains =
-                    groups
-                        .filter { group -> group.representative.references.isNotEmpty() }
-                        .map { group -> group.toHoverReferenceChain(tokenName) },
-                navigationTarget = groups.firstNotNullOfOrNull(DesignTokenResolutionGroup::navigationTarget),
+                sections =
+                    packageGroups
+                        .map { (packageName, packageResolutionGroups) ->
+                            DesignTokenHoverPackageSection(
+                                packageName = packageName,
+                                rows = packageResolutionGroups.map(DesignTokenResolutionGroup::toHoverValueRow),
+                                chains =
+                                    packageResolutionGroups
+                                        .filter { group -> group.representative.references.isNotEmpty() }
+                                        .map { group -> group.toHoverReferenceChain(tokenName) },
+                            )
+                        }.sortedBy { section -> sourcePackageSortKey(section.packageName) },
             )
         }
     }
 }
 
+internal data class DesignTokenHoverPackageSection(
+    val packageName: String,
+    val rows: List<DesignTokenHoverValueRow>,
+    val chains: List<DesignTokenHoverReferenceChain>,
+)
+
 internal data class DesignTokenHoverValueRow(
     val platform: String,
     val resolvedValue: String,
     val color: Color?,
+    val navigationTarget: DesignTokenNavigationTarget?,
 )
 
 internal data class DesignTokenHoverReferenceChain(
@@ -60,6 +76,50 @@ internal data class DesignTokenNavigationTarget(
     val line: Int,
 )
 
+private fun List<DesignTokenResolutionGroup>.splitBySourcePackage(): Map<String, List<DesignTokenResolutionGroup>> {
+    val groupsByPackage = linkedMapOf<String, MutableList<DesignTokenResolutionGroup>>()
+
+    forEach { group ->
+        group.resolutions
+            .flatMap(DesignTokenVariantResolution::splitBySourcePackage)
+            .groupBy(DesignTokenVariantResolution::sourcePackageName)
+            .forEach { (packageName, resolutions) ->
+                groupsByPackage
+                    .getOrPut(packageName, ::mutableListOf)
+                    .add(DesignTokenResolutionGroup(resolutions))
+            }
+    }
+
+    return groupsByPackage
+}
+
+private fun DesignTokenVariantResolution.splitBySourcePackage(): List<DesignTokenVariantResolution> {
+    val originsByPackage =
+        variant.origins.groupBy { origin -> origin.packageName ?: DEFAULT_SOURCE_PACKAGE }
+
+    return if (originsByPackage.isEmpty()) {
+        listOf(this)
+    } else {
+        originsByPackage.map { (_, origins) ->
+            copy(variant = variant.copy(origins = origins))
+        }
+    }
+}
+
+private fun DesignTokenVariantResolution.sourcePackageName(): String =
+    variant.origins.firstOrNull()?.packageName ?: DEFAULT_SOURCE_PACKAGE
+
+private fun sourcePackageSortKey(packageName: String): String =
+    "${sourcePackageRank(packageName)}:$packageName"
+
+private fun sourcePackageRank(packageName: String): Int =
+    when (packageName) {
+        DEFAULT_SOURCE_PACKAGE -> 0
+        "@taiga-ui/styles" -> 1
+        "@taiga-ui/core" -> 2
+        else -> 3
+    }
+
 private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueRow =
     DesignTokenHoverValueRow(
         platform =
@@ -68,6 +128,7 @@ private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueR
                 .hoverPlatformLabel(),
         resolvedValue = representative.hoverValueText(),
         color = representative.toAwtColorOrNull(),
+        navigationTarget = navigationTarget(),
     )
 
 private fun DesignTokenResolutionGroup.toHoverReferenceChain(tokenName: String): DesignTokenHoverReferenceChain =
@@ -146,10 +207,15 @@ private fun DesignTokenResolutionGroup.navigationTarget(): DesignTokenNavigation
 private fun DesignTokenValueResolution.toAwtColorOrNull(): Color? {
     val color = (this as? DesignTokenValueResolution.Resolved)?.color ?: return null
 
-    return color.canonicalValue.toAwtColorOrNull()
+    return color.toAwtColorOrNull()
 }
 
-private fun String.toAwtColorOrNull(): Color? {
+private fun DesignTokenColorValue.toAwtColorOrNull(): Color? =
+    canonicalValue.toHexColorOrNull()
+        ?: cssText.toRgbColorOrNull()
+        ?: canonicalValue.toRgbColorOrNull()
+
+private fun String.toHexColorOrNull(): Color? {
     val hex = removePrefix("#")
     val expanded =
         when (hex.length) {
@@ -168,6 +234,61 @@ private fun String.toAwtColorOrNull(): Color? {
     }
 }
 
+private fun String.toRgbColorOrNull(): Color? {
+    val match = RGB_FUNCTION.matchEntire(trim()) ?: return null
+    val function = match.groupValues[1].lowercase()
+    val body = match.groupValues[2].trim()
+    val parts =
+        if (body.contains(',')) {
+            body.split(',').map(String::trim)
+        } else {
+            body.replace("/", " / ").split(Regex("\\s+")).filter(String::isNotEmpty)
+        }
+    val slashIndex = parts.indexOf("/")
+    val channels = if (slashIndex >= 0) parts.take(slashIndex) else parts.take(3)
+    val alphaText =
+        when {
+            slashIndex >= 0 -> parts.getOrNull(slashIndex + 1)
+            function == "rgba" -> parts.getOrNull(3)
+            else -> null
+        }
+
+    if (channels.size != RGB_CHANNEL_COUNT) {
+        return null
+    }
+
+    val red = channels[0].toRgbChannelOrNull() ?: return null
+    val green = channels[1].toRgbChannelOrNull() ?: return null
+    val blue = channels[2].toRgbChannelOrNull() ?: return null
+    val alpha = alphaText?.toAlphaChannelOrNull() ?: OPAQUE_ALPHA
+
+    return Color(red, green, blue, alpha)
+}
+
+private fun String.toRgbChannelOrNull(): Int =
+    if (endsWith('%')) {
+        removeSuffix("%")
+            .toDoubleOrNull()
+            ?.coerceIn(0.0, 100.0)
+            ?.let { value -> (value * OPAQUE_ALPHA / 100.0).roundToInt() }
+    } else {
+        toDoubleOrNull()
+            ?.coerceIn(0.0, OPAQUE_ALPHA.toDouble())
+            ?.roundToInt()
+    }
+
+private fun String.toAlphaChannelOrNull(): Int =
+    if (endsWith('%')) {
+        removeSuffix("%")
+            .toDoubleOrNull()
+            ?.coerceIn(0.0, 100.0)
+            ?.let { value -> (value * OPAQUE_ALPHA / 100.0).roundToInt() }
+    } else {
+        toDoubleOrNull()
+            ?.coerceIn(0.0, 1.0)
+            ?.let { value -> (value * OPAQUE_ALPHA).roundToInt() }
+    }
+
 private fun String.flatMapCharacters(): String =
     buildString(length * 2) {
         this@flatMapCharacters.forEach { character ->
@@ -176,5 +297,8 @@ private fun String.flatMapCharacters(): String =
         }
     }
 
+private val RGB_FUNCTION = Regex("""(?i)(rgb|rgba)\((.*)\)""")
+private const val DEFAULT_SOURCE_PACKAGE = "@taiga-ui/design-tokens"
 private const val OPAQUE_ALPHA = 255
+private const val RGB_CHANNEL_COUNT = 3
 private const val RGBA_COMPONENTS_COUNT = 4
