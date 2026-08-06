@@ -6,17 +6,32 @@ class DesignTokenContextClassifier {
     fun classify(
         packageRoot: Path,
         declaration: DesignTokenDeclaration,
-    ): DesignTokenContext {
+    ): DesignTokenContext = classifyAll(packageRoot, declaration).first()
+
+    fun classifyAll(
+        packageRoot: Path,
+        declaration: DesignTokenDeclaration,
+    ): List<DesignTokenContext> {
         val markers =
             pathMarkers(
                 packageRoot = packageRoot,
                 sourceFile = declaration.sourceFile,
             )
+        val platform = classifyPlatform(markers, declaration.selectorChain)
+        val theme = classifyTheme(markers, declaration.selectorChain)
+        val platforms =
+            if (isSharedVariablesDeclaration(markers, declaration.selectorChain, platform)) {
+                listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE)
+            } else {
+                listOf(platform)
+            }
 
-        return DesignTokenContext(
-            platform = classifyPlatform(markers, declaration.selectorChain),
-            theme = classifyTheme(markers, declaration.selectorChain),
-        )
+        return platforms.map { currentPlatform ->
+            DesignTokenContext(
+                platform = currentPlatform,
+                theme = theme,
+            )
+        }
     }
 
     private fun pathMarkers(
@@ -83,12 +98,22 @@ class DesignTokenContextClassifier {
         }
     }
 
+    private fun isSharedVariablesDeclaration(
+        markers: Set<String>,
+        selectorChain: List<String>,
+        platform: DesignTokenPlatform,
+    ): Boolean =
+        platform == DesignTokenPlatform.DESKTOP &&
+            VARIABLES_FILE in markers &&
+            selectorChain.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) }
+
     private fun List<String>.containsMatch(pattern: Regex): Boolean = any(pattern::containsMatchIn)
 
     private companion object {
         const val MOBILE_MARKER = "mobile"
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
+        const val VARIABLES_FILE = "variables.less"
 
         val IOS_PLATFORM_SELECTOR =
             attributeSelector(
@@ -104,6 +129,7 @@ class DesignTokenContextClassifier {
         val DARK_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "dark")
         val LIGHT_THEME_MIXIN = Regex("""\.light\s*\(""", RegexOption.IGNORE_CASE)
         val DARK_THEME_MIXIN = Regex("""\.dark\s*\(""", RegexOption.IGNORE_CASE)
+        val GLOBAL_ROOT_SELECTOR = Regex("""(?:&?:root|:host)""", RegexOption.IGNORE_CASE)
 
         fun attributeSelector(
             attribute: String,
