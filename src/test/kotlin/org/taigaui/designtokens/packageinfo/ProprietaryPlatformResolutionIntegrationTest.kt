@@ -100,7 +100,7 @@ class ProprietaryPlatformResolutionIntegrationTest : BasePlatformTestCase() {
         assertEquals(1, overriddenRows.size)
         assertEquals("📱 Mobile · Any theme", overriddenRows.single().platform)
         assertEquals(
-            "Overridden by a more specific declaration",
+            "Overridden by a platform-specific declaration",
             overriddenRows.single().overrideMessage,
         )
         assertTrue(index.find(TOKEN).none { variant -> variant.rawValue == "local-component-value" })
