@@ -116,7 +116,8 @@ class DesignTokenContextClassifier {
             Regex("""\.(?:tui-theme-)?light\s*\(""", RegexOption.IGNORE_CASE)
         val DARK_THEME_MIXIN =
             Regex("""\.(?:tui-theme-)?dark\s*\(""", RegexOption.IGNORE_CASE)
-        val GLOBAL_ROOT_SELECTOR = Regex("""(?:&?:root|:host)""", RegexOption.IGNORE_CASE)
+        val GLOBAL_ROOT_SELECTOR =
+            Regex("""(?:&?:root|:host|\bhtml\b|\bbody\b)""", RegexOption.IGNORE_CASE)
 
         fun attributeSelector(
             attribute: String,
