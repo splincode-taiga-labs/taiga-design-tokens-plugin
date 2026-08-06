@@ -101,9 +101,12 @@ private fun createValueRow(
         layout = GridBagLayout()
         alignmentX = JComponent.LEFT_ALIGNMENT
         border = JBUI.Borders.empty(10, ROW_HORIZONTAL_PADDING)
+        row.overrideMessage?.let { message ->
+            toolTipText = "This declaration is not applied. $message."
+        }
 
         add(
-            JBLabel(row.platform),
+            createContextCell(row),
             GridBagConstraints().apply {
                 gridx = 0
                 weightx = 1.0
@@ -123,6 +126,31 @@ private fun createValueRow(
         )
 
         maximumSize = Dimension(Int.MAX_VALUE, preferredSize.height)
+    }
+
+private fun createContextCell(row: DesignTokenHoverValueRow): JComponent =
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+
+        add(
+            JBLabel(row.platform).apply {
+                foreground = row.textColor()
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            },
+        )
+
+        row.overrideMessage?.let { message ->
+            add(Box.createVerticalStrut(JBUI.scale(2)))
+            add(
+                JBLabel("Not applied · $message").apply {
+                    foreground = UIUtil.getContextHelpForeground()
+                    font = font.deriveFont(JBUI.scaleFontSize(11f).toFloat())
+                    alignmentX = JComponent.LEFT_ALIGNMENT
+                },
+            )
+        }
     }
 
 private fun createValueCell(
@@ -149,7 +177,7 @@ private fun createValueCell(
             text = row.resolvedValue,
             width = textWidth,
             textFont = DESIGN_TOKEN_POPUP_CODE_FONT,
-            textColor = UIUtil.getLabelForeground(),
+            textColor = row.textColor(),
             alignment = StyleConstants.ALIGN_RIGHT,
         )
     val components = listOfNotNull(color, text, copyButton, navigationButton)
@@ -177,6 +205,13 @@ private fun createValueCell(
         maximumSize = preferredSize
     }
 }
+
+private fun DesignTokenHoverValueRow.textColor() =
+    if (overrideMessage == null) {
+        UIUtil.getLabelForeground()
+    } else {
+        UIUtil.getContextHelpForeground()
+    }
 
 private const val ROW_HORIZONTAL_PADDING = 12
 private const val MIN_VALUE_TEXT_WIDTH = 120
