@@ -28,7 +28,7 @@ private class DesignTokenReferenceScanner(
 
             result =
                 step.reference
-                    ?.takeIf { reference -> offset in reference.startOffset..reference.endOffset }
+                    ?.takeIf { reference -> offset in reference.startOffset until reference.endOffset }
             index = step.nextOffset
         }
 
