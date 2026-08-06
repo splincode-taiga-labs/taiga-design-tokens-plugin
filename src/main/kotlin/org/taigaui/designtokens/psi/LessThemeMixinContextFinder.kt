@@ -121,7 +121,7 @@ internal object LessThemeMixinContextFinder {
 
     private val LESS_THEME_MIXIN =
         Regex(
-            pattern = """\.(light|dark)\s*\(\s*\)\s*\{""",
+            pattern = """\.(?:tui-theme-)?(light|dark)\s*\(\s*\)\s*\{""",
             option = RegexOption.IGNORE_CASE,
         )
 }
