@@ -20,12 +20,13 @@ class DesignTokenContextClassifier {
         declaration: DesignTokenDeclaration,
     ): Boolean {
         val markers = pathMarkers(packageRoot, declaration.sourceFile)
-        val platform = classifyPlatform(markers, declaration.selectorChain)
+        val selectors = declaration.selectorChain
 
-        return declaration.packageName == PROPRIETARY_PACKAGE &&
-            platform == DesignTokenPlatform.DESKTOP &&
-            VARIABLES_FILE in markers &&
-            declaration.selectorChain.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) }
+        return classifyPlatform(markers, selectors) == DesignTokenPlatform.DESKTOP &&
+            MOBILE_MARKER !in markers &&
+            selectors.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) } &&
+            !selectors.containsMatch(IOS_PLATFORM_SELECTOR) &&
+            !selectors.containsMatch(ANDROID_PLATFORM_SELECTOR)
     }
 
     private fun pathMarkers(
@@ -98,8 +99,6 @@ class DesignTokenContextClassifier {
         const val MOBILE_MARKER = "mobile"
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
-        const val VARIABLES_FILE = "variables.less"
-        const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
 
         val IOS_PLATFORM_SELECTOR =
             attributeSelector(
@@ -113,8 +112,10 @@ class DesignTokenContextClassifier {
             )
         val LIGHT_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "light")
         val DARK_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "dark")
-        val LIGHT_THEME_MIXIN = Regex("""\.light\s*\(""", RegexOption.IGNORE_CASE)
-        val DARK_THEME_MIXIN = Regex("""\.dark\s*\(""", RegexOption.IGNORE_CASE)
+        val LIGHT_THEME_MIXIN =
+            Regex("""\.(?:tui-theme-)?light\s*\(""", RegexOption.IGNORE_CASE)
+        val DARK_THEME_MIXIN =
+            Regex("""\.(?:tui-theme-)?dark\s*\(""", RegexOption.IGNORE_CASE)
         val GLOBAL_ROOT_SELECTOR = Regex("""(?:&?:root|:host)""", RegexOption.IGNORE_CASE)
 
         fun attributeSelector(
