@@ -30,6 +30,7 @@ class DesignTokenIndex private constructor(
                             name = declaration.name,
                             context = contextClassifier.classify(declarationPackageRoot, declaration),
                             rawValue = declaration.value,
+                            packageName = declaration.packageName,
                         )
                     val origin =
                         DesignTokenOrigin(
@@ -100,6 +101,7 @@ class DesignTokenIndex private constructor(
                 { variant -> variant.name },
                 { variant -> platformRank(variant.context.platform) },
                 { variant -> themeRank(variant.context.theme) },
+                { variant -> packageRank(variant.origins.firstOrNull()?.packageName) },
                 { variant -> variant.rawValue },
                 {
                     it.origins
@@ -114,7 +116,9 @@ class DesignTokenIndex private constructor(
             when (packageName) {
                 "@taiga-ui/design-tokens" -> 0
                 "@taiga-ui/styles" -> 1
-                else -> 2
+                "@taiga-ui/core" -> 2
+                null -> 3
+                else -> 4
             }
 
         private fun sourceFormatRank(format: DesignTokenSourceFormat): Int =
@@ -145,5 +149,6 @@ class DesignTokenIndex private constructor(
         val name: String,
         val context: DesignTokenContext,
         val rawValue: String,
+        val packageName: String?,
     )
 }
