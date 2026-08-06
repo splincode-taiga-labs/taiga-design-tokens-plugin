@@ -1,25 +1,27 @@
 package org.taigaui.designtokens.index
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.file.Path
 
 class SharedVariablesPlatformTest {
+    private val classifier = DesignTokenContextClassifier()
+
     @Test
-    fun `classifies proprietary root variables less declarations for desktop and mobile`() {
+    fun `keeps proprietary root variables in the desktop resolution context`() {
         val declaration = sharedDeclaration()
 
         assertEquals(
-            listOf(
-                DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.UNSPECIFIED),
-                DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.UNSPECIFIED),
-            ),
-            DesignTokenContextClassifier().classifyAll(PACKAGE_ROOT, declaration),
+            DesignTokenContext.DEFAULT,
+            classifier.classify(PACKAGE_ROOT, declaration),
         )
+        assertTrue(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
     }
 
     @Test
-    fun `indexes proprietary shared variables for all platforms`() {
+    fun `retains shared platform metadata on the indexed origin`() {
         val variants =
             DesignTokenIndex
                 .build(
@@ -27,10 +29,9 @@ class SharedVariablesPlatformTest {
                     declarations = listOf(sharedDeclaration()),
                 ).find(TOKEN)
 
-        assertEquals(
-            setOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
-            variants.map { variant -> variant.context.platform }.toSet(),
-        )
+        assertEquals(1, variants.size)
+        assertEquals(DesignTokenContext.DEFAULT, variants.single().context)
+        assertTrue(variants.single().origins.single().sharedAcrossPlatforms)
     }
 
     @Test
@@ -40,20 +41,14 @@ class SharedVariablesPlatformTest {
                 sourceFile = PACKAGE_ROOT.resolve("styles/theme.less"),
             )
 
-        assertEquals(
-            listOf(DesignTokenContext.DEFAULT),
-            DesignTokenContextClassifier().classifyAll(PACKAGE_ROOT, declaration),
-        )
+        assertFalse(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
     }
 
     @Test
     fun `keeps another package variables less desktop only`() {
         val declaration = sharedDeclaration().copy(packageName = "@taiga-ui/core")
 
-        assertEquals(
-            listOf(DesignTokenContext.DEFAULT),
-            DesignTokenContextClassifier().classifyAll(PACKAGE_ROOT, declaration),
-        )
+        assertFalse(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
     }
 
     private fun sharedDeclaration(): DesignTokenDeclaration =
@@ -64,6 +59,7 @@ class SharedVariablesPlatformTest {
             line = 5,
             selectorChain = listOf("&:root, :host"),
             packageName = PROPRIETARY_PACKAGE,
+            packageRoot = PACKAGE_ROOT,
         )
 
     private companion object {
