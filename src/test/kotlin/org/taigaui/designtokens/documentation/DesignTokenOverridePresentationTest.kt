@@ -31,7 +31,14 @@ class DesignTokenOverridePresentationTest {
                         packageName = DESIGN_TOKENS_PACKAGE,
                         rawValue = "base",
                         value = "base",
-                        requestedContext = LIGHT_MOBILE,
+                        requestedContext = LIGHT_IOS,
+                        sharedAcrossPlatforms = true,
+                    ),
+                    resolution(
+                        packageName = DESIGN_TOKENS_PACKAGE,
+                        rawValue = "base",
+                        value = "base",
+                        requestedContext = LIGHT_ANDROID,
                         sharedAcrossPlatforms = true,
                     ),
                 ),
@@ -47,7 +54,14 @@ class DesignTokenOverridePresentationTest {
                         packageName = PROPRIETARY_PACKAGE,
                         rawValue = "brand",
                         value = "brand",
-                        requestedContext = LIGHT_MOBILE,
+                        requestedContext = LIGHT_IOS,
+                        sharedAcrossPlatforms = true,
+                    ),
+                    resolution(
+                        packageName = PROPRIETARY_PACKAGE,
+                        rawValue = "brand",
+                        value = "brand",
+                        requestedContext = LIGHT_ANDROID,
                         sharedAcrossPlatforms = true,
                     ),
                 ),
@@ -62,35 +76,17 @@ class DesignTokenOverridePresentationTest {
 
     @Test
     fun `splits root fallback when a mobile declaration overrides it`() {
-        val rootDesktop =
-            resolution(
-                packageName = PROPRIETARY_PACKAGE,
-                rawValue = "var(--tui-font-body-s)",
-                value = "desktop-font",
-                requestedContext = LIGHT_DESKTOP,
-                sharedAcrossPlatforms = true,
-            )
-        val rootMobile =
-            resolution(
-                packageName = PROPRIETARY_PACKAGE,
-                rawValue = "var(--tui-font-body-s)",
-                value = "mobile-font",
-                requestedContext = LIGHT_MOBILE,
-                sharedAcrossPlatforms = true,
-            )
-        val mobileOverride =
-            resolution(
-                packageName = PROPRIETARY_PACKAGE,
-                rawValue = "var(--tui-font-body-s)",
-                value = "mobile-font",
-                requestedContext = LIGHT_MOBILE,
-                declarationContext = LIGHT_MOBILE,
-                sharedAcrossPlatforms = false,
-            )
+        val rootDesktop = rootResolution(LIGHT_DESKTOP, "desktop-font")
+        val rootIos = rootResolution(LIGHT_IOS, "mobile-font")
+        val rootAndroid = rootResolution(LIGHT_ANDROID, "mobile-font")
+        val mobileIos = mobileResolution(LIGHT_IOS)
+        val mobileAndroid = mobileResolution(LIGHT_ANDROID)
         val section =
             DesignTokenHoverPopupModel
-                .create(TOKEN, listOf(group(rootDesktop, rootMobile, mobileOverride)))
-                .sections
+                .create(
+                    TOKEN,
+                    listOf(group(rootDesktop, rootIos, rootAndroid, mobileIos, mobileAndroid)),
+                ).sections
                 .single()
         val appliedRows = section.rows.filter { row -> row.overrideMessage == null }
         val overriddenRow = section.rows.single { row -> row.overrideMessage != null }
@@ -102,6 +98,28 @@ class DesignTokenOverridePresentationTest {
         assertEquals("📱 Mobile · Light ☀️", overriddenRow.platform)
         assertEquals("Overridden by a more specific declaration", overriddenRow.overrideMessage)
     }
+
+    private fun rootResolution(
+        requestedContext: DesignTokenContext,
+        value: String,
+    ): DesignTokenVariantResolution =
+        resolution(
+            packageName = PROPRIETARY_PACKAGE,
+            rawValue = "var(--tui-font-body-s)",
+            value = value,
+            requestedContext = requestedContext,
+            sharedAcrossPlatforms = true,
+        )
+
+    private fun mobileResolution(requestedContext: DesignTokenContext): DesignTokenVariantResolution =
+        resolution(
+            packageName = PROPRIETARY_PACKAGE,
+            rawValue = "var(--tui-font-body-s)",
+            value = "mobile-font",
+            requestedContext = requestedContext,
+            declarationContext = MOBILE_ANY_THEME,
+            sharedAcrossPlatforms = false,
+        )
 
     private fun group(vararg resolutions: DesignTokenVariantResolution): DesignTokenResolutionGroup =
         DesignTokenResolutionGroup(resolutions.toList())
@@ -147,6 +165,9 @@ class DesignTokenOverridePresentationTest {
         const val DESIGN_TOKENS_PACKAGE = "@taiga-ui/design-tokens"
         const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
         val LIGHT_DESKTOP = DesignTokenContext(DesignTokenPlatform.DESKTOP, DesignTokenTheme.LIGHT)
-        val LIGHT_MOBILE = DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.LIGHT)
+        val LIGHT_IOS = DesignTokenContext(DesignTokenPlatform.IOS, DesignTokenTheme.LIGHT)
+        val LIGHT_ANDROID = DesignTokenContext(DesignTokenPlatform.ANDROID, DesignTokenTheme.LIGHT)
+        val MOBILE_ANY_THEME =
+            DesignTokenContext(DesignTokenPlatform.MOBILE, DesignTokenTheme.UNSPECIFIED)
     }
 }
