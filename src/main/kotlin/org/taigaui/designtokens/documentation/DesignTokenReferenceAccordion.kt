@@ -110,15 +110,20 @@ private fun createReferenceChain(
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-        add(
-            JBLabel(chain.platform).apply {
-                font = font.deriveFont(Font.BOLD)
-                alignmentX = JComponent.LEFT_ALIGNMENT
-            },
-        )
+        chain.overrideMessage?.let { message ->
+            toolTipText = "This declaration is not applied. $message."
+        }
+
+        add(createReferenceChainHeader(chain))
         add(Box.createVerticalStrut(JBUI.scale(7)))
         chain.lines.forEachIndexed { index, line ->
-            add(createReferenceLine(line, referenceWidth))
+            add(
+                createReferenceLine(
+                    line = line,
+                    referenceWidth = referenceWidth,
+                    overridden = chain.overrideMessage != null,
+                ),
+            )
 
             if (index != chain.lines.lastIndex) {
                 add(Box.createVerticalStrut(JBUI.scale(4)))
@@ -126,9 +131,41 @@ private fun createReferenceChain(
         }
     }
 
+private fun createReferenceChainHeader(chain: DesignTokenHoverReferenceChain): JComponent =
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+
+        add(
+            JBLabel(chain.platform).apply {
+                font = font.deriveFont(Font.BOLD)
+                foreground =
+                    if (chain.overrideMessage == null) {
+                        UIUtil.getLabelForeground()
+                    } else {
+                        UIUtil.getContextHelpForeground()
+                    }
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            },
+        )
+
+        chain.overrideMessage?.let { message ->
+            add(Box.createVerticalStrut(JBUI.scale(2)))
+            add(
+                JBLabel("Not applied · $message").apply {
+                    foreground = UIUtil.getContextHelpForeground()
+                    font = font.deriveFont(JBUI.scaleFontSize(11f).toFloat())
+                    alignmentX = JComponent.LEFT_ALIGNMENT
+                },
+            )
+        }
+    }
+
 private fun createReferenceLine(
     line: DesignTokenHoverReferenceLine,
     referenceWidth: Int,
+    overridden: Boolean,
 ): JComponent {
     val indent = line.depth * REFERENCE_DEPTH_INDENT
     val iconWidth =
@@ -138,6 +175,12 @@ private fun createReferenceLine(
             REFERENCE_MARKER_WIDTH + DESIGN_TOKEN_POPUP_SMALL_SWATCH_SIZE + SWATCH_GAP
         }
     val textWidth = (referenceWidth - indent - iconWidth).coerceAtLeast(MIN_REFERENCE_TEXT_WIDTH)
+    val textColor =
+        when {
+            overridden -> UIUtil.getContextHelpForeground()
+            line.root -> DESIGN_TOKEN_POPUP_LINK_COLOR
+            else -> UIUtil.getLabelForeground()
+        }
 
     return JPanel().apply {
         layout = BoxLayout(this, BoxLayout.X_AXIS)
@@ -161,7 +204,7 @@ private fun createReferenceLine(
                 text = line.text,
                 width = textWidth,
                 textFont = DESIGN_TOKEN_POPUP_CODE_FONT,
-                textColor = if (line.root) DESIGN_TOKEN_POPUP_LINK_COLOR else UIUtil.getLabelForeground(),
+                textColor = textColor,
                 alignment = StyleConstants.ALIGN_LEFT,
             ),
         )
