@@ -222,10 +222,18 @@ class DesignTokenValueResolver(
 
 private fun DesignTokenVariant.requestedContexts(): List<DesignTokenContext> {
     val platforms =
-        if (origins.any { origin -> origin.sharedAcrossPlatforms }) {
-            listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE)
-        } else {
-            listOf(context.platform)
+        when {
+            origins.any { origin -> origin.sharedAcrossPlatforms } ->
+                listOf(
+                    DesignTokenPlatform.DESKTOP,
+                    DesignTokenPlatform.IOS,
+                    DesignTokenPlatform.ANDROID,
+                )
+
+            context.platform == DesignTokenPlatform.MOBILE ->
+                listOf(DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID)
+
+            else -> listOf(context.platform)
         }
     val themes =
         if (context.theme == DesignTokenTheme.UNSPECIFIED) {
