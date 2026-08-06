@@ -1,5 +1,7 @@
 package org.taigaui.designtokens.documentation
 
+import org.taigaui.designtokens.index.DesignTokenContext
+import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
@@ -49,10 +51,7 @@ private fun DesignTokenVariantResolution.sourcePackageName(): String =
 
 private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueRow =
     DesignTokenHoverValueRow(
-        platform =
-            resolutions
-                .map { resolution -> resolution.variant.context }
-                .hoverPlatformLabel(),
+        platform = hoverPlatformLabel(),
         resolvedValue = representative.hoverValueText(),
         color = representative.toHoverColorOrNull(),
         navigationTarget = navigationTarget(),
@@ -60,10 +59,7 @@ private fun DesignTokenResolutionGroup.toHoverValueRow(): DesignTokenHoverValueR
 
 private fun DesignTokenResolutionGroup.toHoverReferenceChain(tokenName: String): DesignTokenHoverReferenceChain =
     DesignTokenHoverReferenceChain(
-        platform =
-            resolutions
-                .map { resolution -> resolution.variant.context }
-                .hoverPlatformLabel(),
+        platform = hoverPlatformLabel(),
         lines =
             buildList {
                 add(DesignTokenHoverReferenceLine(tokenName, depth = 0, root = true))
@@ -74,6 +70,28 @@ private fun DesignTokenResolutionGroup.toHoverReferenceChain(tokenName: String):
                     appendReferences(representative.references, depth = 0)
                 }
             },
+    )
+
+private fun DesignTokenResolutionGroup.hoverPlatformLabel(): String {
+    val contexts = resolutions.map { resolution -> resolution.variant.context }
+    val sharedAcrossPlatforms =
+        resolutions.all { resolution ->
+            resolution.variant.origins.any { origin -> origin.sharedAcrossPlatforms }
+        }
+
+    return if (sharedAcrossPlatforms) {
+        contexts
+            .flatMap(DesignTokenContext::forDesktopAndMobile)
+            .hoverPlatformLabel()
+    } else {
+        contexts.hoverPlatformLabel()
+    }
+}
+
+private fun DesignTokenContext.forDesktopAndMobile(): List<DesignTokenContext> =
+    listOf(
+        copy(platform = DesignTokenPlatform.DESKTOP),
+        copy(platform = DesignTokenPlatform.MOBILE),
     )
 
 private fun MutableList<DesignTokenHoverReferenceLine>.appendReferences(
