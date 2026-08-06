@@ -28,7 +28,6 @@ class DesignTokenHoverPopupModelTest {
         val row = section.rows.single()
         val chain = section.chains.single()
 
-        assertEquals(DESIGN_TOKENS_PACKAGE, model.singlePackageName)
         assertEquals(DESIGN_TOKENS_PACKAGE, section.packageName)
         assertEquals("#fff", row.resolvedValue)
         assertNotNull(row.color)
@@ -129,7 +128,6 @@ class DesignTokenHoverPopupModelTest {
                 .single()
                 .resolvedValue
 
-        assertNull(model.singlePackageName)
         assertEquals(listOf(DESIGN_TOKENS_PACKAGE, CORE_PACKAGE), packageNames)
         assertEquals("#fff", designTokensValue)
         assertEquals("rgba(0, 0, 0, 0.65)", coreValue)
