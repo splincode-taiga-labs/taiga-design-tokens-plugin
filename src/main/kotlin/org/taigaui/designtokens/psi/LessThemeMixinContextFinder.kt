@@ -16,7 +16,7 @@ internal object LessThemeMixinContextFinder {
         offset: Int,
     ): String? {
         val openingBrace = range.last
-        val closingBrace = content.findClosingBrace(openingBrace) ?: return null
+        val closingBrace = BraceScanner(content).findClosingBrace(openingBrace) ?: return null
 
         return groupValues[1]
             .lowercase()
@@ -24,69 +24,91 @@ internal object LessThemeMixinContextFinder {
             ?.let { theme -> ".$theme()" }
     }
 
-    private fun String.findClosingBrace(openingBrace: Int): Int? {
-        var depth = 0
-        var state = ScannerState.CODE
-        var escaped = false
-        var index = openingBrace
+    private class BraceScanner(
+        private val content: String,
+    ) {
+        fun findClosingBrace(openingBrace: Int): Int? {
+            val cursor = ScanCursor(index = openingBrace)
 
-        while (index < length) {
-            val character = this[index]
-            val next = getOrNull(index + 1)
-
-            when (state) {
-                ScannerState.CODE ->
-                    when {
-                        character == '/' && next == '*' -> {
-                            state = ScannerState.BLOCK_COMMENT
-                            index++
-                        }
-
-                        character == '/' && next == '/' -> {
-                            state = ScannerState.LINE_COMMENT
-                            index++
-                        }
-
-                        character == '\'' -> state = ScannerState.SINGLE_QUOTE
-                        character == '"' -> state = ScannerState.DOUBLE_QUOTE
-                        character == '{' -> depth++
-                        character == '}' -> {
-                            depth--
-
-                            if (depth == 0) {
-                                return index
-                            }
-                        }
+            while (cursor.index < content.length) {
+                val closingBraceFound =
+                    when (cursor.state) {
+                        ScannerState.CODE -> scanCode(cursor)
+                        ScannerState.BLOCK_COMMENT -> scanBlockComment(cursor)
+                        ScannerState.LINE_COMMENT -> scanLineComment(cursor)
+                        ScannerState.SINGLE_QUOTE -> scanQuoted(cursor, '\'')
+                        ScannerState.DOUBLE_QUOTE -> scanQuoted(cursor, '"')
                     }
 
-                ScannerState.BLOCK_COMMENT ->
-                    if (character == '*' && next == '/') {
-                        state = ScannerState.CODE
-                        index++
-                    }
-
-                ScannerState.LINE_COMMENT ->
-                    if (character == '\n') {
-                        state = ScannerState.CODE
-                    }
-
-                ScannerState.SINGLE_QUOTE,
-                ScannerState.DOUBLE_QUOTE,
-                -> {
-                    val quote = if (state == ScannerState.SINGLE_QUOTE) '\'' else '"'
-
-                    when {
-                        escaped -> escaped = false
-                        character == '\\' -> escaped = true
-                        character == quote -> state = ScannerState.CODE
-                    }
+                if (closingBraceFound) {
+                    return cursor.index
                 }
+
+                cursor.index++
             }
 
-            index++
+            return null
         }
 
-        return null
+        private fun scanCode(cursor: ScanCursor): Boolean {
+            val character = content[cursor.index]
+            val next = content.getOrNull(cursor.index + 1)
+
+            when {
+                character == '/' && next == '*' -> cursor.enterComment(ScannerState.BLOCK_COMMENT)
+                character == '/' && next == '/' -> cursor.enterComment(ScannerState.LINE_COMMENT)
+                character == '\'' -> cursor.state = ScannerState.SINGLE_QUOTE
+                character == '"' -> cursor.state = ScannerState.DOUBLE_QUOTE
+                character == '{' -> cursor.depth++
+                character == '}' -> cursor.depth--
+            }
+
+            return character == '}' && cursor.depth == 0
+        }
+
+        private fun scanBlockComment(cursor: ScanCursor): Boolean {
+            if (content[cursor.index] == '*' && content.getOrNull(cursor.index + 1) == '/') {
+                cursor.state = ScannerState.CODE
+                cursor.index++
+            }
+
+            return false
+        }
+
+        private fun scanLineComment(cursor: ScanCursor): Boolean {
+            if (content[cursor.index] == '\n') {
+                cursor.state = ScannerState.CODE
+            }
+
+            return false
+        }
+
+        private fun scanQuoted(
+            cursor: ScanCursor,
+            quote: Char,
+        ): Boolean {
+            val character = content[cursor.index]
+
+            when {
+                cursor.escaped -> cursor.escaped = false
+                character == '\\' -> cursor.escaped = true
+                character == quote -> cursor.state = ScannerState.CODE
+            }
+
+            return false
+        }
+    }
+
+    private data class ScanCursor(
+        var index: Int,
+        var depth: Int = 0,
+        var state: ScannerState = ScannerState.CODE,
+        var escaped: Boolean = false,
+    ) {
+        fun enterComment(commentState: ScannerState) {
+            state = commentState
+            index++
+        }
     }
 
     private enum class ScannerState {
