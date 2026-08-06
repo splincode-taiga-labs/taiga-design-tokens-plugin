@@ -77,14 +77,19 @@ class PsiDesignTokenSourceExtractor(
     ): DesignTokenDeclaration? {
         val tokenName = propertyName
         val rawValue = rawValue()
+        val selectorChain = contextChain(content)
 
-        return if (tokenName.startsWith(TOKEN_PREFIX) && rawValue.isNotEmpty()) {
+        return if (
+            tokenName.startsWith(TOKEN_PREFIX) &&
+            rawValue.isNotEmpty() &&
+            GlobalDesignTokenContext.isGlobal(selectorChain)
+        ) {
             DesignTokenDeclaration(
                 name = tokenName,
                 value = rawValue,
                 sourceFile = sourceFile,
                 line = line,
-                selectorChain = contextChain(content),
+                selectorChain = selectorChain,
             )
         } else {
             null
