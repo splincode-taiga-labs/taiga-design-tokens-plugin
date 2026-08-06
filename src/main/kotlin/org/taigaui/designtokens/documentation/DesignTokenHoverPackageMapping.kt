@@ -2,6 +2,7 @@ package org.taigaui.designtokens.documentation
 
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
+import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
 
 internal fun List<DesignTokenResolutionGroup>.toHoverPackageSections(
@@ -98,7 +99,7 @@ private fun MutableList<DesignTokenHoverReferenceLine>.appendReferences(
 }
 
 private fun MutableList<DesignTokenHoverReferenceLine>.addTerminalValue(
-    result: org.taigaui.designtokens.resolution.DesignTokenValueResolution,
+    result: DesignTokenValueResolution,
     depth: Int,
 ) {
     val color = result.toHoverColorOrNull()
