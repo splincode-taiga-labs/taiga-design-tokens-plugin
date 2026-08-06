@@ -20,7 +20,7 @@ class DesignTokenContextClassifier {
         val platform = classifyPlatform(markers, declaration.selectorChain)
         val theme = classifyTheme(markers, declaration.selectorChain)
         val platforms =
-            if (isSharedVariablesDeclaration(markers, declaration.selectorChain, platform)) {
+            if (isSharedVariablesDeclaration(declaration, markers, platform)) {
                 listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE)
             } else {
                 listOf(platform)
@@ -99,13 +99,14 @@ class DesignTokenContextClassifier {
     }
 
     private fun isSharedVariablesDeclaration(
+        declaration: DesignTokenDeclaration,
         markers: Set<String>,
-        selectorChain: List<String>,
         platform: DesignTokenPlatform,
     ): Boolean =
-        platform == DesignTokenPlatform.DESKTOP &&
+        declaration.packageName == PROPRIETARY_PACKAGE &&
+            platform == DesignTokenPlatform.DESKTOP &&
             VARIABLES_FILE in markers &&
-            selectorChain.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) }
+            declaration.selectorChain.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) }
 
     private fun List<String>.containsMatch(pattern: Regex): Boolean = any(pattern::containsMatchIn)
 
@@ -114,6 +115,7 @@ class DesignTokenContextClassifier {
         const val LIGHT_MARKER = "light"
         const val DARK_MARKER = "dark"
         const val VARIABLES_FILE = "variables.less"
+        const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
 
         val IOS_PLATFORM_SELECTOR =
             attributeSelector(
