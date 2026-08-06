@@ -31,12 +31,12 @@ class DesignTokenConcretePlatformOverrideTest {
 
         assertEquals(
             setOf(
-                "📱 iOS · Any theme" to "ios",
-                "🤖 Android · Any theme" to "mobile",
+                "📱 iOS · Light ☀️" to "ios",
+                "🤖 Android · Light ☀️" to "mobile",
             ),
             appliedRows.map { row -> row.platform to row.resolvedValue }.toSet(),
         )
-        assertEquals("📱 iOS · Any theme", overriddenRow.platform)
+        assertEquals("📱 iOS · Light ☀️", overriddenRow.platform)
         assertEquals(
             "Overridden by a platform-specific declaration",
             overriddenRow.overrideMessage,
