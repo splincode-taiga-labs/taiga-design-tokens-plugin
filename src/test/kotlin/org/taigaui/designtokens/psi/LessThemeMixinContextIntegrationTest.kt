@@ -9,22 +9,39 @@ import java.nio.file.Files
 
 class LessThemeMixinContextIntegrationTest : BasePlatformTestCase() {
     fun testClassifiesVariablesInsideLightAndDarkMixins() {
+        assertThemeContexts(
+            """
+            .dark() {
+                --tui-text-primary: rgba(255, 255, 255, 1);
+            }
+
+            .light() {
+                --tui-text-primary: rgba(27, 31, 59, 1);
+            }
+            """.trimIndent(),
+        )
+    }
+
+    fun testClassifiesVariablesInsidePrefixedTaigaUiThemeMixins() {
+        assertThemeContexts(
+            """
+            .tui-theme-dark() {
+                --tui-text-primary: rgba(255, 255, 255, 1);
+            }
+
+            .tui-theme-light() {
+                --tui-text-primary: rgba(27, 31, 59, 1);
+            }
+            """.trimIndent(),
+        )
+    }
+
+    private fun assertThemeContexts(content: String) {
         val packageRoot = Files.createTempDirectory("taiga-ui-less-theme")
         val sourceFile = packageRoot.resolve("variables.less")
 
         try {
-            Files.writeString(
-                sourceFile,
-                """
-                .dark() {
-                    --tui-text-primary: rgba(255, 255, 255, 1);
-                }
-
-                .light() {
-                    --tui-text-primary: rgba(27, 31, 59, 1);
-                }
-                """.trimIndent(),
-            )
+            Files.writeString(sourceFile, content)
 
             val declarations = PsiDesignTokenSourceExtractor(project).extract(sourceFile)
             val variants = DesignTokenIndex.build(packageRoot, declarations).find("--tui-text-primary")
