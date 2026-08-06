@@ -33,6 +33,9 @@ class PsiDesignTokenSourceExtractor(
                         ?: return@Computable emptyList()
 
                 extract(psiFile, normalizedSourceFile)
+                    .filter { declaration ->
+                        GlobalDesignTokenContext.isGlobal(declaration.selectorChain)
+                    }
             },
         )
     }
@@ -77,19 +80,14 @@ class PsiDesignTokenSourceExtractor(
     ): DesignTokenDeclaration? {
         val tokenName = propertyName
         val rawValue = rawValue()
-        val selectorChain = contextChain(content)
 
-        return if (
-            tokenName.startsWith(TOKEN_PREFIX) &&
-            rawValue.isNotEmpty() &&
-            GlobalDesignTokenContext.isGlobal(selectorChain)
-        ) {
+        return if (tokenName.startsWith(TOKEN_PREFIX) && rawValue.isNotEmpty()) {
             DesignTokenDeclaration(
                 name = tokenName,
                 value = rawValue,
                 sourceFile = sourceFile,
                 line = line,
-                selectorChain = selectorChain,
+                selectorChain = contextChain(content),
             )
         } else {
             null
