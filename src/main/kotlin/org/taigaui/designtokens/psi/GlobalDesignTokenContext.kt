@@ -26,10 +26,16 @@ internal object GlobalDesignTokenContext {
         return withoutGlobalParts.isEmpty() && GLOBAL_SELECTOR_PART.containsMatchIn(compact)
     }
 
+    private const val ROOT_SELECTOR_PART = """:root|:host|\bhtml\b|\bbody\b"""
+    private const val PLATFORM_SELECTOR_PART =
+        """\[(?:tuiPlatform|data-platform)=(?:['"]?(?:ios|android)['"]?)\]"""
+    private const val THEME_SELECTOR_PART =
+        """\[tuiTheme=(?:['"]?(?:light|dark)['"]?)\]"""
+
     private val GLOBAL_SELECTOR_PART =
         Regex(
             pattern =
-                """(?:\:root|\:host|\bhtml\b|\bbody\b|\[(?:tuiPlatform|data-platform)=(?:['"]?(?:ios|android)['"]?)\]|\[tuiTheme=(?:['"]?(?:light|dark)['"]?)\])""",
+                "(?:$ROOT_SELECTOR_PART|$PLATFORM_SELECTOR_PART|$THEME_SELECTOR_PART)",
             option = RegexOption.IGNORE_CASE,
         )
     private val THEME_MIXIN =
