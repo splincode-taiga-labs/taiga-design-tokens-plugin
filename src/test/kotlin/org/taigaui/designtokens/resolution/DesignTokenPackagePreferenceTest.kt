@@ -17,9 +17,14 @@ class DesignTokenPackagePreferenceTest {
                 declaration(DESIGN_TOKENS_PACKAGE, TARGET, "#222"),
             )
         val result = resolveRoot(index)
+        val selectedPackage =
+            result.references
+                .single()
+                .selectedVariant
+                ?.packageName()
 
         assertEquals("#111", result.value)
-        assertEquals(CORE_PACKAGE, result.references.single().selectedVariant?.packageName())
+        assertEquals(CORE_PACKAGE, selectedPackage)
     }
 
     @Test
@@ -30,9 +35,14 @@ class DesignTokenPackagePreferenceTest {
                 declaration(DESIGN_TOKENS_PACKAGE, TARGET, "#222"),
             )
         val result = resolveRoot(index)
+        val selectedPackage =
+            result.references
+                .single()
+                .selectedVariant
+                ?.packageName()
 
         assertEquals("#222", result.value)
-        assertEquals(DESIGN_TOKENS_PACKAGE, result.references.single().selectedVariant?.packageName())
+        assertEquals(DESIGN_TOKENS_PACKAGE, selectedPackage)
     }
 
     private fun resolveRoot(index: DesignTokenIndex): DesignTokenValueResolution.Resolved {
