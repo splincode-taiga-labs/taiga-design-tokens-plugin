@@ -81,7 +81,7 @@ private fun DesignTokenResolutionGroup.hoverPlatformLabel(): String {
 
     return if (sharedAcrossPlatforms) {
         contexts
-            .flatMap(DesignTokenContext::forDesktopAndMobile)
+            .flatMap { context -> context.forDesktopAndMobile() }
             .hoverPlatformLabel()
     } else {
         contexts.hoverPlatformLabel()
