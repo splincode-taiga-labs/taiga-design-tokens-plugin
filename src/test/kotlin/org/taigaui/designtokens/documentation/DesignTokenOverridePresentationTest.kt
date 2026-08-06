@@ -99,6 +99,37 @@ class DesignTokenOverridePresentationTest {
         assertEquals("Overridden by a platform-specific declaration", overriddenRow.overrideMessage)
     }
 
+    @Test
+    fun `platform scope wins before package layer`() {
+        val proprietaryRoot =
+            resolution(
+                packageName = PROPRIETARY_PACKAGE,
+                rawValue = "proprietary-root",
+                value = "proprietary-root",
+                requestedContext = LIGHT_IOS,
+                sharedAcrossPlatforms = true,
+            )
+        val designTokensMobile =
+            resolution(
+                packageName = DESIGN_TOKENS_PACKAGE,
+                rawValue = "design-mobile",
+                value = "design-mobile",
+                requestedContext = LIGHT_IOS,
+                declarationContext = MOBILE_ANY_THEME,
+                sharedAcrossPlatforms = false,
+            )
+        val model =
+            DesignTokenHoverPopupModel.create(
+                TOKEN,
+                listOf(group(proprietaryRoot, designTokensMobile)),
+            )
+        val proprietaryRow = model.sections.first { it.packageName == PROPRIETARY_PACKAGE }.rows.single()
+        val designTokensRow = model.sections.first { it.packageName == DESIGN_TOKENS_PACKAGE }.rows.single()
+
+        assertEquals("Overridden by a platform-specific declaration", proprietaryRow.overrideMessage)
+        assertNull(designTokensRow.overrideMessage)
+    }
+
     private fun rootResolution(
         requestedContext: DesignTokenContext,
         value: String,
