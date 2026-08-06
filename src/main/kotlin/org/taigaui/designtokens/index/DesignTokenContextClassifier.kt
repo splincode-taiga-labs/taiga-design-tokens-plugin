@@ -6,32 +6,26 @@ class DesignTokenContextClassifier {
     fun classify(
         packageRoot: Path,
         declaration: DesignTokenDeclaration,
-    ): DesignTokenContext = classifyAll(packageRoot, declaration).first()
+    ): DesignTokenContext {
+        val markers = pathMarkers(packageRoot, declaration.sourceFile)
 
-    fun classifyAll(
+        return DesignTokenContext(
+            platform = classifyPlatform(markers, declaration.selectorChain),
+            theme = classifyTheme(markers, declaration.selectorChain),
+        )
+    }
+
+    internal fun isSharedAcrossPlatforms(
         packageRoot: Path,
         declaration: DesignTokenDeclaration,
-    ): List<DesignTokenContext> {
-        val markers =
-            pathMarkers(
-                packageRoot = packageRoot,
-                sourceFile = declaration.sourceFile,
-            )
+    ): Boolean {
+        val markers = pathMarkers(packageRoot, declaration.sourceFile)
         val platform = classifyPlatform(markers, declaration.selectorChain)
-        val theme = classifyTheme(markers, declaration.selectorChain)
-        val platforms =
-            if (isSharedVariablesDeclaration(declaration, markers, platform)) {
-                listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE)
-            } else {
-                listOf(platform)
-            }
 
-        return platforms.map { currentPlatform ->
-            DesignTokenContext(
-                platform = currentPlatform,
-                theme = theme,
-            )
-        }
+        return declaration.packageName == PROPRIETARY_PACKAGE &&
+            platform == DesignTokenPlatform.DESKTOP &&
+            VARIABLES_FILE in markers &&
+            declaration.selectorChain.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) }
     }
 
     private fun pathMarkers(
@@ -97,16 +91,6 @@ class DesignTokenContextClassifier {
             else -> DesignTokenTheme.UNSPECIFIED
         }
     }
-
-    private fun isSharedVariablesDeclaration(
-        declaration: DesignTokenDeclaration,
-        markers: Set<String>,
-        platform: DesignTokenPlatform,
-    ): Boolean =
-        declaration.packageName == PROPRIETARY_PACKAGE &&
-            platform == DesignTokenPlatform.DESKTOP &&
-            VARIABLES_FILE in markers &&
-            declaration.selectorChain.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) }
 
     private fun List<String>.containsMatch(pattern: Regex): Boolean = any(pattern::containsMatchIn)
 
