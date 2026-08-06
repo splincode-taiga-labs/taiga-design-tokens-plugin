@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.documentation
 
+import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
 
@@ -30,12 +31,7 @@ internal fun List<DesignTokenVariantResolution>.withOverrideState(): List<Decora
 private fun DesignTokenVariantResolution.cascadeScore(): CascadeScore =
     CascadeScore(
         packagePrecedence = sourcePackageName().packagePrecedence(),
-        platformSpecificity =
-            if (variant.origins.any { origin -> origin.sharedAcrossPlatforms }) {
-                0
-            } else {
-                1
-            },
+        platformSpecificity = platformSpecificity(),
         themeSpecificity =
             if (variant.context.theme == DesignTokenTheme.UNSPECIFIED) {
                 0
@@ -43,6 +39,13 @@ private fun DesignTokenVariantResolution.cascadeScore(): CascadeScore =
                 1
             },
     )
+
+private fun DesignTokenVariantResolution.platformSpecificity(): Int =
+    when {
+        variant.origins.any { origin -> origin.sharedAcrossPlatforms } -> 0
+        variant.context.platform == DesignTokenPlatform.MOBILE -> 1
+        else -> 2
+    }
 
 private fun DesignTokenVariantResolution.overrideMessage(
     overridingResolution: DesignTokenVariantResolution,
