@@ -132,32 +132,11 @@ private fun createHeaderContent(
             },
         )
 
-        createHeaderMetadata(model, descriptionWidth)?.let { metadata ->
+        model.description?.let { description ->
             add(Box.createVerticalStrut(JBUI.scale(3)))
-            add(metadata)
-        }
-    }
-
-private fun createHeaderMetadata(
-    model: DesignTokenHoverPopupModel,
-    descriptionWidth: Int,
-): JComponent? {
-    val description = model.description
-    val packageName = model.singlePackageName
-
-    if (description == null && packageName == null) {
-        return null
-    }
-
-    return JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        isOpaque = false
-        alignmentX = JComponent.LEFT_ALIGNMENT
-
-        description?.let { text ->
             add(
                 WrappedTextPane(
-                    text = text,
+                    text = description,
                     width = descriptionWidth,
                     textFont = UIUtil.getLabelFont(),
                     textColor = UIUtil.getContextHelpForeground(),
@@ -165,21 +144,7 @@ private fun createHeaderMetadata(
                 ),
             )
         }
-
-        packageName?.let { name ->
-            if (description != null) {
-                add(Box.createVerticalStrut(JBUI.scale(2)))
-            }
-
-            add(
-                JBLabel(name).apply {
-                    foreground = UIUtil.getContextHelpForeground()
-                    alignmentX = JComponent.LEFT_ALIGNMENT
-                },
-            )
-        }
     }
-}
 
 private fun createFooter(onReportBug: () -> Unit): JComponent =
     JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
