@@ -7,10 +7,7 @@ internal fun DisplayResolutionGroup.toHoverReferenceChain(
     tokenName: String,
 ): DesignTokenHoverReferenceChain =
     DesignTokenHoverReferenceChain(
-        platform =
-            resolutions
-                .map { resolution -> resolution.requestedContext }
-                .hoverPlatformLabel(),
+        platform = platformLabel(),
         lines =
             buildList {
                 add(DesignTokenHoverReferenceLine(tokenName, depth = 0, root = true))
