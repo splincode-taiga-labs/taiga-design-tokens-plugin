@@ -26,17 +26,8 @@ internal fun createDesignTokenValueSections(
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
 
-        val showPackageHeaders = sections.size > 1
-
         sections.forEachIndexed { index, section ->
-            add(
-                createPackageValueSection(
-                    section = section,
-                    valueWidth = valueWidth,
-                    showPackageHeader = showPackageHeaders,
-                    onNavigate = onNavigate,
-                ),
-            )
+            add(createPackageValueSection(section, valueWidth, onNavigate))
 
             if (index != sections.lastIndex) {
                 add(Box.createVerticalStrut(JBUI.scale(12)))
@@ -49,26 +40,15 @@ internal fun createDesignTokenValueSections(
 private fun createPackageValueSection(
     section: DesignTokenHoverPackageSection,
     valueWidth: Int,
-    showPackageHeader: Boolean,
     onNavigate: (DesignTokenNavigationTarget) -> Unit,
 ): JComponent =
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-
-        if (showPackageHeader) {
-            add(
-                JBLabel(section.packageName).apply {
-                    font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(14f).toFloat())
-                    alignmentX = JComponent.LEFT_ALIGNMENT
-                },
-            )
-            add(Box.createVerticalStrut(JBUI.scale(8)))
-        }
-
-        add(createTableHeader(valueWidth))
+        add(createTableHeader(section.packageName, valueWidth))
         add(Box.createVerticalStrut(JBUI.scale(6)))
+
         section.rows.forEachIndexed { index, row ->
             add(createValueRow(row, valueWidth, onNavigate))
 
@@ -78,14 +58,17 @@ private fun createPackageValueSection(
         }
     }
 
-private fun createTableHeader(valueWidth: Int): JComponent =
+private fun createTableHeader(
+    packageName: String,
+    valueWidth: Int,
+): JComponent =
     JPanel(GridBagLayout()).apply {
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
         border = JBUI.Borders.empty(0, ROW_HORIZONTAL_PADDING)
 
         add(
-            JBLabel("Platform").apply {
+            JBLabel(packageName).apply {
                 font = font.deriveFont(Font.BOLD)
             },
             GridBagConstraints().apply {
