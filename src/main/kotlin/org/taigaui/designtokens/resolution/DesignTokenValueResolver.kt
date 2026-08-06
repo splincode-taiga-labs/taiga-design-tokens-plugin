@@ -195,21 +195,6 @@ class DesignTokenValueResolver(
                 ),
         )
 
-    private fun DesignTokenValuePart.Reference.expression(): String =
-        buildString {
-            append("var(")
-            append(name)
-
-            fallback?.let { fallback ->
-                append(", ")
-                append(fallback.rawValue)
-            }
-
-            append(')')
-        }
-
-    private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
-
     private data class ResolutionFrame(
         val variant: DesignTokenVariant,
         val requestedContext: DesignTokenContext,
@@ -223,6 +208,8 @@ class DesignTokenValueResolver(
             )
     }
 }
+
+private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
 
 private fun DesignTokenVariant.sourcePackages(): Set<String> =
     origins
