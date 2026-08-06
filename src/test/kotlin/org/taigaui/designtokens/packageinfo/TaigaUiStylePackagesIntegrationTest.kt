@@ -2,6 +2,7 @@ package org.taigaui.designtokens.packageinfo
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
@@ -81,6 +82,59 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 .flatMap { variant -> variant.origins }
                 .mapNotNull { origin -> origin.packageName }
                 .toSet(),
+        )
+    }
+
+    fun testTreatsTaigaUi4ProprietaryVariablesAsAllPlatforms() {
+        val fontValue = "normal 0.875rem/1.25rem Arial, sans-serif"
+
+        writePackage(
+            directory = "design-tokens",
+            name = "@taiga-ui/design-tokens",
+            version = "0.248.0",
+            exports = null,
+            files =
+                mapOf(
+                    "fonts/desktop.css" to
+                        ":root { --tui-font-body-s: $fontValue; }",
+                    "fonts/mobile.css" to
+                        ":root { --tui-font-body-s: $fontValue; }",
+                ),
+        )
+        writePackage(
+            directory = "proprietary",
+            name = "@taiga-ui/proprietary",
+            version = "4.93.0",
+            exports = "\"./styles/*\": \"./styles/*\"",
+            files =
+                mapOf(
+                    "styles/variables.less" to
+                        """
+                        @import (inline, once) '@taiga-ui/design-tokens/fonts/desktop.css';
+                        @import (inline, once) '@taiga-ui/design-tokens/palette/gradient.css';
+                        @import (inline, once) '@taiga-ui/design-tokens/palette/animation.css';
+                        @import (inline, once) '@taiga-ui/design-tokens/palette/shadow.css';
+
+                        &:root,
+                        :host {
+                            --tui-font-text-s: var(--tui-font-body-s);
+                        }
+                        """.trimIndent(),
+                ),
+        )
+
+        val packageSet = resolvePackageSet()
+        val index = buildIndex(packageSet)
+        val group = DesignTokenValueResolver(index).resolveGrouped("--tui-font-text-s").single()
+
+        assertEquals(
+            setOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
+            group.resolutions.map { resolution -> resolution.variant.context.platform }.toSet(),
+        )
+        assertResolvedValue(fontValue, group.representative)
+        assertEquals(
+            setOf("@taiga-ui/proprietary"),
+            group.origins.mapNotNull { origin -> origin.packageName }.toSet(),
         )
     }
 
