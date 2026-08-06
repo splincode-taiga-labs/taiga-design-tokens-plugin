@@ -45,6 +45,21 @@ class DesignTokenPackagePreferenceTest {
         assertEquals(DESIGN_TOKENS_PACKAGE, selectedPackage)
     }
 
+    @Test
+    fun `keeps identical declarations separate by source package`() {
+        val index =
+            index(
+                declaration(CORE_PACKAGE, ROOT, "same-value"),
+                declaration(DESIGN_TOKENS_PACKAGE, ROOT, "same-value"),
+            )
+
+        assertEquals(2, index.find(ROOT).size)
+        assertEquals(
+            setOf(CORE_PACKAGE, DESIGN_TOKENS_PACKAGE),
+            index.find(ROOT).mapNotNull { variant -> variant.packageName() }.toSet(),
+        )
+    }
+
     private fun resolveRoot(index: DesignTokenIndex): DesignTokenValueResolution.Resolved {
         val resolution = DesignTokenValueResolver(index).resolve(index.find(ROOT).single())
 
@@ -71,6 +86,7 @@ class DesignTokenPackagePreferenceTest {
             value = value,
             sourceFile = packageRoot.resolve("styles/base.less"),
             line = 1,
+            selectorChain = listOf(":root"),
             packageName = packageName,
             packageVersion = "1.0.0",
             packageRoot = packageRoot,
