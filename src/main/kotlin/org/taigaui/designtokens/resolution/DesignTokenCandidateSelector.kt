@@ -12,21 +12,33 @@ internal class DesignTokenCandidateSelector(
     fun select(
         name: String,
         requestedContext: DesignTokenContext,
+        preferredPackages: Set<String> = emptySet(),
     ): DesignTokenCandidateSelection {
         val variants = index.find(name)
-        val candidates =
+        val contextCandidates =
             contextPrecedence(requestedContext)
                 .asSequence()
                 .map { compatibleContext ->
                     variants.filter { variant -> variant.context == compatibleContext }
                 }.firstOrNull(List<DesignTokenVariant>::isNotEmpty)
                 .orEmpty()
+        val candidates = contextCandidates.preferPackages(preferredPackages)
 
         return when (candidates.size) {
             0 -> DesignTokenCandidateSelection.Missing
             1 -> DesignTokenCandidateSelection.Selected(candidates.single())
             else -> DesignTokenCandidateSelection.Ambiguous(candidates.toList())
         }
+    }
+
+    private fun List<DesignTokenVariant>.preferPackages(preferredPackages: Set<String>): List<DesignTokenVariant> {
+        if (preferredPackages.isEmpty()) {
+            return this
+        }
+
+        return filter { variant ->
+            variant.origins.any { origin -> origin.packageName in preferredPackages }
+        }.ifEmpty { this }
     }
 
     private fun contextPrecedence(context: DesignTokenContext): List<DesignTokenContext> =
