@@ -99,14 +99,13 @@ internal class DesignTokenHoverPopupController(
     private fun Editor.isPointerOver(
         reference: DesignTokenReferenceAtOffset,
         pointer: Point,
-    ): Boolean {
-        val start = offsetToXY(reference.startOffset)
-        val end = offsetToXY(reference.endOffset)
-
-        return start.y == end.y &&
-            pointer.x in start.x until end.x &&
-            pointer.y in start.y until (start.y + lineHeight)
-    }
+    ): Boolean =
+        DesignTokenReferenceHitTester.contains(
+            start = offsetToXY(reference.startOffset),
+            end = offsetToXY(reference.endOffset),
+            lineHeight = lineHeight,
+            pointer = pointer,
+        )
 
     private suspend fun handleRequest(request: HoverRequest) {
         val popupData = readAction { request.resolvePopupData() }
