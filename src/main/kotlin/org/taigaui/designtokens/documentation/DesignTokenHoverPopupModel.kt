@@ -38,11 +38,13 @@ internal data class DesignTokenHoverValueRow(
     val resolvedValue: String,
     val color: Color?,
     val navigationTarget: DesignTokenNavigationTarget?,
+    val overrideMessage: String? = null,
 )
 
 internal data class DesignTokenHoverReferenceChain(
     val platform: String,
     val lines: List<DesignTokenHoverReferenceLine>,
+    val overrideMessage: String? = null,
 )
 
 internal data class DesignTokenHoverReferenceLine(
