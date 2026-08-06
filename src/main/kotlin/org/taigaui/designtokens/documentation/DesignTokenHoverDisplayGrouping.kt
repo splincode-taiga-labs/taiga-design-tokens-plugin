@@ -27,7 +27,7 @@ internal fun DisplayResolutionGroup.toHoverValueRow(): DesignTokenHoverValueRow 
         overrideMessage = overrideMessage,
     )
 
-private fun DisplayResolutionGroup.platformLabel(): String =
+internal fun DisplayResolutionGroup.platformLabel(): String =
     resolutions
         .map(DesignTokenVariantResolution::requestedContext)
         .collapseThemes()
