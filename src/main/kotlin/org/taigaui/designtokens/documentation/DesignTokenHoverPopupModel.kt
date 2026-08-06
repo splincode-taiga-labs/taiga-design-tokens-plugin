@@ -10,7 +10,6 @@ internal data class DesignTokenHoverPopupModel(
     val sections: List<DesignTokenHoverPackageSection>,
 ) {
     val referenceChainCount: Int = sections.sumOf { section -> section.chains.size }
-    val singlePackageName: String? = sections.singleOrNull()?.packageName
 
     companion object {
         fun create(
