@@ -96,7 +96,7 @@ class DesignTokenOverridePresentationTest {
             appliedRows.map { row -> row.platform }.toSet(),
         )
         assertEquals("📱 Mobile · Light ☀️", overriddenRow.platform)
-        assertEquals("Overridden by a more specific declaration", overriddenRow.overrideMessage)
+        assertEquals("Overridden by a platform-specific declaration", overriddenRow.overrideMessage)
     }
 
     private fun rootResolution(
