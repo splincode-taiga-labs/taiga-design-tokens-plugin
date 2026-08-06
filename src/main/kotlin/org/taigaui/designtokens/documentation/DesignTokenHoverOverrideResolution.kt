@@ -52,10 +52,16 @@ private fun DesignTokenVariantResolution.overrideMessage(
 ): String {
     val overridingPackage = overridingResolution.sourcePackageName()
 
-    return if (sourcePackageName() == overridingPackage) {
-        "Overridden by a more specific declaration"
-    } else {
-        "Overridden by $overridingPackage"
+    return when {
+        sourcePackageName() != overridingPackage -> "Overridden by $overridingPackage"
+        platformSpecificity() < overridingResolution.platformSpecificity() ->
+            "Overridden by a platform-specific declaration"
+
+        variant.context.theme == DesignTokenTheme.UNSPECIFIED &&
+            overridingResolution.variant.context.theme != DesignTokenTheme.UNSPECIFIED ->
+            "Overridden by a theme-specific declaration"
+
+        else -> "Overridden by another declaration"
     }
 }
 
