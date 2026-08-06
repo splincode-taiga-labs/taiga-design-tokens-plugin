@@ -127,7 +127,12 @@ class DesignTokenValueResolver(
         owner: ResolutionFrame,
         stack: MutableList<ResolutionFrame>,
     ): DesignTokenReferenceResolution {
-        val selection = candidateSelector.select(reference.name, owner.requestedContext)
+        val selection =
+            candidateSelector.select(
+                name = reference.name,
+                requestedContext = owner.requestedContext,
+                preferredPackages = owner.variant.sourcePackages(),
+            )
         val selectedVariant =
             (selection as? DesignTokenCandidateSelection.Selected)?.variant
         val primaryResult =
@@ -227,6 +232,11 @@ class DesignTokenValueResolver(
         }
 
     private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
+
+    private fun DesignTokenVariant.sourcePackages(): Set<String> =
+        origins
+            .mapNotNull { origin -> origin.packageName }
+            .toSet()
 
     private data class ResolutionFrame(
         val variant: DesignTokenVariant,
