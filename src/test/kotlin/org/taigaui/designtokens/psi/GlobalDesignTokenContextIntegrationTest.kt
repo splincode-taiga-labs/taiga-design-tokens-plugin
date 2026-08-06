@@ -5,12 +5,8 @@ import java.nio.file.Files
 
 class GlobalDesignTokenContextIntegrationTest : BasePlatformTestCase() {
     fun testIgnoresComponentAndStateScopedOverrides() {
-        val packageRoot = Files.createTempDirectory("taiga-ui-global-token-context")
-        val sourceFile = packageRoot.resolve("variables.less")
-
-        try {
-            Files.writeString(
-                sourceFile,
+        val names =
+            extractNames(
                 """
                 &:root,
                 :host {
@@ -32,13 +28,41 @@ class GlobalDesignTokenContextIntegrationTest : BasePlatformTestCase() {
                 """.trimIndent(),
             )
 
-            val names =
-                PsiDesignTokenSourceExtractor(project)
-                    .extract(sourceFile)
-                    .map { declaration -> declaration.name }
-                    .toSet()
+        assertEquals(setOf("--tui-global", "--tui-mobile"), names)
+    }
 
-            assertEquals(setOf("--tui-global", "--tui-mobile"), names)
+    fun testKeepsCompositePlatformAndThemeSelectors() {
+        val names =
+            extractNames(
+                """
+                :root {
+                    [tuiPlatform='ios'] & {
+                        --tui-ios: red;
+                    }
+                }
+
+                [data-platform='ios'][tuiTheme='dark'],
+                [data-platform='android'] [tuiTheme='dark'],
+                [tuiTheme='dark'] [data-platform='ios'] {
+                    --tui-mobile-dark: black;
+                }
+                """.trimIndent(),
+            )
+
+        assertEquals(setOf("--tui-ios", "--tui-mobile-dark"), names)
+    }
+
+    private fun extractNames(content: String): Set<String> {
+        val packageRoot = Files.createTempDirectory("taiga-ui-global-token-context")
+        val sourceFile = packageRoot.resolve("variables.less")
+
+        return try {
+            Files.writeString(sourceFile, content)
+
+            PsiDesignTokenSourceExtractor(project)
+                .extract(sourceFile)
+                .map { declaration -> declaration.name }
+                .toSet()
         } finally {
             packageRoot.toFile().deleteRecursively()
         }
