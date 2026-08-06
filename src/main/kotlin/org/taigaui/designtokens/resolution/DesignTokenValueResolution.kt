@@ -7,6 +7,7 @@ import org.taigaui.designtokens.index.DesignTokenVariant
 data class DesignTokenVariantResolution(
     val variant: DesignTokenVariant,
     val result: DesignTokenValueResolution,
+    val requestedContext: DesignTokenContext = variant.context,
 )
 
 sealed interface DesignTokenValueResolution {
