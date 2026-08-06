@@ -11,26 +11,31 @@ internal object GlobalDesignTokenContext {
                     .all(::isGlobalSelector)
             }
 
-    private fun isGlobalSelector(selector: String): Boolean =
-        ROOT_SELECTOR.matches(selector) ||
-            PLATFORM_SELECTOR.matches(selector) ||
-            THEME_SELECTOR.matches(selector) ||
-            THEME_MIXIN.matches(selector)
+    private fun isGlobalSelector(selector: String): Boolean {
+        val compact = selector.replace(WHITESPACE, "")
 
-    private val ROOT_SELECTOR = Regex("""(?:&?:root|:host|html|body)""", RegexOption.IGNORE_CASE)
-    private val PLATFORM_SELECTOR =
+        if (THEME_MIXIN.matches(compact)) {
+            return true
+        }
+
+        val withoutGlobalParts =
+            GLOBAL_SELECTOR_PART
+                .replace(compact, "")
+                .replace("&", "")
+
+        return withoutGlobalParts.isEmpty() && GLOBAL_SELECTOR_PART.containsMatchIn(compact)
+    }
+
+    private val GLOBAL_SELECTOR_PART =
         Regex(
-            """\[(?:tuiPlatform|data-platform)\s*=\s*(?:['"](?:ios|android)['"]|(?:ios|android))\s*]""",
-            RegexOption.IGNORE_CASE,
-        )
-    private val THEME_SELECTOR =
-        Regex(
-            """\[tuiTheme\s*=\s*(?:['"](?:light|dark)['"]|(?:light|dark))\s*]""",
-            RegexOption.IGNORE_CASE,
+            pattern =
+                """(?:\:root|\:host|\bhtml\b|\bbody\b|\[(?:tuiPlatform|data-platform)=(?:['"]?(?:ios|android)['"]?)\]|\[tuiTheme=(?:['"]?(?:light|dark)['"]?)\])""",
+            option = RegexOption.IGNORE_CASE,
         )
     private val THEME_MIXIN =
         Regex(
-            """\.(?:tui-theme-)?(?:light|dark)\s*\(\s*\)""",
+            """\.(?:tui-theme-)?(?:light|dark)\(\)""",
             RegexOption.IGNORE_CASE,
         )
+    private val WHITESPACE = Regex("""\s+""")
 }
