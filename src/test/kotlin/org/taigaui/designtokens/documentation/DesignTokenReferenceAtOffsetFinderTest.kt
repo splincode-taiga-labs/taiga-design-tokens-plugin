@@ -6,13 +6,14 @@ import org.junit.Test
 
 class DesignTokenReferenceAtOffsetFinderTest {
     @Test
-    fun `finds token at beginning middle end and immediately after name`() {
+    fun `finds token only while caret is inside its name`() {
         val text = ".button { color: var(--tui-text-primary); }"
         val start = text.indexOf(TOKEN)
 
-        listOf(start, start + 5, start + TOKEN.length - 1, start + TOKEN.length).forEach { offset ->
+        listOf(start, start + 5, start + TOKEN.length - 1).forEach { offset ->
             assertEquals(TOKEN, DesignTokenReferenceAtOffsetFinder.find(text, offset)?.name)
         }
+        assertNull(DesignTokenReferenceAtOffsetFinder.find(text, start + TOKEN.length))
     }
 
     @Test
