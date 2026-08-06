@@ -7,6 +7,7 @@ import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.event.EditorMouseEvent
+import com.intellij.openapi.editor.event.EditorMouseEventArea
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
@@ -64,26 +65,47 @@ internal class DesignTokenHoverPopupController(
         val editor = event.editor
 
         if (editor.project == project && !editor.isDisposed) {
-            val virtualFile = FileDocumentManager.getInstance().getFile(editor.document)
-            val isDesignTokenReference =
-                virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS &&
-                    DesignTokenReferenceAtOffsetFinder.find(
-                        editor.document.immutableCharSequence,
-                        event.offset,
-                    ) != null
+            val anchor = Point(event.mouseEvent.point)
+            val reference = event.findReferenceUnderPointer(anchor)
 
-            if (isDesignTokenReference) {
+            if (reference != null) {
                 nativeHoverPopupSuppression.suppress(editor)
             }
 
             requests.tryEmit(
                 HoverRequest(
                     editor = editor,
-                    offset = event.offset,
-                    anchor = Point(event.mouseEvent.point),
+                    reference = reference,
+                    anchor = anchor,
+                    modificationStamp = editor.document.modificationStamp,
                 ),
             )
         }
+    }
+
+    private fun EditorMouseEvent.findReferenceUnderPointer(anchor: Point): DesignTokenReferenceAtOffset? {
+        val virtualFile = FileDocumentManager.getInstance().getFile(editor.document)
+
+        return takeIf { area == EditorMouseEventArea.EDITING_AREA }
+            ?.takeIf { virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+            ?.let {
+                DesignTokenReferenceAtOffsetFinder.find(
+                    editor.document.immutableCharSequence,
+                    offset,
+                )
+            }?.takeIf { reference -> editor.isPointerOver(reference, anchor) }
+    }
+
+    private fun Editor.isPointerOver(
+        reference: DesignTokenReferenceAtOffset,
+        pointer: Point,
+    ): Boolean {
+        val start = offsetToXY(reference.startOffset)
+        val end = offsetToXY(reference.endOffset)
+
+        return start.y == end.y &&
+            pointer.x in start.x until end.x &&
+            pointer.y in start.y until (start.y + lineHeight)
     }
 
     private suspend fun handleRequest(request: HoverRequest) {
@@ -99,42 +121,35 @@ internal class DesignTokenHoverPopupController(
     }
 
     private fun HoverRequest.resolvePopupData(): PopupData? {
+        val validReference =
+            reference
+                ?.takeIf { !project.isDisposed && !editor.isDisposed }
+                ?.takeIf { modificationStamp == editor.document.modificationStamp }
+                ?: return null
         val virtualFile =
-            takeIf { !project.isDisposed && !editor.isDisposed }
-                ?.let { FileDocumentManager.getInstance().getFile(editor.document) }
+            FileDocumentManager
+                .getInstance()
+                .getFile(editor.document)
                 ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
-        val reference =
-            virtualFile?.let {
-                DesignTokenReferenceAtOffsetFinder.find(
-                    editor.document.immutableCharSequence,
-                    offset,
+                ?: return null
+        val sourceFile = runCatching { Path.of(virtualFile.path) }.getOrNull() ?: return null
+
+        return project
+            .service<DesignTokenIndexService>()
+            .resolveToken(sourceFile, validReference.name)
+            .takeIf { groups -> groups.isNotEmpty() }
+            ?.let { groups ->
+                PopupData(
+                    key =
+                        PopupKey(
+                            editor = editor,
+                            tokenName = validReference.name,
+                            offset = validReference.startOffset,
+                            modificationStamp = modificationStamp,
+                        ),
+                    model = DesignTokenHoverPopupModel.create(validReference.name, groups),
                 )
             }
-        val sourceFile =
-            virtualFile?.let { file ->
-                runCatching { Path.of(file.path) }.getOrNull()
-            }
-
-        return if (reference == null || sourceFile == null) {
-            null
-        } else {
-            project
-                .service<DesignTokenIndexService>()
-                .resolveToken(sourceFile, reference.name)
-                .takeIf { groups -> groups.isNotEmpty() }
-                ?.let { groups ->
-                    PopupData(
-                        key =
-                            PopupKey(
-                                editor = editor,
-                                tokenName = reference.name,
-                                offset = reference.startOffset,
-                                modificationStamp = editor.document.modificationStamp,
-                            ),
-                        model = DesignTokenHoverPopupModel.create(reference.name, groups),
-                    )
-                }
-        }
     }
 
     private fun showPopup(
@@ -272,8 +287,9 @@ internal class DesignTokenHoverPopupController(
 
     private data class HoverRequest(
         val editor: Editor,
-        val offset: Int,
+        val reference: DesignTokenReferenceAtOffset?,
         val anchor: Point,
+        val modificationStamp: Long,
     )
 
     private data class PopupKey(
