@@ -4,7 +4,6 @@ on:
     push:
         branches:
             - main
-            - feat/taiga-ui-style-packages
     pull_request:
 
 permissions:
