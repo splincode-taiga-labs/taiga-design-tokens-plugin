@@ -29,20 +29,29 @@ internal fun DisplayResolutionGroup.toHoverValueRow(): DesignTokenHoverValueRow 
 
 internal fun DisplayResolutionGroup.platformLabel(): String =
     resolutions
-        .map(DesignTokenVariantResolution::requestedContext)
-        .collapseThemes()
+        .toPresentationContexts()
         .hoverPlatformLabel()
 
-private fun List<DesignTokenContext>.collapseThemes(): List<DesignTokenContext> =
-    distinct()
-        .groupBy(DesignTokenContext::platform)
-        .flatMap { (platform, contexts) ->
-            val themes = contexts.map(DesignTokenContext::theme).toSet()
+private fun List<DesignTokenVariantResolution>.toPresentationContexts(): List<DesignTokenContext> =
+    groupBy { resolution -> resolution.requestedContext.platform }
+        .flatMap { (platform, platformResolutions) ->
+            val requestedThemes =
+                platformResolutions
+                    .map { resolution -> resolution.requestedContext.theme }
+                    .toSet()
+            val inheritedAcrossThemes =
+                platformResolutions.all { resolution ->
+                    resolution.variant.context.theme == DesignTokenTheme.UNSPECIFIED
+                }
 
-            if (DesignTokenTheme.LIGHT in themes && DesignTokenTheme.DARK in themes) {
+            if (
+                inheritedAcrossThemes &&
+                DesignTokenTheme.LIGHT in requestedThemes &&
+                DesignTokenTheme.DARK in requestedThemes
+            ) {
                 listOf(DesignTokenContext(platform, DesignTokenTheme.UNSPECIFIED))
             } else {
-                contexts
+                platformResolutions.map(DesignTokenVariantResolution::requestedContext).distinct()
             }
         }
 
