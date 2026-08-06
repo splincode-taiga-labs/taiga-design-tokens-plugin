@@ -33,7 +33,10 @@ class DesignTokenHoverPopupModelTest {
         assertEquals("#fff", row.resolvedValue)
         assertNotNull(row.color)
         assertNotNull(row.navigationTarget)
-        assertEquals(listOf(TOKEN, "#fff"), chain.lines.map(DesignTokenHoverReferenceLine::text))
+        assertEquals(
+            listOf(TOKEN, "#fff, rgba(255, 255, 255, 1)"),
+            chain.lines.map(DesignTokenHoverReferenceLine::text),
+        )
         assertEquals(1, model.referenceChainCount)
         assertNull(model.description)
     }
