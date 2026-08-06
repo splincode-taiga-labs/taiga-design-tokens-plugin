@@ -6,7 +6,7 @@ import java.nio.file.Path
 
 class SharedVariablesPlatformTest {
     @Test
-    fun `classifies root variables less declarations for desktop and mobile`() {
+    fun `classifies proprietary root variables less declarations for desktop and mobile`() {
         val declaration = sharedDeclaration()
 
         assertEquals(
@@ -19,7 +19,7 @@ class SharedVariablesPlatformTest {
     }
 
     @Test
-    fun `indexes shared variables less declarations for all platforms`() {
+    fun `indexes proprietary shared variables for all platforms`() {
         val variants =
             DesignTokenIndex
                 .build(
@@ -34,11 +34,21 @@ class SharedVariablesPlatformTest {
     }
 
     @Test
-    fun `keeps an ordinary less file desktop only`() {
+    fun `keeps an ordinary proprietary less file desktop only`() {
         val declaration =
             sharedDeclaration().copy(
                 sourceFile = PACKAGE_ROOT.resolve("styles/theme.less"),
             )
+
+        assertEquals(
+            listOf(DesignTokenContext.DEFAULT),
+            DesignTokenContextClassifier().classifyAll(PACKAGE_ROOT, declaration),
+        )
+    }
+
+    @Test
+    fun `keeps another package variables less desktop only`() {
+        val declaration = sharedDeclaration().copy(packageName = "@taiga-ui/core")
 
         assertEquals(
             listOf(DesignTokenContext.DEFAULT),
@@ -53,10 +63,12 @@ class SharedVariablesPlatformTest {
             sourceFile = PACKAGE_ROOT.resolve("styles/variables.less"),
             line = 5,
             selectorChain = listOf("&:root, :host"),
+            packageName = PROPRIETARY_PACKAGE,
         )
 
     private companion object {
         const val TOKEN = "--tui-font-text-s"
+        const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
         val PACKAGE_ROOT: Path =
             Path
                 .of("build", "fixtures", "proprietary")
