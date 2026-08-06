@@ -24,16 +24,6 @@ class DesignTokenIndex private constructor(
                 .sortedWith(DECLARATION_COMPARATOR)
                 .forEach { declaration ->
                     val normalizedSourceFile = declaration.sourceFile.toAbsolutePath().normalize()
-                    val key =
-                        VariantKey(
-                            name = declaration.name,
-                            context =
-                                contextClassifier.classify(
-                                    declaration.packageRoot ?: packageRoot,
-                                    declaration,
-                                ),
-                            rawValue = declaration.value,
-                        )
                     val origin =
                         DesignTokenOrigin(
                             sourceFile = normalizedSourceFile,
@@ -44,7 +34,20 @@ class DesignTokenIndex private constructor(
                             packageVersion = declaration.packageVersion,
                         )
 
-                    groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
+                    contextClassifier
+                        .classifyAll(
+                            declaration.packageRoot ?: packageRoot,
+                            declaration,
+                        ).forEach { context ->
+                            val key =
+                                VariantKey(
+                                    name = declaration.name,
+                                    context = context,
+                                    rawValue = declaration.value,
+                                )
+
+                            groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
+                        }
                 }
 
             val variants =
