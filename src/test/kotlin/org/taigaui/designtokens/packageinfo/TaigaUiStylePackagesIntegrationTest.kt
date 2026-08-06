@@ -1,8 +1,8 @@
 package org.taigaui.designtokens.packageinfo
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
 import org.taigaui.designtokens.index.DesignTokenIndex
-import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
@@ -97,8 +97,6 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 mapOf(
                     "fonts/desktop.css" to
                         ":root { --tui-font-body-s: $fontValue; }",
-                    "fonts/mobile.css" to
-                        ":root { --tui-font-body-s: $fontValue; }",
                 ),
         )
         writePackage(
@@ -125,16 +123,20 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
 
         val packageSet = resolvePackageSet()
         val index = buildIndex(packageSet)
-        val group = DesignTokenValueResolver(index).resolveGrouped("--tui-font-text-s").single()
+        val groups = DesignTokenValueResolver(index).resolveGrouped("--tui-font-text-s")
+        val variant = index.find("--tui-font-text-s").single()
+        val model = DesignTokenHoverPopupModel.create("--tui-font-text-s", groups)
 
+        assertEquals(1, groups.size)
+        assertResolvedValue(fontValue, groups.single().representative)
+        assertTrue(variant.origins.single().sharedAcrossPlatforms)
         assertEquals(
-            setOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
-            group.resolutions.map { resolution -> resolution.variant.context.platform }.toSet(),
+            "All platforms · Any theme",
+            model.sections.single().rows.single().platform,
         )
-        assertResolvedValue(fontValue, group.representative)
         assertEquals(
             setOf("@taiga-ui/proprietary"),
-            group.origins.mapNotNull { origin -> origin.packageName }.toSet(),
+            groups.single().origins.mapNotNull { origin -> origin.packageName }.toSet(),
         )
     }
 
