@@ -142,7 +142,6 @@ class DesignTokenValueResolver(
             candidateSelector.select(
                 name = reference.name,
                 requestedContext = owner.requestedContext,
-                preferredPackages = owner.variant.sourcePackages(),
             )
         val primaryResult =
             when (selection) {
@@ -248,11 +247,6 @@ private fun DesignTokenVariant.requestedContexts(): List<DesignTokenContext> {
 }
 
 private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
-
-private fun DesignTokenVariant.sourcePackages(): Set<String> =
-    origins
-        .mapNotNull { origin -> origin.packageName }
-        .toSet()
 
 private fun DesignTokenCandidateSelection.selectedVariant(): DesignTokenVariant? =
     (this as? DesignTokenCandidateSelection.Selected)?.variant
