@@ -5,6 +5,7 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
+import org.taigaui.designtokens.packageinfo.TaigaUiPackagePrecedence
 
 internal class DesignTokenCandidateSelector(
     private val index: DesignTokenIndex,
@@ -12,7 +13,6 @@ internal class DesignTokenCandidateSelector(
     fun select(
         name: String,
         requestedContext: DesignTokenContext,
-        preferredPackages: Set<String> = emptySet(),
     ): DesignTokenCandidateSelection {
         val variants = index.find(name)
         val contextCandidates =
@@ -22,7 +22,7 @@ internal class DesignTokenCandidateSelector(
                     variants.filter { variant -> variant.context == compatibleContext }
                 }.firstOrNull(List<DesignTokenVariant>::isNotEmpty)
                 .orEmpty()
-        val candidates = contextCandidates.preferPackages(preferredPackages)
+        val candidates = contextCandidates.preferKnownPackageLayer()
 
         return when (candidates.size) {
             0 -> DesignTokenCandidateSelection.Missing
@@ -31,15 +31,32 @@ internal class DesignTokenCandidateSelector(
         }
     }
 
-    private fun List<DesignTokenVariant>.preferPackages(preferredPackages: Set<String>): List<DesignTokenVariant> {
-        if (preferredPackages.isEmpty()) {
+    private fun List<DesignTokenVariant>.preferKnownPackageLayer(): List<DesignTokenVariant> {
+        if (size < 2) {
             return this
         }
 
-        return filter { variant ->
-            variant.origins.any { origin -> origin.packageName in preferredPackages }
-        }.ifEmpty { this }
+        val rankedCandidates =
+            map { variant ->
+                variant to TaigaUiPackagePrecedence.rank(variant.sourcePackageName())
+            }
+
+        if (rankedCandidates.any { (_, rank) -> rank == null }) {
+            return this
+        }
+
+        val highestRank = rankedCandidates.maxOf { (_, rank) -> requireNotNull(rank) }
+
+        return rankedCandidates
+            .filter { (_, rank) -> rank == highestRank }
+            .map(Pair<DesignTokenVariant, Int?>::first)
     }
+
+    private fun DesignTokenVariant.sourcePackageName(): String? =
+        origins
+            .mapNotNull { origin -> origin.packageName }
+            .distinct()
+            .singleOrNull()
 
     private fun contextPrecedence(context: DesignTokenContext): List<DesignTokenContext> =
         when (context.platform) {
