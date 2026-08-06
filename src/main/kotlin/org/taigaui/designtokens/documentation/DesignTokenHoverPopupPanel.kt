@@ -131,45 +131,55 @@ private fun createHeaderContent(
                 font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(18f).toFloat())
             },
         )
-        add(Box.createVerticalStrut(JBUI.scale(3)))
-        add(createSubtitle(model.description, descriptionWidth))
+
+        createHeaderMetadata(model, descriptionWidth)?.let { metadata ->
+            add(Box.createVerticalStrut(JBUI.scale(3)))
+            add(metadata)
+        }
     }
 
-private fun createSubtitle(
-    description: String?,
+private fun createHeaderMetadata(
+    model: DesignTokenHoverPopupModel,
     descriptionWidth: Int,
-): JComponent =
-    JPanel().apply {
+): JComponent? {
+    val description = model.description
+    val packageName = model.singlePackageName
+
+    if (description == null && packageName == null) {
+        return null
+    }
+
+    return JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
 
-        if (description == null) {
-            add(
-                JBLabel("Taiga UI design token").apply {
-                    foreground = UIUtil.getContextHelpForeground()
-                    alignmentX = JComponent.LEFT_ALIGNMENT
-                },
-            )
-        } else {
+        description?.let { text ->
             add(
                 WrappedTextPane(
-                    text = description,
+                    text = text,
                     width = descriptionWidth,
                     textFont = UIUtil.getLabelFont(),
                     textColor = UIUtil.getContextHelpForeground(),
                     alignment = StyleConstants.ALIGN_LEFT,
                 ),
             )
-            add(Box.createVerticalStrut(JBUI.scale(2)))
+        }
+
+        packageName?.let { name ->
+            if (description != null) {
+                add(Box.createVerticalStrut(JBUI.scale(2)))
+            }
+
             add(
-                JBLabel("Taiga UI design token").apply {
+                JBLabel(name).apply {
                     foreground = UIUtil.getContextHelpForeground()
                     alignmentX = JComponent.LEFT_ALIGNMENT
                 },
             )
         }
     }
+}
 
 private fun createFooter(onReportBug: () -> Unit): JComponent =
     JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
