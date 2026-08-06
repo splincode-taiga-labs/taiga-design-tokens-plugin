@@ -24,6 +24,13 @@ class DesignTokenIndex private constructor(
                 .sortedWith(DECLARATION_COMPARATOR)
                 .forEach { declaration ->
                     val normalizedSourceFile = declaration.sourceFile.toAbsolutePath().normalize()
+                    val declarationPackageRoot = declaration.packageRoot ?: packageRoot
+                    val key =
+                        VariantKey(
+                            name = declaration.name,
+                            context = contextClassifier.classify(declarationPackageRoot, declaration),
+                            rawValue = declaration.value,
+                        )
                     val origin =
                         DesignTokenOrigin(
                             sourceFile = normalizedSourceFile,
@@ -32,22 +39,14 @@ class DesignTokenIndex private constructor(
                             selectorChain = declaration.selectorChain,
                             packageName = declaration.packageName,
                             packageVersion = declaration.packageVersion,
+                            sharedAcrossPlatforms =
+                                contextClassifier.isSharedAcrossPlatforms(
+                                    declarationPackageRoot,
+                                    declaration,
+                                ),
                         )
 
-                    contextClassifier
-                        .classifyAll(
-                            declaration.packageRoot ?: packageRoot,
-                            declaration,
-                        ).forEach { context ->
-                            val key =
-                                VariantKey(
-                                    name = declaration.name,
-                                    context = context,
-                                    rawValue = declaration.value,
-                                )
-
-                            groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
-                        }
+                    groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
                 }
 
             val variants =
