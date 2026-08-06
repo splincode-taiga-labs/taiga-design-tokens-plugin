@@ -23,6 +23,7 @@ internal fun createDesignTokenReferenceAccordion(
         alignmentX = JComponent.LEFT_ALIGNMENT
 
         val sectionsWithChains = sections.filter { section -> section.chains.isNotEmpty() }
+        val showPackageHeaders = sectionsWithChains.size > 1
         val chainCount = sectionsWithChains.sumOf { section -> section.chains.size }
         val body =
             JPanel().apply {
@@ -32,7 +33,13 @@ internal fun createDesignTokenReferenceAccordion(
                 isVisible = false
 
                 sectionsWithChains.forEachIndexed { index, section ->
-                    add(createPackageReferenceSection(section, referenceWidth))
+                    add(
+                        createPackageReferenceSection(
+                            section = section,
+                            referenceWidth = referenceWidth,
+                            showPackageHeader = showPackageHeaders,
+                        ),
+                    )
 
                     if (index != sectionsWithChains.lastIndex) {
                         add(Box.createVerticalStrut(JBUI.scale(10)))
@@ -67,18 +74,22 @@ internal fun createDesignTokenReferenceAccordion(
 private fun createPackageReferenceSection(
     section: DesignTokenHoverPackageSection,
     referenceWidth: Int,
+    showPackageHeader: Boolean,
 ): JComponent =
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-        add(
-            JBLabel(section.packageName).apply {
-                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(14f).toFloat())
-                alignmentX = JComponent.LEFT_ALIGNMENT
-            },
-        )
-        add(Box.createVerticalStrut(JBUI.scale(8)))
+
+        if (showPackageHeader) {
+            add(
+                JBLabel(section.packageName).apply {
+                    font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(14f).toFloat())
+                    alignmentX = JComponent.LEFT_ALIGNMENT
+                },
+            )
+            add(Box.createVerticalStrut(JBUI.scale(8)))
+        }
 
         section.chains.forEachIndexed { index, chain ->
             add(createReferenceChain(chain, referenceWidth))
