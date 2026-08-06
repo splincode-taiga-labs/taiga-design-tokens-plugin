@@ -10,7 +10,7 @@ class SharedVariablesPlatformTest {
     private val classifier = DesignTokenContextClassifier()
 
     @Test
-    fun `keeps proprietary root variables in the desktop resolution context`() {
+    fun `keeps root variables in the desktop declaration context`() {
         val declaration = sharedDeclaration()
 
         assertEquals(
@@ -35,19 +35,27 @@ class SharedVariablesPlatformTest {
     }
 
     @Test
-    fun `keeps an ordinary proprietary less file desktop only`() {
-        val declaration =
-            sharedDeclaration().copy(
-                sourceFile = PACKAGE_ROOT.resolve("styles/theme.less"),
-            )
+    fun `recognizes root variables in any Taiga UI style package`() {
+        val declaration = sharedDeclaration().copy(packageName = "@taiga-ui/core")
 
-        assertFalse(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
+        assertTrue(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
     }
 
     @Test
-    fun `keeps another package variables less desktop only`() {
-        val declaration = sharedDeclaration().copy(packageName = "@taiga-ui/core")
+    fun `does not treat mobile selectors as shared fallbacks`() {
+        val declaration =
+            sharedDeclaration().copy(
+                sourceFile = PACKAGE_ROOT.resolve("styles/tbank-theme-mobile.less"),
+                selectorChain =
+                    listOf(
+                        "[data-platform='ios'], [data-platform='android']",
+                    ),
+            )
 
+        assertEquals(
+            DesignTokenPlatform.MOBILE,
+            classifier.classify(PACKAGE_ROOT, declaration).platform,
+        )
         assertFalse(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
     }
 
