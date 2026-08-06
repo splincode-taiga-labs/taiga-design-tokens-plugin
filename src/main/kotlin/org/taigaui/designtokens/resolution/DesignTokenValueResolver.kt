@@ -2,6 +2,8 @@ package org.taigaui.designtokens.resolution
 
 import org.taigaui.designtokens.index.DesignTokenContext
 import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenPlatform
+import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
 
 class DesignTokenValueResolver(
@@ -11,19 +13,28 @@ class DesignTokenValueResolver(
     private val variantsByName = index
 
     fun resolve(variant: DesignTokenVariant): DesignTokenVariantResolution =
+        resolve(variant, variant.context)
+
+    fun resolve(
+        variant: DesignTokenVariant,
+        requestedContext: DesignTokenContext,
+    ): DesignTokenVariantResolution =
         DesignTokenVariantResolution(
             variant = variant,
             result =
                 resolveVariant(
-                    frame = ResolutionFrame(variant, variant.context),
+                    frame = ResolutionFrame(variant, requestedContext),
                     stack = mutableListOf(),
                 ),
+            requestedContext = requestedContext,
         )
 
     fun resolve(name: String): List<DesignTokenVariantResolution> =
         variantsByName
             .find(name)
-            .map(::resolve)
+            .flatMap { variant ->
+                variant.requestedContexts().map { context -> resolve(variant, context) }
+            }
 
     fun resolveGrouped(name: String): List<DesignTokenResolutionGroup> {
         val groups = linkedMapOf<String, MutableList<DesignTokenVariantResolution>>()
@@ -206,6 +217,25 @@ class DesignTokenValueResolver(
                 requestedContext = requestedContext,
                 rawValue = variant.rawValue,
             )
+    }
+}
+
+private fun DesignTokenVariant.requestedContexts(): List<DesignTokenContext> {
+    val platforms =
+        if (origins.any { origin -> origin.sharedAcrossPlatforms }) {
+            listOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE)
+        } else {
+            listOf(context.platform)
+        }
+    val themes =
+        if (context.theme == DesignTokenTheme.UNSPECIFIED) {
+            listOf(DesignTokenTheme.LIGHT, DesignTokenTheme.DARK)
+        } else {
+            listOf(context.theme)
+        }
+
+    return platforms.flatMap { platform ->
+        themes.map { theme -> DesignTokenContext(platform, theme) }
     }
 }
 
