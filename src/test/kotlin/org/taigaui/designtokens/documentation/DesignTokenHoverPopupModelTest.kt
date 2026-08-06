@@ -26,12 +26,15 @@ class DesignTokenHoverPopupModelTest {
         val model = DesignTokenHoverPopupModel.create(TOKEN, listOf(group(resolved("#fff", "#fff"))))
         val section = model.sections.single()
         val row = section.rows.single()
+        val chain = section.chains.single()
 
+        assertEquals(DESIGN_TOKENS_PACKAGE, model.singlePackageName)
         assertEquals(DESIGN_TOKENS_PACKAGE, section.packageName)
         assertEquals("#fff", row.resolvedValue)
         assertNotNull(row.color)
         assertNotNull(row.navigationTarget)
-        assertTrue(section.chains.isEmpty())
+        assertEquals(listOf(TOKEN, "#fff"), chain.lines.map(DesignTokenHoverReferenceLine::text))
+        assertEquals(1, model.referenceChainCount)
         assertNull(model.description)
     }
 
@@ -123,9 +126,11 @@ class DesignTokenHoverPopupModelTest {
                 .single()
                 .resolvedValue
 
+        assertNull(model.singlePackageName)
         assertEquals(listOf(DESIGN_TOKENS_PACKAGE, CORE_PACKAGE), packageNames)
         assertEquals("#fff", designTokensValue)
         assertEquals("rgba(0, 0, 0, 0.65)", coreValue)
+        assertEquals(2, model.referenceChainCount)
     }
 
     @Test
