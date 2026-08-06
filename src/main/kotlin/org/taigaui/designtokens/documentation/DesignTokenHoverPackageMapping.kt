@@ -12,10 +12,7 @@ internal fun List<DesignTokenResolutionGroup>.toHoverPackageSections(
             DesignTokenHoverPackageSection(
                 packageName = packageName,
                 rows = packageGroups.map(DesignTokenResolutionGroup::toHoverValueRow),
-                chains =
-                    packageGroups
-                        .filter { group -> group.representative.references.isNotEmpty() }
-                        .map { group -> group.toHoverReferenceChain(tokenName) },
+                chains = packageGroups.map { group -> group.toHoverReferenceChain(tokenName) },
             )
         }.sortedBy { section -> section.packageName.packageSortKey() }
 
@@ -69,7 +66,12 @@ private fun DesignTokenResolutionGroup.toHoverReferenceChain(tokenName: String):
         lines =
             buildList {
                 add(DesignTokenHoverReferenceLine(tokenName, depth = 0, root = true))
-                appendReferences(representative.references, depth = 0)
+
+                if (representative.references.isEmpty()) {
+                    addTerminalValue(representative, depth = 0)
+                } else {
+                    appendReferences(representative.references, depth = 0)
+                }
             },
     )
 
@@ -88,19 +90,26 @@ private fun MutableList<DesignTokenHoverReferenceLine>.appendReferences(
         val result = reference.effectiveResult
 
         if (result.references.isEmpty()) {
-            val color = result.toHoverColorOrNull()
-
-            add(
-                DesignTokenHoverReferenceLine(
-                    text = result.hoverReferenceValueText(color),
-                    depth = depth,
-                    color = color,
-                ),
-            )
+            addTerminalValue(result, depth)
         } else {
             appendReferences(result.references, depth + 1)
         }
     }
+}
+
+private fun MutableList<DesignTokenHoverReferenceLine>.addTerminalValue(
+    result: org.taigaui.designtokens.resolution.DesignTokenValueResolution,
+    depth: Int,
+) {
+    val color = result.toHoverColorOrNull()
+
+    add(
+        DesignTokenHoverReferenceLine(
+            text = result.hoverReferenceValueText(color),
+            depth = depth,
+            color = color,
+        ),
+    )
 }
 
 private fun DesignTokenResolutionGroup.navigationTarget(): DesignTokenNavigationTarget? =
