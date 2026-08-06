@@ -133,56 +133,33 @@ class DesignTokenValueResolver(
                 requestedContext = owner.requestedContext,
                 preferredPackages = owner.variant.sourcePackages(),
             )
-        val selectedVariant =
-            (selection as? DesignTokenCandidateSelection.Selected)?.variant
         val primaryResult =
             when (selection) {
                 is DesignTokenCandidateSelection.Selected ->
                     resolveVariant(
-                        frame = ResolutionFrame(selection.variant, owner.requestedContext),
-                        stack = stack,
+                        ResolutionFrame(selection.variant, owner.requestedContext),
+                        stack,
                     )
 
                 is DesignTokenCandidateSelection.Ambiguous ->
-                    DesignTokenValueResolution.Unresolved(
-                        rawValue = reference.expression(),
-                        reason =
-                            DesignTokenUnresolvedReason.AmbiguousReference(
-                                name = reference.name,
-                                requestedContext = owner.requestedContext,
-                                candidates = selection.candidates,
-                            ),
-                    )
+                    selection.toUnresolved(reference, owner.requestedContext)
 
                 DesignTokenCandidateSelection.Missing ->
-                    DesignTokenValueResolution.Unresolved(
-                        rawValue = reference.expression(),
-                        reason =
-                            DesignTokenUnresolvedReason.MissingReference(
-                                name = reference.name,
-                                requestedContext = owner.requestedContext,
-                            ),
-                    )
+                    reference.toMissingResolution(owner.requestedContext)
             }
         val fallbackUsed =
             reference.fallback != null &&
                 primaryResult is DesignTokenValueResolution.Unresolved &&
                 canUseFallback(primaryResult.reason, owner)
         val fallbackResult =
-            if (fallbackUsed) {
-                resolveParsedValue(
-                    value = requireNotNull(reference.fallback),
-                    owner = owner,
-                    stack = stack,
-                )
-            } else {
-                null
-            }
+            reference.fallback
+                ?.takeIf { fallbackUsed }
+                ?.let { fallback -> resolveParsedValue(fallback, owner, stack) }
 
         return DesignTokenReferenceResolution(
             name = reference.name,
             requestedContext = owner.requestedContext,
-            selectedVariant = selectedVariant,
+            selectedVariant = selection.selectedVariant(),
             primaryResult = primaryResult,
             fallbackRawValue = reference.fallback?.rawValue,
             fallbackResult = fallbackResult,
@@ -233,11 +210,6 @@ class DesignTokenValueResolver(
 
     private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
 
-    private fun DesignTokenVariant.sourcePackages(): Set<String> =
-        origins
-            .mapNotNull { origin -> origin.packageName }
-            .toSet()
-
     private data class ResolutionFrame(
         val variant: DesignTokenVariant,
         val requestedContext: DesignTokenContext,
@@ -251,3 +223,50 @@ class DesignTokenValueResolver(
             )
     }
 }
+
+private fun DesignTokenVariant.sourcePackages(): Set<String> =
+    origins
+        .mapNotNull { origin -> origin.packageName }
+        .toSet()
+
+private fun DesignTokenCandidateSelection.selectedVariant(): DesignTokenVariant? =
+    (this as? DesignTokenCandidateSelection.Selected)?.variant
+
+private fun DesignTokenCandidateSelection.Ambiguous.toUnresolved(
+    reference: DesignTokenValuePart.Reference,
+    requestedContext: DesignTokenContext,
+): DesignTokenValueResolution.Unresolved =
+    DesignTokenValueResolution.Unresolved(
+        rawValue = reference.expressionText(),
+        reason =
+            DesignTokenUnresolvedReason.AmbiguousReference(
+                name = reference.name,
+                requestedContext = requestedContext,
+                candidates = candidates,
+            ),
+    )
+
+private fun DesignTokenValuePart.Reference.toMissingResolution(
+    requestedContext: DesignTokenContext,
+): DesignTokenValueResolution.Unresolved =
+    DesignTokenValueResolution.Unresolved(
+        rawValue = expressionText(),
+        reason =
+            DesignTokenUnresolvedReason.MissingReference(
+                name = name,
+                requestedContext = requestedContext,
+            ),
+    )
+
+private fun DesignTokenValuePart.Reference.expressionText(): String =
+    buildString {
+        append("var(")
+        append(name)
+
+        fallback?.let { fallback ->
+            append(", ")
+            append(fallback.rawValue)
+        }
+
+        append(')')
+    }
