@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
-import java.awt.Dimension
 import java.awt.MouseInfo
 import java.awt.Point
 import java.nio.file.Path
@@ -206,12 +205,7 @@ internal class DesignTokenHoverPopupController(
                 .setCancelKeyEnabled(true)
                 .setMovable(false)
                 .setResizable(false)
-                .setMinSize(
-                    Dimension(
-                        minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)),
-                        JBUI.scale(MIN_POPUP_HEIGHT),
-                    ),
-                ).createPopup()
+                .createPopup()
 
         popupReference = createdPopup
         createdPopup.addListener(
@@ -439,7 +433,6 @@ private val HIDE_GRACE_PERIOD = 250.milliseconds
 private val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
 private const val PREFERRED_POPUP_WIDTH = 560
 private const val MIN_POPUP_WIDTH = 460
-private const val MIN_POPUP_HEIGHT = 210
 private const val MAX_SCREEN_WIDTH_RATIO = 0.72
 private const val CURSOR_X_INSET = 16
 private const val REPORT_BUG_URL =
