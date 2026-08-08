@@ -31,7 +31,13 @@ class SharedVariablesPlatformTest {
 
         assertEquals(1, variants.size)
         assertEquals(DesignTokenContext.DEFAULT, variants.single().context)
-        assertTrue(variants.single().origins.single().sharedAcrossPlatforms)
+        assertTrue(
+            variants
+                .single()
+                .origins
+                .single()
+                .sharedAcrossPlatforms,
+        )
     }
 
     @Test
