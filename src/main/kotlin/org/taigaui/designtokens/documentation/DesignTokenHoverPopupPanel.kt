@@ -136,8 +136,14 @@ private fun createHeader(
     JPanel(BorderLayout(JBUI.scale(10), 0)).apply {
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-        add(TokenBadge(), BorderLayout.WEST)
+        add(createTokenBadgeSlot(), BorderLayout.WEST)
         add(createHeaderContent(tokenName, description, descriptionWidth), BorderLayout.CENTER)
+    }
+
+private fun createTokenBadgeSlot(): JComponent =
+    JPanel(BorderLayout()).apply {
+        isOpaque = false
+        add(TokenBadge(), BorderLayout.NORTH)
     }
 
 private fun createHeaderContent(
