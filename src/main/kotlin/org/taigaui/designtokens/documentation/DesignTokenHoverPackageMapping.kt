@@ -55,15 +55,27 @@ private fun String.packageDisplayRank(): Int =
         else -> 4
     }
 
+private fun String.platformDisplayRank(): Int =
+    when {
+        contains("Desktop") -> 0
+        contains("Mobile") -> 1
+        contains("iOS") -> 2
+        contains("Android") -> 3
+        startsWith("All platforms") -> 4
+        else -> 5
+    }
+
 internal val VALUE_ROW_COMPARATOR =
     compareBy<DesignTokenHoverValueRow>(
         { row -> row.overrideMessage != null },
+        { row -> row.platform.platformDisplayRank() },
         DesignTokenHoverValueRow::platform,
         DesignTokenHoverValueRow::resolvedValue,
     )
 internal val REFERENCE_CHAIN_COMPARATOR =
     compareBy<DesignTokenHoverReferenceChain>(
         { chain -> chain.overrideMessage != null },
+        { chain -> chain.platform.platformDisplayRank() },
         DesignTokenHoverReferenceChain::platform,
     )
 internal const val DEFAULT_SOURCE_PACKAGE = "@taiga-ui/design-tokens"
