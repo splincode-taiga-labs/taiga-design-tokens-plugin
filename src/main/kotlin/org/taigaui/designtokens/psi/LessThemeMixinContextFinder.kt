@@ -5,7 +5,7 @@ internal object LessThemeMixinContextFinder {
         content: String,
         offset: Int,
     ): String? =
-        LESS_THEME_MIXIN
+        THEME_MIXIN
             .findAll(content)
             .takeWhile { match -> match.range.first < offset }
             .mapNotNull { match -> match.enclosingTheme(content, offset) }
@@ -119,9 +119,10 @@ internal object LessThemeMixinContextFinder {
         DOUBLE_QUOTE,
     }
 
-    private val LESS_THEME_MIXIN =
+    private val THEME_MIXIN =
         Regex(
-            pattern = """\.(?:tui-theme-)?(light|dark)\s*\(\s*\)\s*\{""",
+            pattern =
+                """(?:\.|@mixin\s+)(?:tui-theme-)?(light|dark)\s*(?:\(\s*\))?\s*\{""",
             option = RegexOption.IGNORE_CASE,
         )
 }
