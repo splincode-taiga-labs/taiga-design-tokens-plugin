@@ -201,7 +201,7 @@ private fun calculateValueWidth(popupWidth: Int): Int =
         .coerceIn(MIN_VALUE_COLUMN_WIDTH, MAX_VALUE_COLUMN_WIDTH)
 
 private fun calculateDescriptionWidth(popupWidth: Int): Int =
-    (JBUI.unscale(popupWidth) - DESCRIPTION_RESERVED_WIDTH)
+    (JBUI.unscale(popupWidth) - CONTENT_PADDING * 2)
         .coerceAtLeast(MIN_DESCRIPTION_WIDTH)
 
 private fun calculateReferenceWidth(popupWidth: Int): Int =
@@ -214,7 +214,6 @@ private const val MAX_POPUP_HEIGHT = 640
 private const val VALUE_COLUMN_RESERVED_WIDTH = 270
 private const val MIN_VALUE_COLUMN_WIDTH = 210
 private const val MAX_VALUE_COLUMN_WIDTH = 300
-private const val DESCRIPTION_RESERVED_WIDTH = 185
 private const val MIN_DESCRIPTION_WIDTH = 240
 private const val REFERENCE_RESERVED_WIDTH = 58
 private const val MIN_REFERENCE_WIDTH = 340
