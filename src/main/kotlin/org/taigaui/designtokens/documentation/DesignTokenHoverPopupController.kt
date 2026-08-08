@@ -112,7 +112,9 @@ internal class DesignTokenHoverPopupController(
 
         withContext(Dispatchers.EDT) {
             if (popupData == null) {
-                hidePopupIfPointerOutside()
+                if (!isPointerInsidePopup()) {
+                    hidePopup()
+                }
             } else {
                 showPopup(request.editor, request.anchor, popupData)
             }
@@ -249,12 +251,6 @@ internal class DesignTokenHoverPopupController(
             0,
         ).navigate(true)
         hidePopup()
-    }
-
-    private fun hidePopupIfPointerOutside() {
-        if (!isPointerInsidePopup()) {
-            hidePopup()
-        }
     }
 
     private fun isPointerInsidePopup(): Boolean {
