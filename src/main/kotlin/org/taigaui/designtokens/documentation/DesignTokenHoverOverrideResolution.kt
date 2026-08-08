@@ -7,23 +7,32 @@ import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
 
 internal fun List<DesignTokenVariantResolution>.withOverrideState(): List<DecoratedResolution> {
     val candidatesByContext = groupBy(DesignTokenVariantResolution::requestedContext)
+    val decorated =
+        map { resolution ->
+            val effectiveCandidates =
+                candidatesByContext
+                    .getValue(resolution.requestedContext)
+                    .effectiveCandidates()
+            val overridingResolution = effectiveCandidates.firstOrNull()
+            val overrideMessage =
+                overridingResolution
+                    ?.takeIf { resolution !in effectiveCandidates }
+                    ?.let(resolution::overrideMessage)
 
-    return map { resolution ->
-        val effectiveCandidates =
-            candidatesByContext
-                .getValue(resolution.requestedContext)
-                .effectiveCandidates()
-        val overridingResolution = effectiveCandidates.firstOrNull()
-        val overrideMessage =
-            overridingResolution
-                ?.takeIf { resolution !in effectiveCandidates }
-                ?.let(resolution::overrideMessage)
+            DecoratedResolution(
+                resolution = resolution,
+                packageName = resolution.sourcePackageName(),
+                overrideMessage = overrideMessage,
+            )
+        }
+    val activeVariants =
+        decorated
+            .filter { resolution -> resolution.overrideMessage == null }
+            .map { resolution -> resolution.resolution.variant }
+            .toSet()
 
-        DecoratedResolution(
-            resolution = resolution,
-            packageName = resolution.sourcePackageName(),
-            overrideMessage = overrideMessage,
-        )
+    return decorated.filter { resolution ->
+        resolution.overrideMessage == null || resolution.resolution.variant !in activeVariants
     }
 }
 
