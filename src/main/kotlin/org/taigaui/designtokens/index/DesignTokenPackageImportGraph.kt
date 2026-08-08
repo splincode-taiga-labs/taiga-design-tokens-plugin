@@ -13,7 +13,10 @@ internal class DesignTokenPackageImportGraph {
         val packagesByName = sourcePackages.associateBy(DesignTokenSourcePackage::name)
         val packagesByRoot =
             sourcePackages.sortedByDescending { sourcePackage ->
-                sourcePackage.realRoot.toAbsolutePath().normalize().nameCount
+                sourcePackage.realRoot
+                    .toAbsolutePath()
+                    .normalize()
+                    .nameCount
             }
         val queue = ArrayDeque(entryFiles.map(Path::normalized))
         val visited = linkedSetOf<Path>()
@@ -120,9 +123,7 @@ internal class DesignTokenPackageImportGraph {
                     .toList()
             }.orEmpty()
 
-    private fun Path.sourcePackage(
-        sourcePackages: List<DesignTokenSourcePackage>,
-    ): DesignTokenSourcePackage? =
+    private fun Path.sourcePackage(sourcePackages: List<DesignTokenSourcePackage>): DesignTokenSourcePackage? =
         sourcePackages.firstOrNull { sourcePackage ->
             startsWith(sourcePackage.realRoot.normalized())
         }
