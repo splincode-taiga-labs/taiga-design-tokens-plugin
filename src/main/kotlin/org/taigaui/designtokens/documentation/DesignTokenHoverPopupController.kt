@@ -188,7 +188,7 @@ internal class DesignTokenHoverPopupController(
                         ?.takeIf { currentPopup -> currentPopup.isVisible && !currentPopup.isDisposed }
                         ?.let { currentPopup ->
                             currentPopup.setSize(size)
-                            currentPopup.setLocation(popupLocationAboveAnchor(editor, anchor, size))
+                            currentPopup.setLocation(popupLocationAtAnchor(editor, anchor))
                             currentPopup.moveToFitScreen()
                         }
                 },
@@ -233,9 +233,9 @@ internal class DesignTokenHoverPopupController(
         popupKey = key
         createdPopup.showInScreenCoordinates(
             editor.contentComponent,
-            popupLocationAboveAnchor(editor, anchor, panel.preferredSize),
+            popupLocationAtAnchor(editor, anchor),
         )
-        createdPopup.setLocation(popupLocationAboveAnchor(editor, anchor, createdPopup.size))
+        createdPopup.setLocation(popupLocationAtAnchor(editor, anchor))
         createdPopup.moveToFitScreen()
     }
 
@@ -396,10 +396,9 @@ private fun HoverRequest.popupKey(): PopupKey? =
         )
     }
 
-private fun popupLocationAboveAnchor(
+private fun popupLocationAtAnchor(
     editor: Editor,
     anchor: Point,
-    size: Dimension,
 ): Point {
     val screenAnchor = Point(anchor)
 
@@ -407,7 +406,7 @@ private fun popupLocationAboveAnchor(
 
     return Point(
         screenAnchor.x - JBUI.scale(CURSOR_X_INSET),
-        screenAnchor.y - size.height - JBUI.scale(CURSOR_GAP),
+        screenAnchor.y,
     )
 }
 
@@ -443,6 +442,5 @@ private const val MIN_POPUP_WIDTH = 460
 private const val MIN_POPUP_HEIGHT = 210
 private const val MAX_SCREEN_WIDTH_RATIO = 0.72
 private const val CURSOR_X_INSET = 16
-private const val CURSOR_GAP = 2
 private const val REPORT_BUG_URL =
     "https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/new?labels=bug"
