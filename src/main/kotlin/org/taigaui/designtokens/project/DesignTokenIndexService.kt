@@ -118,8 +118,8 @@ class DesignTokenIndexService(
             }
 
         return indexes
-            .takeIf(List<DesignTokenIndex>::isNotEmpty)
-            ?.let(DesignTokenIndex::merge)
+            .takeIf { values -> values.isNotEmpty() }
+            ?.let { values -> DesignTokenIndex.merge(values) }
     }
 
     private fun currentProjectStyleIndex(sourceFile: Path): DesignTokenIndex? {
@@ -140,7 +140,7 @@ class DesignTokenIndexService(
                 }
 
         return declarations
-            .takeIf(List<*>::isNotEmpty)
+            .takeIf { values -> values.isNotEmpty() }
             ?.let { projectDeclarations ->
                 DesignTokenIndex.build(
                     packageRoot = normalizedSourceFile.parent ?: normalizedSourceFile,
@@ -195,8 +195,6 @@ internal object VfsEventPaths {
             }
         }
     }
-
-    private fun String.toPathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull()
 }
 
 private fun String.toPathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull()
