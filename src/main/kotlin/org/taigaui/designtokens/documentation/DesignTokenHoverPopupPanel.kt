@@ -133,32 +133,11 @@ private fun createHeader(
     description: String?,
     descriptionWidth: Int,
 ): JComponent =
-    JPanel(BorderLayout(JBUI.scale(10), 0)).apply {
-        isOpaque = false
-        alignmentX = JComponent.LEFT_ALIGNMENT
-        add(createTokenBadgeSlot(), BorderLayout.WEST)
-        add(createHeaderContent(tokenName, description, descriptionWidth), BorderLayout.CENTER)
-    }
-
-private fun createTokenBadgeSlot(): JComponent =
-    JPanel(BorderLayout()).apply {
-        isOpaque = false
-        add(TokenBadge(), BorderLayout.NORTH)
-    }
-
-private fun createHeaderContent(
-    tokenName: String,
-    description: String?,
-    descriptionWidth: Int,
-): JComponent =
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
-        add(
-            JBLabel(tokenName).apply {
-                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(18f).toFloat())
-            },
-        )
+        alignmentX = JComponent.LEFT_ALIGNMENT
+        add(createTitleRow(tokenName))
 
         description?.let { text ->
             add(Box.createVerticalStrut(JBUI.scale(3)))
@@ -172,6 +151,26 @@ private fun createHeaderContent(
                 ),
             )
         }
+    }
+
+private fun createTitleRow(tokenName: String): JComponent =
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.X_AXIS)
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+
+        add(
+            TokenBadge().apply {
+                alignmentY = JComponent.CENTER_ALIGNMENT
+            },
+        )
+        add(Box.createHorizontalStrut(JBUI.scale(TITLE_GAP)))
+        add(
+            JBLabel(tokenName).apply {
+                font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(18f).toFloat())
+                alignmentY = JComponent.CENTER_ALIGNMENT
+            },
+        )
     }
 
 private fun createLoadingRow(): JComponent =
@@ -211,6 +210,7 @@ private fun calculateReferenceWidth(popupWidth: Int): Int =
         .coerceAtLeast(MIN_REFERENCE_WIDTH)
 
 private const val CONTENT_PADDING = 14
+private const val TITLE_GAP = 10
 private const val MIN_POPUP_WIDTH = 460
 private const val MIN_POPUP_HEIGHT = 210
 private const val MAX_POPUP_HEIGHT = 640
