@@ -48,6 +48,21 @@ class SharedVariablesPlatformTest {
     }
 
     @Test
+    fun `treats theme-only selectors as shared across platforms`() {
+        val declaration =
+            sharedDeclaration().copy(
+                sourceFile = PACKAGE_ROOT.resolve("palette/dark.css"),
+                selectorChain = listOf("[tuiTheme='dark']"),
+            )
+
+        assertEquals(
+            DesignTokenTheme.DARK,
+            classifier.classify(PACKAGE_ROOT, declaration).theme,
+        )
+        assertTrue(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
+    }
+
+    @Test
     fun `treats selectorless scss theme files as shared across platforms`() {
         val light = selectorlessScssTheme("palette/scss/light.scss")
         val dark = selectorlessScssTheme("palette/scss/dark.scss")
