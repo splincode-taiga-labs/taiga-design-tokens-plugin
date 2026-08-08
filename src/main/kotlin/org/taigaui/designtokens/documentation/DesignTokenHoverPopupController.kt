@@ -21,11 +21,9 @@ import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
@@ -33,11 +31,8 @@ import java.awt.Dimension
 import java.awt.MouseInfo
 import java.awt.Point
 import java.nio.file.Path
-import javax.swing.JComponent
 import javax.swing.SwingUtilities
-import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(FlowPreview::class)
 @Service(Service.Level.PROJECT)
 internal class DesignTokenHoverPopupController(
     private val project: Project,
@@ -50,14 +45,13 @@ internal class DesignTokenHoverPopupController(
         )
     private val nativeHoverPopupSuppression = DesignTokenNativeHoverPopupSuppression()
     private var popup: JBPopup? = null
-    private var popupContent: JComponent? = null
+    private var popupContent: DesignTokenHoverPopupPanel? = null
     private var popupKey: PopupKey? = null
+    private var activeHoverKey: PopupKey? = null
 
     init {
         coroutineScope.launch(CoroutineName("Taiga UI design token hover popup")) {
-            requests
-                .debounce(HOVER_DELAY)
-                .collectLatest(::handleRequest)
+            requests.collectLatest(::handleRequest)
         }
     }
 
@@ -72,14 +66,19 @@ internal class DesignTokenHoverPopupController(
                 nativeHoverPopupSuppression.suppress(editor)
             }
 
-            requests.tryEmit(
+            val request =
                 HoverRequest(
                     editor = editor,
                     reference = reference,
                     anchor = anchor,
                     modificationStamp = editor.document.modificationStamp,
-                ),
-            )
+                )
+            val requestKey = request.popupKey()
+
+            if (requestKey != activeHoverKey) {
+                activeHoverKey = requestKey
+                requests.tryEmit(request)
+            }
         }
     }
 
@@ -108,20 +107,56 @@ internal class DesignTokenHoverPopupController(
         )
 
     private suspend fun handleRequest(request: HoverRequest) {
-        val popupData = readAction { request.resolvePopupData() }
+        val target = readAction { request.resolvePopupTarget() }
+
+        if (target == null) {
+            withContext(Dispatchers.EDT) {
+                if (activeHoverKey == request.popupKey()) {
+                    activeHoverKey = null
+                    if (!isPointerInsidePopup()) {
+                        hidePopup()
+                    }
+                }
+            }
+
+            return
+        }
+
+        val indexService = project.service<DesignTokenIndexService>()
+        val indexCached = readAction { indexService.isIndexCached(target.sourceFile) }
+
+        if (!indexCached) {
+            withContext(Dispatchers.EDT) {
+                if (activeHoverKey == target.key) {
+                    showLoadingPopup(
+                        editor = request.editor,
+                        anchor = request.anchor,
+                        key = target.key,
+                        tokenName = target.tokenName,
+                    )
+                }
+            }
+        }
+
+        val popupData = readAction { target.resolvePopupData(indexService) }
 
         withContext(Dispatchers.EDT) {
+            if (activeHoverKey != target.key) {
+                return@withContext
+            }
+
             if (popupData == null) {
+                activeHoverKey = null
                 if (!isPointerInsidePopup()) {
                     hidePopup()
                 }
             } else {
-                showPopup(request.editor, request.anchor, popupData)
+                showResolvedPopup(request.editor, request.anchor, popupData)
             }
         }
     }
 
-    private fun HoverRequest.resolvePopupData(): PopupData? =
+    private fun HoverRequest.resolvePopupTarget(): PopupTarget? =
         reference
             ?.takeIf { !project.isDisposed && !editor.isDisposed }
             ?.takeIf { modificationStamp == editor.document.modificationStamp }
@@ -133,31 +168,66 @@ internal class DesignTokenHoverPopupController(
                     ?.path
                     ?.let { path -> runCatching { Path.of(path) }.getOrNull() }
                     ?.let { sourceFile ->
-                        project
-                            .service<DesignTokenIndexService>()
-                            .resolveToken(sourceFile, validReference.name)
-                            .takeIf { groups -> groups.isNotEmpty() }
-                            ?.let { groups ->
-                                PopupData(
-                                    key =
-                                        PopupKey(
-                                            editor = editor,
-                                            tokenName = validReference.name,
-                                            offset = validReference.startOffset,
-                                            modificationStamp = modificationStamp,
-                                        ),
-                                    model = DesignTokenHoverPopupModel.create(validReference.name, groups),
-                                )
-                            }
+                        PopupTarget(
+                            key =
+                                PopupKey(
+                                    editor = editor,
+                                    tokenName = validReference.name,
+                                    offset = validReference.startOffset,
+                                    modificationStamp = modificationStamp,
+                                ),
+                            sourceFile = sourceFile,
+                            tokenName = validReference.name,
+                        )
                     }
             }
 
-    private fun showPopup(
+    private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData? =
+        indexService
+            .resolveToken(sourceFile, tokenName)
+            .takeIf { groups -> groups.isNotEmpty() }
+            ?.let { groups ->
+                PopupData(
+                    key = key,
+                    model = DesignTokenHoverPopupModel.create(tokenName, groups),
+                )
+            }
+
+    private fun showLoadingPopup(
+        editor: Editor,
+        anchor: Point,
+        key: PopupKey,
+        tokenName: String,
+    ) {
+        showPopup(editor, anchor, key) { panel ->
+            panel.showLoading(tokenName)
+        }
+    }
+
+    private fun showResolvedPopup(
         editor: Editor,
         anchor: Point,
         data: PopupData,
     ) {
         if (popupKey == data.key && popup?.isVisible == true) {
+            popupContent?.showModel(data.model)
+            popup?.moveToFitScreen()
+
+            return
+        }
+
+        showPopup(editor, anchor, data.key) { panel ->
+            panel.showModel(data.model)
+        }
+    }
+
+    private fun showPopup(
+        editor: Editor,
+        anchor: Point,
+        key: PopupKey,
+        initializePanel: (DesignTokenHoverPopupPanel) -> Unit,
+    ) {
+        if (popupKey == key && popup?.isVisible == true) {
             return
         }
 
@@ -168,7 +238,6 @@ internal class DesignTokenHoverPopupController(
         var popupReference: JBPopup? = null
         val panel =
             DesignTokenHoverPopupPanel(
-                model = data.model,
                 popupWidth = popupWidth,
                 onNavigate = ::navigateToDefinition,
                 onReportBug = { BrowserUtil.browse(REPORT_BUG_URL) },
@@ -180,7 +249,7 @@ internal class DesignTokenHoverPopupController(
                             currentPopup.moveToFitScreen()
                         }
                 },
-            )
+            ).also(initializePanel)
         val createdPopup =
             JBPopupFactory
                 .getInstance()
@@ -209,6 +278,7 @@ internal class DesignTokenHoverPopupController(
                         popup = null
                         popupContent = null
                         popupKey = null
+                        activeHoverKey = null
                         nativeHoverPopupSuppression.restore()
                     }
                 }
@@ -216,7 +286,7 @@ internal class DesignTokenHoverPopupController(
         )
         popup = createdPopup
         popupContent = panel
-        popupKey = data.key
+        popupKey = key
         createdPopup.show(
             RelativePoint(
                 editor.contentComponent,
@@ -250,11 +320,12 @@ internal class DesignTokenHoverPopupController(
             (target.line - 1).coerceAtLeast(0),
             0,
         ).navigate(true)
+        activeHoverKey = null
         hidePopup()
     }
 
     private fun isPointerInsidePopup(): Boolean {
-        val content = popupContent?.takeIf(JComponent::isShowing)
+        val content = popupContent?.takeIf { component -> component.isShowing }
         val pointer = MouseInfo.getPointerInfo()?.location
 
         return if (content == null || pointer == null) {
@@ -275,6 +346,16 @@ internal class DesignTokenHoverPopupController(
         nativeHoverPopupSuppression.restore()
     }
 
+    private fun HoverRequest.popupKey(): PopupKey? =
+        reference?.let { validReference ->
+            PopupKey(
+                editor = editor,
+                tokenName = validReference.name,
+                offset = validReference.startOffset,
+                modificationStamp = modificationStamp,
+            )
+        }
+
     private data class HoverRequest(
         val editor: Editor,
         val reference: DesignTokenReferenceAtOffset?,
@@ -289,13 +370,18 @@ internal class DesignTokenHoverPopupController(
         val modificationStamp: Long,
     )
 
+    private data class PopupTarget(
+        val key: PopupKey,
+        val sourceFile: Path,
+        val tokenName: String,
+    )
+
     private data class PopupData(
         val key: PopupKey,
         val model: DesignTokenHoverPopupModel,
     )
 
     private companion object {
-        val HOVER_DELAY = 350.milliseconds
         val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
         const val PREFERRED_POPUP_WIDTH = 560
         const val MIN_POPUP_WIDTH = 460
