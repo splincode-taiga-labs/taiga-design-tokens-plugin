@@ -196,7 +196,7 @@ internal class DesignTokenHoverPopupController(
         hidePopup()
         nativeHoverPopupSuppression.suppress(editor)
 
-        val popupWidth = calculatePopupWidth(editor)
+        val popupWidth = editor.calculateDesignTokenPopupWidth()
         var popupReference: JBPopup? = null
         val panel =
             DesignTokenHoverPopupPanel(
@@ -282,21 +282,6 @@ internal class DesignTokenHoverPopupController(
         pendingHideJob = null
     }
 
-    private fun calculatePopupWidth(editor: Editor): Int {
-        val preferredWidth = JBUI.scale(PREFERRED_POPUP_WIDTH)
-        val minimumWidth = JBUI.scale(MIN_POPUP_WIDTH)
-        val availableWidth =
-            editor.contentComponent.graphicsConfiguration
-                ?.bounds
-                ?.width
-                ?.let { screenWidth -> (screenWidth * MAX_SCREEN_WIDTH_RATIO).toInt() }
-                ?: preferredWidth
-
-        return preferredWidth
-            .coerceAtMost(availableWidth)
-            .coerceAtLeast(minimumWidth.coerceAtMost(availableWidth))
-    }
-
     private fun navigateToDefinition(target: DesignTokenNavigationTarget) {
         val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target.sourceFile) ?: return
 
@@ -333,6 +318,21 @@ internal class DesignTokenHoverPopupController(
         currentPopup?.cancel()
         nativeHoverPopupSuppression.restore()
     }
+}
+
+private fun Editor.calculateDesignTokenPopupWidth(): Int {
+    val preferredWidth = JBUI.scale(PREFERRED_POPUP_WIDTH)
+    val minimumWidth = JBUI.scale(MIN_POPUP_WIDTH)
+    val availableWidth =
+        contentComponent.graphicsConfiguration
+            ?.bounds
+            ?.width
+            ?.let { screenWidth -> (screenWidth * MAX_SCREEN_WIDTH_RATIO).toInt() }
+            ?: preferredWidth
+
+    return preferredWidth
+        .coerceAtMost(availableWidth)
+        .coerceAtLeast(minimumWidth.coerceAtMost(availableWidth))
 }
 
 private fun EditorMouseEvent.findReferenceUnderPointer(anchor: Point): DesignTokenReferenceAtOffset? {
@@ -453,7 +453,7 @@ private data class PopupData(
     val model: DesignTokenHoverPopupModel,
 )
 
-private val HOVER_SHOW_DELAY = 200.milliseconds
+private val HOVER_SHOW_DELAY = 250.milliseconds
 private val HIDE_GRACE_PERIOD = 250.milliseconds
 private val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
 private const val PREFERRED_POPUP_WIDTH = 560
