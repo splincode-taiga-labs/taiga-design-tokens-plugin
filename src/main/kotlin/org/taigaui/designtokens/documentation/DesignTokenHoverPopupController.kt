@@ -119,37 +119,36 @@ internal class DesignTokenHoverPopupController(
         }
     }
 
-    private fun HoverRequest.resolvePopupData(): PopupData? {
-        val validReference =
-            reference
-                ?.takeIf { !project.isDisposed && !editor.isDisposed }
-                ?.takeIf { modificationStamp == editor.document.modificationStamp }
-                ?: return null
-        val virtualFile =
-            FileDocumentManager
-                .getInstance()
-                .getFile(editor.document)
-                ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
-                ?: return null
-        val sourceFile = runCatching { Path.of(virtualFile.path) }.getOrNull() ?: return null
-
-        return project
-            .service<DesignTokenIndexService>()
-            .resolveToken(sourceFile, validReference.name)
-            .takeIf { groups -> groups.isNotEmpty() }
-            ?.let { groups ->
-                PopupData(
-                    key =
-                        PopupKey(
-                            editor = editor,
-                            tokenName = validReference.name,
-                            offset = validReference.startOffset,
-                            modificationStamp = modificationStamp,
-                        ),
-                    model = DesignTokenHoverPopupModel.create(validReference.name, groups),
-                )
+    private fun HoverRequest.resolvePopupData(): PopupData? =
+        reference
+            ?.takeIf { !project.isDisposed && !editor.isDisposed }
+            ?.takeIf { modificationStamp == editor.document.modificationStamp }
+            ?.let { validReference ->
+                FileDocumentManager
+                    .getInstance()
+                    .getFile(editor.document)
+                    ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+                    ?.path
+                    ?.let { path -> runCatching { Path.of(path) }.getOrNull() }
+                    ?.let { sourceFile ->
+                        project
+                            .service<DesignTokenIndexService>()
+                            .resolveToken(sourceFile, validReference.name)
+                            .takeIf { groups -> groups.isNotEmpty() }
+                            ?.let { groups ->
+                                PopupData(
+                                    key =
+                                        PopupKey(
+                                            editor = editor,
+                                            tokenName = validReference.name,
+                                            offset = validReference.startOffset,
+                                            modificationStamp = modificationStamp,
+                                        ),
+                                    model = DesignTokenHoverPopupModel.create(validReference.name, groups),
+                                )
+                            }
+                    }
             }
-    }
 
     private fun showPopup(
         editor: Editor,
@@ -170,7 +169,7 @@ internal class DesignTokenHoverPopupController(
                 model = data.model,
                 popupWidth = popupWidth,
                 onNavigate = ::navigateToDefinition,
-                onReportBug = ::reportBug,
+                onReportBug = { BrowserUtil.browse(REPORT_BUG_URL) },
                 onPreferredSizeChanged = { size ->
                     popupReference
                         ?.takeIf { currentPopup -> currentPopup.isVisible && !currentPopup.isDisposed }
@@ -250,10 +249,6 @@ internal class DesignTokenHoverPopupController(
             0,
         ).navigate(true)
         hidePopup()
-    }
-
-    private fun reportBug() {
-        BrowserUtil.browse(REPORT_BUG_URL)
     }
 
     private fun hidePopupIfPointerOutside() {
