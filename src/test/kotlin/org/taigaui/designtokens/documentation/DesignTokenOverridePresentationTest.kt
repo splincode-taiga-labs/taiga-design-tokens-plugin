@@ -10,6 +10,7 @@ import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenSourceFormat
 import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
+import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
@@ -81,6 +82,45 @@ class DesignTokenOverridePresentationTest {
 
         assertEquals("Overridden by @taiga-ui/proprietary", baseRow.overrideMessage)
         assertNull(proprietaryRow.overrideMessage)
+    }
+
+    @Test
+    fun `project styles override installed package values`() {
+        val model =
+            DesignTokenHoverPopupModel.create(
+                TOKEN,
+                listOf(
+                    group(
+                        resolution(
+                            packageName = DESIGN_TOKENS_PACKAGE,
+                            rawValue = "package",
+                            value = "package",
+                            requestedContext = LIGHT_DESKTOP,
+                            sharedAcrossPlatforms = true,
+                        ),
+                        resolution(
+                            packageName = PROJECT_STYLES_PACKAGE,
+                            rawValue = "project",
+                            value = "project",
+                            requestedContext = LIGHT_DESKTOP,
+                            sharedAcrossPlatforms = true,
+                        ),
+                    ),
+                ),
+            )
+        val packageRow =
+            model.sections
+                .first { section -> section.packageName == DESIGN_TOKENS_PACKAGE }
+                .rows
+                .single()
+        val projectRow =
+            model.sections
+                .first { section -> section.packageName == PROJECT_STYLES_PACKAGE }
+                .rows
+                .single()
+
+        assertEquals("Overridden by $PROJECT_STYLES_PACKAGE", packageRow.overrideMessage)
+        assertNull(projectRow.overrideMessage)
     }
 
     @Test
