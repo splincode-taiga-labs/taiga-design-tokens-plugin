@@ -12,8 +12,7 @@ class DesignTokenValueResolver(
     private val candidateSelector = DesignTokenCandidateSelector(index)
     private val variantsByName = index
 
-    fun resolve(variant: DesignTokenVariant): DesignTokenVariantResolution =
-        resolve(variant, variant.context)
+    fun resolve(variant: DesignTokenVariant): DesignTokenVariantResolution = resolve(variant, variant.context)
 
     fun resolve(
         variant: DesignTokenVariant,
