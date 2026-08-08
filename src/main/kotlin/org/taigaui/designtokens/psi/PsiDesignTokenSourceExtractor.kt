@@ -13,6 +13,7 @@ import com.intellij.psi.css.CssDeclaration
 import com.intellij.psi.css.CssRuleset
 import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.index.DesignTokenSourceExtractor
+import org.taigaui.designtokens.index.DesignTokenSourceFormat
 import java.nio.file.Path
 
 class PsiDesignTokenSourceExtractor(
@@ -33,9 +34,7 @@ class PsiDesignTokenSourceExtractor(
                         ?: return@Computable emptyList()
 
                 extract(psiFile, normalizedSourceFile)
-                    .filter { declaration ->
-                        GlobalDesignTokenContext.isGlobal(declaration.selectorChain)
-                    }
+                    .filter(DesignTokenDeclaration::isGlobalDeclaration)
             },
         )
     }
@@ -117,6 +116,13 @@ class PsiDesignTokenSourceExtractor(
                     ?.takeIf(String::isNotEmpty)
             }.toList()
             .asReversed()
+
+    private fun DesignTokenDeclaration.isGlobalDeclaration(): Boolean =
+        GlobalDesignTokenContext.isGlobal(selectorChain) ||
+            (
+                selectorChain.isEmpty() &&
+                    DesignTokenSourceFormat.from(sourceFile) == DesignTokenSourceFormat.SCSS
+            )
 
     private fun lineNumber(
         content: String,
