@@ -27,8 +27,7 @@ class SharedVariablesPlatformTest {
                 .build(
                     packageRoot = PACKAGE_ROOT,
                     declarations = listOf(sharedDeclaration()),
-                )
-                .find(TOKEN)
+                ).find(TOKEN)
 
         assertEquals(1, variants.size)
         assertEquals(DesignTokenContext.DEFAULT, variants.single().context)
