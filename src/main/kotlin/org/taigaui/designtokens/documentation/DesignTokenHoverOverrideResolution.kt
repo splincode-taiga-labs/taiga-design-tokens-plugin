@@ -74,9 +74,7 @@ private fun DesignTokenVariantResolution.themeSpecificity(): Int =
         1
     }
 
-private fun DesignTokenVariantResolution.overrideMessage(
-    overridingResolution: DesignTokenVariantResolution,
-): String {
+private fun DesignTokenVariantResolution.overrideMessage(overridingResolution: DesignTokenVariantResolution): String {
     val overridingPackage = overridingResolution.sourcePackageName()
 
     return when {
