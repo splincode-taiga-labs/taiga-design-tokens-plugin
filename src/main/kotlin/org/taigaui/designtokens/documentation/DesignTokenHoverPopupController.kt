@@ -16,6 +16,7 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -122,19 +123,14 @@ internal class DesignTokenHoverPopupController(
             }
         }
 
+        withContext(Dispatchers.EDT) {
+            PsiDocumentManager.getInstance(project).commitAllDocuments()
+        }
+
         val popupData = readAction { target.resolvePopupData(indexService) }
 
         withContext(Dispatchers.EDT) {
-            if (activeHoverKey != target.key) {
-                return@withContext
-            }
-
-            if (popupData == null) {
-                activeHoverKey = null
-                if (!isPointerInsidePopup()) {
-                    hidePopup()
-                }
-            } else {
+            if (activeHoverKey == target.key) {
                 showResolvedPopup(request.editor, request.anchor, popupData)
             }
         }
@@ -371,16 +367,24 @@ private fun HoverRequest.resolvePopupTarget(project: Project): PopupTarget? =
                 }
         }
 
-private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData? =
-    indexService
-        .resolveToken(sourceFile, tokenName)
-        .takeIf { groups -> groups.isNotEmpty() }
-        ?.let { groups ->
-            PopupData(
-                key = key,
-                model = DesignTokenHoverPopupModel.create(tokenName, groups),
+private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData {
+    val groups = indexService.resolveToken(sourceFile, tokenName)
+    val model =
+        if (groups.isEmpty()) {
+            DesignTokenHoverPopupModel(
+                tokenName = tokenName,
+                description = "Nothing found",
+                sections = emptyList(),
             )
+        } else {
+            DesignTokenHoverPopupModel.create(tokenName, groups)
         }
+
+    return PopupData(
+        key = key,
+        model = model,
+    )
+}
 
 private fun HoverRequest.popupKey(): PopupKey? =
     reference?.let { validReference ->
