@@ -75,12 +75,12 @@ class DesignTokenOverridePresentationTest {
     }
 
     @Test
-    fun `splits root fallback when a mobile declaration overrides it`() {
+    fun `shows a root fallback only for contexts where it is effective`() {
         val rootDesktop = rootResolution(LIGHT_DESKTOP, "desktop-font")
-        val rootIos = rootResolution(LIGHT_IOS, "mobile-font")
-        val rootAndroid = rootResolution(LIGHT_ANDROID, "mobile-font")
-        val mobileIos = mobileResolution(LIGHT_IOS)
-        val mobileAndroid = mobileResolution(LIGHT_ANDROID)
+        val rootIos = rootResolution(LIGHT_IOS, "desktop-font")
+        val rootAndroid = rootResolution(LIGHT_ANDROID, "desktop-font")
+        val mobileIos = mobileResolution(LIGHT_IOS, "mobile-font")
+        val mobileAndroid = mobileResolution(LIGHT_ANDROID, "mobile-font")
         val section =
             DesignTokenHoverPopupModel
                 .create(
@@ -88,15 +88,37 @@ class DesignTokenOverridePresentationTest {
                     listOf(group(rootDesktop, rootIos, rootAndroid, mobileIos, mobileAndroid)),
                 ).sections
                 .single()
-        val appliedRows = section.rows.filter { row -> row.overrideMessage == null }
-        val overriddenRow = section.rows.single { row -> row.overrideMessage != null }
 
         assertEquals(
-            setOf("🖥️ Desktop · Light ☀️", "📱 Mobile · Light ☀️"),
-            appliedRows.map { row -> row.platform }.toSet(),
+            setOf(
+                "🖥️ Desktop · Light ☀️" to "desktop-font",
+                "📱 Mobile · Light ☀️" to "mobile-font",
+            ),
+            section.rows.map { row -> row.platform to row.resolvedValue }.toSet(),
         )
-        assertEquals("📱 Mobile · Light ☀️", overriddenRow.platform)
-        assertEquals("Overridden by a platform-specific declaration", overriddenRow.overrideMessage)
+        assertTrue(section.rows.all { row -> row.overrideMessage == null })
+    }
+
+    @Test
+    fun `collapses equal root and mobile declarations into one applied row`() {
+        val rootDesktop = rootResolution(LIGHT_DESKTOP, "same-value")
+        val rootIos = rootResolution(LIGHT_IOS, "same-value")
+        val rootAndroid = rootResolution(LIGHT_ANDROID, "same-value")
+        val mobileIos = mobileResolution(LIGHT_IOS, "same-value")
+        val mobileAndroid = mobileResolution(LIGHT_ANDROID, "same-value")
+        val row =
+            DesignTokenHoverPopupModel
+                .create(
+                    TOKEN,
+                    listOf(group(rootDesktop, rootIos, rootAndroid, mobileIos, mobileAndroid)),
+                ).sections
+                .single()
+                .rows
+                .single()
+
+        assertEquals("All platforms · Light ☀️", row.platform)
+        assertEquals("same-value", row.resolvedValue)
+        assertNull(row.overrideMessage)
     }
 
     @Test
@@ -142,11 +164,14 @@ class DesignTokenOverridePresentationTest {
             sharedAcrossPlatforms = true,
         )
 
-    private fun mobileResolution(requestedContext: DesignTokenContext): DesignTokenVariantResolution =
+    private fun mobileResolution(
+        requestedContext: DesignTokenContext,
+        value: String,
+    ): DesignTokenVariantResolution =
         resolution(
             packageName = PROPRIETARY_PACKAGE,
             rawValue = "var(--tui-font-body-s)",
-            value = "mobile-font",
+            value = value,
             requestedContext = requestedContext,
             declarationContext = MOBILE_ANY_THEME,
             sharedAcrossPlatforms = false,
