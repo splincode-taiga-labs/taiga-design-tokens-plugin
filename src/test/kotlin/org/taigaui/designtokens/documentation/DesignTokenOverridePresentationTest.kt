@@ -95,8 +95,7 @@ class DesignTokenOverridePresentationTest {
                 .create(
                     TOKEN,
                     listOf(group(rootDesktop, rootIos, rootAndroid, mobileIos, mobileAndroid)),
-                )
-                .sections
+                ).sections
                 .single()
 
         assertEquals(
@@ -121,8 +120,7 @@ class DesignTokenOverridePresentationTest {
                 .create(
                     TOKEN,
                     listOf(group(rootDesktop, rootIos, rootAndroid, mobileIos, mobileAndroid)),
-                )
-                .sections
+                ).sections
                 .single()
                 .rows
                 .single()
