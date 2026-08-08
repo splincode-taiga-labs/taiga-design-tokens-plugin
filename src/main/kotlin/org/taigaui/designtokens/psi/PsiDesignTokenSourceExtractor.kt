@@ -34,7 +34,7 @@ class PsiDesignTokenSourceExtractor(
                         ?: return@Computable emptyList()
 
                 extract(psiFile, normalizedSourceFile)
-                    .filter(DesignTokenDeclaration::isGlobalDeclaration)
+                    .filter { declaration -> declaration.isGlobalDeclaration() }
             },
         )
     }
