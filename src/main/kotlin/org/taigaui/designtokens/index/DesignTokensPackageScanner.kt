@@ -23,9 +23,7 @@ class DesignTokensPackageScanner(
             scanInstalledPackages(designTokensPackage.sourcePackages)
         }
 
-    private fun scanInstalledPackages(
-        sourcePackages: List<DesignTokenSourcePackage>,
-    ): List<DesignTokenDeclaration> {
+    private fun scanInstalledPackages(sourcePackages: List<DesignTokenSourcePackage>): List<DesignTokenDeclaration> {
         val proprietary =
             sourcePackages.firstOrNull { sourcePackage ->
                 sourcePackage.name == PROPRIETARY_PACKAGE
