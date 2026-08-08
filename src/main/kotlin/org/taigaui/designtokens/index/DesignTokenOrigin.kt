@@ -30,4 +30,7 @@ data class DesignTokenOrigin(
     val line: Int,
     val format: DesignTokenSourceFormat,
     val selectorChain: List<String> = emptyList(),
+    val packageName: String? = null,
+    val packageVersion: String? = null,
+    val sharedAcrossPlatforms: Boolean = false,
 )

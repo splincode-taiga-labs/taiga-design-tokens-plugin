@@ -2,6 +2,8 @@ package org.taigaui.designtokens.resolution
 
 import org.taigaui.designtokens.index.DesignTokenContext
 import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenPlatform
+import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
 
 class DesignTokenValueResolver(
@@ -10,20 +12,28 @@ class DesignTokenValueResolver(
     private val candidateSelector = DesignTokenCandidateSelector(index)
     private val variantsByName = index
 
-    fun resolve(variant: DesignTokenVariant): DesignTokenVariantResolution =
+    fun resolve(variant: DesignTokenVariant): DesignTokenVariantResolution = resolve(variant, variant.context)
+
+    fun resolve(
+        variant: DesignTokenVariant,
+        requestedContext: DesignTokenContext,
+    ): DesignTokenVariantResolution =
         DesignTokenVariantResolution(
             variant = variant,
             result =
                 resolveVariant(
-                    frame = ResolutionFrame(variant, variant.context),
+                    frame = ResolutionFrame(variant, requestedContext),
                     stack = mutableListOf(),
                 ),
+            requestedContext = requestedContext,
         )
 
     fun resolve(name: String): List<DesignTokenVariantResolution> =
         variantsByName
             .find(name)
-            .map(::resolve)
+            .flatMap { variant ->
+                variant.requestedContexts().map { context -> resolve(variant, context) }
+            }
 
     fun resolveGrouped(name: String): List<DesignTokenResolutionGroup> {
         val groups = linkedMapOf<String, MutableList<DesignTokenVariantResolution>>()
@@ -127,57 +137,38 @@ class DesignTokenValueResolver(
         owner: ResolutionFrame,
         stack: MutableList<ResolutionFrame>,
     ): DesignTokenReferenceResolution {
-        val selection = candidateSelector.select(reference.name, owner.requestedContext)
-        val selectedVariant =
-            (selection as? DesignTokenCandidateSelection.Selected)?.variant
+        val selection =
+            candidateSelector.select(
+                name = reference.name,
+                requestedContext = owner.requestedContext,
+            )
         val primaryResult =
             when (selection) {
                 is DesignTokenCandidateSelection.Selected ->
                     resolveVariant(
-                        frame = ResolutionFrame(selection.variant, owner.requestedContext),
-                        stack = stack,
+                        ResolutionFrame(selection.variant, owner.requestedContext),
+                        stack,
                     )
 
                 is DesignTokenCandidateSelection.Ambiguous ->
-                    DesignTokenValueResolution.Unresolved(
-                        rawValue = reference.expression(),
-                        reason =
-                            DesignTokenUnresolvedReason.AmbiguousReference(
-                                name = reference.name,
-                                requestedContext = owner.requestedContext,
-                                candidates = selection.candidates,
-                            ),
-                    )
+                    selection.toUnresolved(reference, owner.requestedContext)
 
                 DesignTokenCandidateSelection.Missing ->
-                    DesignTokenValueResolution.Unresolved(
-                        rawValue = reference.expression(),
-                        reason =
-                            DesignTokenUnresolvedReason.MissingReference(
-                                name = reference.name,
-                                requestedContext = owner.requestedContext,
-                            ),
-                    )
+                    reference.toMissingResolution(owner.requestedContext)
             }
         val fallbackUsed =
             reference.fallback != null &&
                 primaryResult is DesignTokenValueResolution.Unresolved &&
                 canUseFallback(primaryResult.reason, owner)
         val fallbackResult =
-            if (fallbackUsed) {
-                resolveParsedValue(
-                    value = requireNotNull(reference.fallback),
-                    owner = owner,
-                    stack = stack,
-                )
-            } else {
-                null
-            }
+            reference.fallback
+                ?.takeIf { fallbackUsed }
+                ?.let { fallback -> resolveParsedValue(fallback, owner, stack) }
 
         return DesignTokenReferenceResolution(
             name = reference.name,
             requestedContext = owner.requestedContext,
-            selectedVariant = selectedVariant,
+            selectedVariant = selection.selectedVariant(),
             primaryResult = primaryResult,
             fallbackRawValue = reference.fallback?.rawValue,
             fallbackResult = fallbackResult,
@@ -213,21 +204,6 @@ class DesignTokenValueResolver(
                 ),
         )
 
-    private fun DesignTokenValuePart.Reference.expression(): String =
-        buildString {
-            append("var(")
-            append(name)
-
-            fallback?.let { fallback ->
-                append(", ")
-                append(fallback.rawValue)
-            }
-
-            append(')')
-        }
-
-    private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
-
     private data class ResolutionFrame(
         val variant: DesignTokenVariant,
         val requestedContext: DesignTokenContext,
@@ -241,3 +217,74 @@ class DesignTokenValueResolver(
             )
     }
 }
+
+private fun DesignTokenVariant.requestedContexts(): List<DesignTokenContext> {
+    val platforms =
+        when {
+            origins.any { origin -> origin.sharedAcrossPlatforms } ->
+                listOf(
+                    DesignTokenPlatform.DESKTOP,
+                    DesignTokenPlatform.IOS,
+                    DesignTokenPlatform.ANDROID,
+                )
+
+            context.platform == DesignTokenPlatform.MOBILE ->
+                listOf(DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID)
+
+            else -> listOf(context.platform)
+        }
+    val themes =
+        if (context.theme == DesignTokenTheme.UNSPECIFIED) {
+            listOf(DesignTokenTheme.LIGHT, DesignTokenTheme.DARK)
+        } else {
+            listOf(context.theme)
+        }
+
+    return platforms.flatMap { platform ->
+        themes.map { theme -> DesignTokenContext(platform, theme) }
+    }
+}
+
+private fun DesignTokenValueResolution.Resolved.semanticKey(): String = color?.canonicalValue ?: value.trim()
+
+private fun DesignTokenCandidateSelection.selectedVariant(): DesignTokenVariant? =
+    (this as? DesignTokenCandidateSelection.Selected)?.variant
+
+private fun DesignTokenCandidateSelection.Ambiguous.toUnresolved(
+    reference: DesignTokenValuePart.Reference,
+    requestedContext: DesignTokenContext,
+): DesignTokenValueResolution.Unresolved =
+    DesignTokenValueResolution.Unresolved(
+        rawValue = reference.expressionText(),
+        reason =
+            DesignTokenUnresolvedReason.AmbiguousReference(
+                name = reference.name,
+                requestedContext = requestedContext,
+                candidates = candidates,
+            ),
+    )
+
+private fun DesignTokenValuePart.Reference.toMissingResolution(
+    requestedContext: DesignTokenContext,
+): DesignTokenValueResolution.Unresolved =
+    DesignTokenValueResolution.Unresolved(
+        rawValue = expressionText(),
+        reason =
+            DesignTokenUnresolvedReason.MissingReference(
+                name = name,
+                requestedContext = requestedContext,
+            ),
+    )
+
+private fun DesignTokenValuePart.Reference.expressionText(): String =
+    buildString {
+        append("var(")
+        append(name)
+
+        fallback?.let { fallback ->
+            append(", ")
+            append(fallback.rawValue)
+        }
+
+        append(')')
+    }

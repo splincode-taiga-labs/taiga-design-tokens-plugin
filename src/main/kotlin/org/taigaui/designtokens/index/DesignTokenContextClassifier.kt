@@ -7,16 +7,26 @@ class DesignTokenContextClassifier {
         packageRoot: Path,
         declaration: DesignTokenDeclaration,
     ): DesignTokenContext {
-        val markers =
-            pathMarkers(
-                packageRoot = packageRoot,
-                sourceFile = declaration.sourceFile,
-            )
+        val markers = pathMarkers(packageRoot, declaration.sourceFile)
 
         return DesignTokenContext(
             platform = classifyPlatform(markers, declaration.selectorChain),
             theme = classifyTheme(markers, declaration.selectorChain),
         )
+    }
+
+    internal fun isSharedAcrossPlatforms(
+        packageRoot: Path,
+        declaration: DesignTokenDeclaration,
+    ): Boolean {
+        val markers = pathMarkers(packageRoot, declaration.sourceFile)
+        val selectors = declaration.selectorChain
+
+        return classifyPlatform(markers, selectors) == DesignTokenPlatform.DESKTOP &&
+            MOBILE_MARKER !in markers &&
+            selectors.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) } &&
+            !selectors.containsMatch(IOS_PLATFORM_SELECTOR) &&
+            !selectors.containsMatch(ANDROID_PLATFORM_SELECTOR)
     }
 
     private fun pathMarkers(
@@ -67,8 +77,14 @@ class DesignTokenContextClassifier {
         markers: Set<String>,
         selectorChain: List<String>,
     ): DesignTokenTheme {
-        val hasLight = LIGHT_MARKER in markers || selectorChain.containsMatch(LIGHT_THEME_SELECTOR)
-        val hasDark = DARK_MARKER in markers || selectorChain.containsMatch(DARK_THEME_SELECTOR)
+        val hasLight =
+            LIGHT_MARKER in markers ||
+                selectorChain.containsMatch(LIGHT_THEME_SELECTOR) ||
+                selectorChain.containsMatch(LIGHT_THEME_MIXIN)
+        val hasDark =
+            DARK_MARKER in markers ||
+                selectorChain.containsMatch(DARK_THEME_SELECTOR) ||
+                selectorChain.containsMatch(DARK_THEME_MIXIN)
 
         return when {
             hasLight && !hasDark -> DesignTokenTheme.LIGHT
@@ -96,6 +112,12 @@ class DesignTokenContextClassifier {
             )
         val LIGHT_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "light")
         val DARK_THEME_SELECTOR = attributeSelector(attribute = "tuiTheme", value = "dark")
+        val LIGHT_THEME_MIXIN =
+            Regex("""\.(?:tui-theme-)?light\s*\(""", RegexOption.IGNORE_CASE)
+        val DARK_THEME_MIXIN =
+            Regex("""\.(?:tui-theme-)?dark\s*\(""", RegexOption.IGNORE_CASE)
+        val GLOBAL_ROOT_SELECTOR =
+            Regex("""(?:&?:root|:host|\bhtml\b|\bbody\b)""", RegexOption.IGNORE_CASE)
 
         fun attributeSelector(
             attribute: String,

@@ -55,7 +55,7 @@ class DesignTokenIndexService(
             getIndexOrThrow(sourceFile)
         }.onFailure { error ->
             LOG.warn(
-                "Failed to build the @taiga-ui/design-tokens index for $sourceFile",
+                "Failed to build the installed Taiga UI style index for $sourceFile",
                 error,
             )
         }.getOrNull()

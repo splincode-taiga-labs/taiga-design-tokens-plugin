@@ -5,6 +5,7 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
+import org.taigaui.designtokens.packageinfo.TaigaUiPackagePrecedence
 
 internal class DesignTokenCandidateSelector(
     private val index: DesignTokenIndex,
@@ -14,13 +15,14 @@ internal class DesignTokenCandidateSelector(
         requestedContext: DesignTokenContext,
     ): DesignTokenCandidateSelection {
         val variants = index.find(name)
-        val candidates =
+        val contextCandidates =
             contextPrecedence(requestedContext)
                 .asSequence()
                 .map { compatibleContext ->
                     variants.filter { variant -> variant.context == compatibleContext }
                 }.firstOrNull(List<DesignTokenVariant>::isNotEmpty)
                 .orEmpty()
+        val candidates = contextCandidates.preferKnownPackageLayer()
 
         return when (candidates.size) {
             0 -> DesignTokenCandidateSelection.Missing
@@ -28,6 +30,25 @@ internal class DesignTokenCandidateSelector(
             else -> DesignTokenCandidateSelection.Ambiguous(candidates.toList())
         }
     }
+
+    private fun List<DesignTokenVariant>.preferKnownPackageLayer(): List<DesignTokenVariant> =
+        takeIf { candidates -> candidates.size >= 2 }
+            ?.map { variant ->
+                variant to TaigaUiPackagePrecedence.rank(variant.sourcePackageName())
+            }?.takeUnless { candidates -> candidates.any { (_, rank) -> rank == null } }
+            ?.let { rankedCandidates ->
+                val highestRank = rankedCandidates.maxOf { (_, rank) -> requireNotNull(rank) }
+
+                rankedCandidates
+                    .filter { (_, rank) -> rank == highestRank }
+                    .map(Pair<DesignTokenVariant, Int?>::first)
+            } ?: this
+
+    private fun DesignTokenVariant.sourcePackageName(): String? =
+        origins
+            .mapNotNull { origin -> origin.packageName }
+            .distinct()
+            .singleOrNull()
 
     private fun contextPrecedence(context: DesignTokenContext): List<DesignTokenContext> =
         when (context.platform) {

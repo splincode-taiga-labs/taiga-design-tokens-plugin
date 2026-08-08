@@ -13,6 +13,7 @@ import com.intellij.psi.css.CssDeclaration
 import com.intellij.psi.css.CssRuleset
 import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.index.DesignTokenSourceExtractor
+import org.taigaui.designtokens.index.DesignTokenSourceFormat
 import java.nio.file.Path
 
 class PsiDesignTokenSourceExtractor(
@@ -33,6 +34,7 @@ class PsiDesignTokenSourceExtractor(
                         ?: return@Computable emptyList()
 
                 extract(psiFile, normalizedSourceFile)
+                    .filter { declaration -> declaration.isGlobalDeclaration() }
             },
         )
     }
@@ -44,6 +46,7 @@ class PsiDesignTokenSourceExtractor(
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val declarations = mutableListOf<DesignTokenDeclaration>()
         val document = PsiDocumentManager.getInstance(project).getDocument(psiFile)
+        val content = psiFile.text
 
         psiFile.accept(
             object : PsiRecursiveElementWalkingVisitor() {
@@ -52,11 +55,12 @@ class PsiDesignTokenSourceExtractor(
                         element
                             .toDesignTokenDeclaration(
                                 sourceFile = normalizedSourceFile,
+                                content = content,
                                 line =
                                     document
                                         ?.getLineNumber(element.textOffset)
                                         ?.plus(1)
-                                        ?: lineNumber(psiFile.text, element.textOffset),
+                                        ?: lineNumber(content, element.textOffset),
                             )?.let(declarations::add)
                     }
 
@@ -70,6 +74,7 @@ class PsiDesignTokenSourceExtractor(
 
     private fun CssDeclaration.toDesignTokenDeclaration(
         sourceFile: Path,
+        content: String,
         line: Int,
     ): DesignTokenDeclaration? {
         val tokenName = propertyName
@@ -81,7 +86,7 @@ class PsiDesignTokenSourceExtractor(
                 value = rawValue,
                 sourceFile = sourceFile,
                 line = line,
-                selectorChain = selectorChain(),
+                selectorChain = contextChain(content),
             )
         } else {
             null
@@ -95,16 +100,29 @@ class PsiDesignTokenSourceExtractor(
             .joinToString(separator = "", transform = PsiElement::getText)
             .trim()
 
-    private fun CssDeclaration.selectorChain(): List<String> =
+    private fun CssDeclaration.contextChain(content: String): List<String> =
+        buildList {
+            addAll(cssSelectorChain())
+            LessThemeMixinContextFinder.find(content, textOffset)?.let(::add)
+        }.distinct()
+
+    private fun CssDeclaration.cssSelectorChain(): List<String> =
         generateSequence(parent, PsiElement::getParent)
-            .filterIsInstance<CssRuleset>()
-            .mapNotNull { ruleset ->
-                ruleset.selectorList
+            .mapNotNull { element ->
+                (element as? CssRuleset)
+                    ?.selectorList
                     ?.text
                     ?.trim()
                     ?.takeIf(String::isNotEmpty)
             }.toList()
             .asReversed()
+
+    private fun DesignTokenDeclaration.isGlobalDeclaration(): Boolean =
+        GlobalDesignTokenContext.isGlobal(selectorChain) ||
+            (
+                selectorChain.isEmpty() &&
+                    DesignTokenSourceFormat.from(sourceFile) == DesignTokenSourceFormat.SCSS
+            )
 
     private fun lineNumber(
         content: String,

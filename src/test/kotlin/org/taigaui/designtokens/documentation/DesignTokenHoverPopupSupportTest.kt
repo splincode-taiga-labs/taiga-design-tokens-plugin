@@ -24,7 +24,7 @@ class DesignTokenHoverPopupSupportTest {
     @Test
     fun `collapses equivalent ios and android contexts`() {
         assertEquals(
-            "📱 iOS and Android · Light ☀️ and dark 🌚",
+            "📱 Mobile · Light ☀️ and dark 🌚",
             listOf(
                 DesignTokenContext(DesignTokenPlatform.IOS, DesignTokenTheme.LIGHT),
                 DesignTokenContext(DesignTokenPlatform.IOS, DesignTokenTheme.DARK),

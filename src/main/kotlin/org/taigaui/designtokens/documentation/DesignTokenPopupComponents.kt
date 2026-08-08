@@ -74,20 +74,7 @@ internal class CopyValueButton(
         }
 
     init {
-        toolTipText = "Copy value"
-        isOpaque = false
-        isContentAreaFilled = false
-        isBorderPainted = false
-        isFocusable = true
-        horizontalAlignment = SwingConstants.CENTER
-        verticalAlignment = SwingConstants.CENTER
-        iconTextGap = 0
-        margin = Insets(0, 0, 0, 0)
-        border = JBUI.Borders.empty()
-        preferredSize = JBUI.size(COPY_BUTTON_SIZE, COPY_BUTTON_SIZE)
-        minimumSize = preferredSize
-        maximumSize = preferredSize
-        alignmentY = JComponent.CENTER_ALIGNMENT
+        configurePopupIconButton("Copy value")
 
         addActionListener {
             CopyPasteManager.getInstance().setContents(StringSelection(value))
@@ -96,6 +83,32 @@ internal class CopyValueButton(
             resetTimer.restart()
         }
     }
+}
+
+internal class NavigateToDefinitionButton(
+    onNavigate: () -> Unit,
+) : JButton(AllIcons.Actions.EditSource) {
+    init {
+        configurePopupIconButton("Go to definition")
+        addActionListener { onNavigate() }
+    }
+}
+
+private fun JButton.configurePopupIconButton(tooltip: String) {
+    toolTipText = tooltip
+    isOpaque = false
+    isContentAreaFilled = false
+    isBorderPainted = false
+    isFocusable = true
+    horizontalAlignment = SwingConstants.CENTER
+    verticalAlignment = SwingConstants.CENTER
+    iconTextGap = 0
+    margin = Insets(0, 0, 0, 0)
+    border = JBUI.Borders.empty()
+    preferredSize = JBUI.size(POPUP_ICON_BUTTON_SIZE, POPUP_ICON_BUTTON_SIZE)
+    minimumSize = preferredSize
+    maximumSize = preferredSize
+    alignmentY = JComponent.CENTER_ALIGNMENT
 }
 
 internal class TokenBadge : JComponent() {
@@ -261,7 +274,6 @@ internal val DESIGN_TOKEN_POPUP_LINK_COLOR = JBColor(Color(45, 108, 223), Color(
 internal val DESIGN_TOKEN_POPUP_CODE_FONT = Font(Font.MONOSPACED, Font.PLAIN, JBUI.scale(13))
 internal const val DESIGN_TOKEN_POPUP_SWATCH_SIZE = 26
 internal const val DESIGN_TOKEN_POPUP_SMALL_SWATCH_SIZE = 20
-internal const val DESIGN_TOKEN_POPUP_COPY_BUTTON_SIZE = 20
 
 private val ROW_BACKGROUND = JBColor(Color(255, 255, 255), Color(43, 46, 52))
 private val ROW_BORDER = JBColor(Color(220, 223, 229), Color(65, 69, 77))
@@ -271,7 +283,7 @@ private val CHECKER_DARK = Color(185, 185, 185)
 private val SWATCH_BORDER = JBColor(Color(110, 110, 110), Color(170, 170, 170))
 
 private const val TOKEN_BADGE_SIZE = 24
-private const val COPY_BUTTON_SIZE = 20
+private const val POPUP_ICON_BUTTON_SIZE = 20
 private const val COPY_FEEDBACK_DURATION_MS = 2_000
 private const val TEXT_WIDTH_PADDING = 2
 private const val OPAQUE_ALPHA = 255

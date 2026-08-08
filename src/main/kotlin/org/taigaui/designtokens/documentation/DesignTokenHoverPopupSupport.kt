@@ -69,10 +69,12 @@ private fun DesignTokenContext.hoverPlatformLabel(): String {
 private fun Set<DesignTokenPlatform>.hoverPlatformLabel(): String? =
     when (this) {
         setOf(DesignTokenPlatform.DESKTOP) -> "🖥️ Desktop"
-        setOf(DesignTokenPlatform.MOBILE) -> "📱 Mobile"
+        setOf(DesignTokenPlatform.MOBILE),
+        setOf(DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID),
+        -> "📱 Mobile"
+
         setOf(DesignTokenPlatform.IOS) -> "📱 iOS"
         setOf(DesignTokenPlatform.ANDROID) -> "🤖 Android"
-        setOf(DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID) -> "📱 iOS and Android"
         setOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.MOBILE),
         setOf(DesignTokenPlatform.DESKTOP, DesignTokenPlatform.IOS, DesignTokenPlatform.ANDROID),
         -> "All platforms"

@@ -21,7 +21,7 @@ import javax.swing.text.StyleConstants
 internal class DesignTokenHoverPopupPanel(
     private val model: DesignTokenHoverPopupModel,
     private val popupWidth: Int,
-    onNavigate: () -> Unit,
+    onNavigate: (DesignTokenNavigationTarget) -> Unit,
     onReportBug: () -> Unit,
     private val onPreferredSizeChanged: (Dimension) -> Unit,
 ) : JPanel(BorderLayout()) {
@@ -40,17 +40,23 @@ internal class DesignTokenHoverPopupPanel(
         val descriptionWidth = calculateDescriptionWidth(popupWidth)
         val referenceWidth = calculateReferenceWidth(popupWidth)
 
-        contentPanel.add(createHeader(model, descriptionWidth, onNavigate))
+        contentPanel.add(createHeader(model, descriptionWidth))
         contentPanel.add(Box.createVerticalStrut(JBUI.scale(14)))
-        contentPanel.add(createDesignTokenValueTable(model.rows, valueWidth))
+        contentPanel.add(
+            createDesignTokenValueSections(
+                sections = model.sections,
+                valueWidth = valueWidth,
+                onNavigate = onNavigate,
+            ),
+        )
 
-        if (model.chains.isNotEmpty()) {
+        if (model.referenceChainCount > 0) {
             contentPanel.add(Box.createVerticalStrut(JBUI.scale(12)))
             contentPanel.add(JSeparator())
             contentPanel.add(Box.createVerticalStrut(JBUI.scale(8)))
             contentPanel.add(
                 createDesignTokenReferenceAccordion(
-                    chains = model.chains,
+                    sections = model.sections,
                     referenceWidth = referenceWidth,
                     onExpandedChanged = ::setReferenceExpanded,
                 ),
@@ -105,25 +111,12 @@ private fun createScrollPane(content: JComponent): JComponent =
 private fun createHeader(
     model: DesignTokenHoverPopupModel,
     descriptionWidth: Int,
-    onNavigate: () -> Unit,
 ): JComponent =
     JPanel(BorderLayout(JBUI.scale(10), 0)).apply {
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-
         add(TokenBadge(), BorderLayout.WEST)
         add(createHeaderContent(model, descriptionWidth), BorderLayout.CENTER)
-        add(
-            JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
-                isOpaque = false
-                add(
-                    ActionLink("Go to definition") { onNavigate() }.apply {
-                        isEnabled = model.navigationTarget != null
-                    },
-                )
-            },
-            BorderLayout.EAST,
-        )
     }
 
 private fun createHeaderContent(
@@ -138,27 +131,9 @@ private fun createHeaderContent(
                 font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(18f).toFloat())
             },
         )
-        add(Box.createVerticalStrut(JBUI.scale(3)))
-        add(createSubtitle(model.description, descriptionWidth))
-    }
 
-private fun createSubtitle(
-    description: String?,
-    descriptionWidth: Int,
-): JComponent =
-    JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        isOpaque = false
-        alignmentX = JComponent.LEFT_ALIGNMENT
-
-        if (description == null) {
-            add(
-                JBLabel("Design token  ·  @taiga-ui/design-tokens").apply {
-                    foreground = UIUtil.getContextHelpForeground()
-                    alignmentX = JComponent.LEFT_ALIGNMENT
-                },
-            )
-        } else {
+        model.description?.let { description ->
+            add(Box.createVerticalStrut(JBUI.scale(3)))
             add(
                 WrappedTextPane(
                     text = description,
@@ -167,13 +142,6 @@ private fun createSubtitle(
                     textColor = UIUtil.getContextHelpForeground(),
                     alignment = StyleConstants.ALIGN_LEFT,
                 ),
-            )
-            add(Box.createVerticalStrut(JBUI.scale(2)))
-            add(
-                JBLabel("@taiga-ui/design-tokens").apply {
-                    foreground = UIUtil.getContextHelpForeground()
-                    alignmentX = JComponent.LEFT_ALIGNMENT
-                },
             )
         }
     }
