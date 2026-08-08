@@ -50,6 +50,7 @@ internal class DesignTokenHoverPopupController(
     private var popupContent: DesignTokenHoverPopupPanel? = null
     private var popupKey: PopupKey? = null
     private var activeHoverKey: PopupKey? = null
+    private var latestHoverRequest: HoverRequest? = null
     private var pendingHideJob: Job? = null
 
     init {
@@ -66,7 +67,14 @@ internal class DesignTokenHoverPopupController(
             val reference = event.findReferenceUnderPointer(anchor)
 
             if (reference == null) {
-                scheduleHide()
+                latestHoverRequest = null
+
+                if (popup?.isVisible == true) {
+                    scheduleHide()
+                } else {
+                    activeHoverKey = null
+                    nativeHoverPopupSuppression.restore()
+                }
 
                 return
             }
@@ -83,6 +91,8 @@ internal class DesignTokenHoverPopupController(
                 )
             val requestKey = request.popupKey()
 
+            latestHoverRequest = request
+
             if (requestKey != activeHoverKey) {
                 activeHoverKey = requestKey
                 requests.tryEmit(request)
@@ -90,13 +100,24 @@ internal class DesignTokenHoverPopupController(
         }
     }
 
-    private suspend fun handleRequest(request: HoverRequest) {
+    private suspend fun handleRequest(initialRequest: HoverRequest) {
+        delay(HOVER_SHOW_DELAY)
+
+        val request =
+            withContext(Dispatchers.EDT) {
+                latestHoverRequest
+                    ?.takeIf { latest ->
+                        initialRequest.popupKey() == activeHoverKey &&
+                            latest.popupKey() == activeHoverKey
+                    }
+            } ?: return
         val target = readAction { request.resolvePopupTarget(project) }
 
         if (target == null) {
             withContext(Dispatchers.EDT) {
                 if (activeHoverKey == request.popupKey()) {
                     activeHoverKey = null
+                    latestHoverRequest = null
                     if (!isPointerInsidePopup()) {
                         hidePopup()
                     }
@@ -217,6 +238,7 @@ internal class DesignTokenHoverPopupController(
                         popupContent = null
                         popupKey = null
                         activeHoverKey = null
+                        latestHoverRequest = null
                         nativeHoverPopupSuppression.restore()
                     }
                 }
@@ -248,6 +270,7 @@ internal class DesignTokenHoverPopupController(
 
                     if (!isPointerInsidePopup()) {
                         activeHoverKey = null
+                        latestHoverRequest = null
                         hidePopup()
                     }
                 }
@@ -285,6 +308,7 @@ internal class DesignTokenHoverPopupController(
         ).navigate(true)
         cancelScheduledHide()
         activeHoverKey = null
+        latestHoverRequest = null
         hidePopup()
     }
 
@@ -429,6 +453,7 @@ private data class PopupData(
     val model: DesignTokenHoverPopupModel,
 )
 
+private val HOVER_SHOW_DELAY = 200.milliseconds
 private val HIDE_GRACE_PERIOD = 250.milliseconds
 private val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
 private const val PREFERRED_POPUP_WIDTH = 560
