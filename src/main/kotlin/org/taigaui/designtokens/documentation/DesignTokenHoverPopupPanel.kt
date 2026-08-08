@@ -36,7 +36,6 @@ internal class DesignTokenHoverPopupPanel(
         background = DESIGN_TOKEN_POPUP_BACKGROUND
         border = JBUI.Borders.empty()
         add(createScrollPane(contentPanel), BorderLayout.CENTER)
-        minimumSize = Dimension(minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)), JBUI.scale(MIN_POPUP_HEIGHT))
     }
 
     fun showLoading(tokenName: String) {
@@ -105,7 +104,7 @@ internal class DesignTokenHoverPopupPanel(
     private fun updatePreferredSize(notify: Boolean) {
         val contentHeight =
             (contentPanel.preferredSize.height + JBUI.scale(2))
-                .coerceIn(JBUI.scale(MIN_POPUP_HEIGHT), JBUI.scale(MAX_POPUP_HEIGHT))
+                .coerceAtMost(JBUI.scale(MAX_POPUP_HEIGHT))
 
         preferredSize = Dimension(popupWidth, contentHeight)
         revalidate()
@@ -211,8 +210,6 @@ private fun calculateReferenceWidth(popupWidth: Int): Int =
 
 private const val CONTENT_PADDING = 14
 private const val TITLE_GAP = 10
-private const val MIN_POPUP_WIDTH = 460
-private const val MIN_POPUP_HEIGHT = 210
 private const val MAX_POPUP_HEIGHT = 640
 private const val VALUE_COLUMN_RESERVED_WIDTH = 270
 private const val MIN_VALUE_COLUMN_WIDTH = 210
