@@ -3,9 +3,7 @@ package org.taigaui.designtokens.documentation
 import org.taigaui.designtokens.resolution.DesignTokenReferenceResolution
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 
-internal fun DisplayResolutionGroup.toHoverReferenceChain(
-    tokenName: String,
-): DesignTokenHoverReferenceChain =
+internal fun DisplayResolutionGroup.toHoverReferenceChain(tokenName: String): DesignTokenHoverReferenceChain =
     DesignTokenHoverReferenceChain(
         platform = platformLabel(),
         lines =
