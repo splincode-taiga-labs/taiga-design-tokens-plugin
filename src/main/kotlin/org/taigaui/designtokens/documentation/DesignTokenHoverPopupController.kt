@@ -105,6 +105,14 @@ internal class DesignTokenHoverPopupController(
 
         val request =
             withContext(Dispatchers.EDT) {
+                if (!canShowDesignTokenPopup(popup)) {
+                    activeHoverKey = null
+                    latestHoverRequest = null
+                    nativeHoverPopupSuppression.restore()
+
+                    return@withContext null
+                }
+
                 latestHoverRequest
                     ?.takeIf { latest ->
                         initialRequest.popupKey() == activeHoverKey &&
@@ -132,7 +140,7 @@ internal class DesignTokenHoverPopupController(
 
         if (!indexCached) {
             withContext(Dispatchers.EDT) {
-                if (activeHoverKey == target.key) {
+                if (activeHoverKey == target.key && canShowDesignTokenPopup(popup)) {
                     showLoadingPopup(
                         editor = request.editor,
                         anchor = request.anchor,
@@ -151,7 +159,13 @@ internal class DesignTokenHoverPopupController(
 
         withContext(Dispatchers.EDT) {
             if (activeHoverKey == target.key) {
-                showResolvedPopup(request.editor, request.anchor, popupData)
+                if (canShowDesignTokenPopup(popup)) {
+                    showResolvedPopup(request.editor, request.anchor, popupData)
+                } else {
+                    activeHoverKey = null
+                    latestHoverRequest = null
+                    nativeHoverPopupSuppression.restore()
+                }
             }
         }
     }
@@ -190,6 +204,10 @@ internal class DesignTokenHoverPopupController(
         initializePanel: (DesignTokenHoverPopupPanel) -> Unit,
     ) {
         if (popupKey == key && popup?.isVisible == true) {
+            return
+        }
+
+        if (!canShowDesignTokenPopup(popup)) {
             return
         }
 
@@ -319,6 +337,9 @@ internal class DesignTokenHoverPopupController(
         nativeHoverPopupSuppression.restore()
     }
 }
+
+private fun canShowDesignTokenPopup(currentPopup: JBPopup?): Boolean =
+    currentPopup?.isVisible == true || !JBPopupFactory.getInstance().isPopupActive
 
 private fun Editor.calculateDesignTokenPopupWidth(): Int {
     val preferredWidth = JBUI.scale(PREFERRED_POPUP_WIDTH)
