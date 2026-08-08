@@ -36,9 +36,32 @@ class LessThemeMixinContextIntegrationTest : BasePlatformTestCase() {
         )
     }
 
-    private fun assertThemeContexts(content: String) {
-        val packageRoot = Files.createTempDirectory("taiga-ui-less-theme")
-        val sourceFile = packageRoot.resolve("variables.less")
+    fun testClassifiesVariablesInsideSassThemeMixins() {
+        assertThemeContexts(
+            content =
+                """
+                @mixin tui-theme-dark() {
+                    :root {
+                        --tui-text-primary: rgba(255, 255, 255, 1);
+                    }
+                }
+
+                @mixin tui-theme-light {
+                    :root {
+                        --tui-text-primary: rgba(27, 31, 59, 1);
+                    }
+                }
+                """.trimIndent(),
+            extension = "scss",
+        )
+    }
+
+    private fun assertThemeContexts(
+        content: String,
+        extension: String = "less",
+    ) {
+        val packageRoot = Files.createTempDirectory("taiga-ui-theme")
+        val sourceFile = packageRoot.resolve("variables.$extension")
 
         try {
             Files.writeString(sourceFile, content)
