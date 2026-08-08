@@ -16,7 +16,6 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.ui.awt.RelativePoint
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -297,24 +296,13 @@ internal class DesignTokenHoverPopupController(
         popup = createdPopup
         popupContent = panel
         popupKey = key
-        createdPopup.show(
-            RelativePoint(
-                editor.contentComponent,
-                popupLocationAboveAnchorInEditor(anchor, panel.preferredSize),
-            ),
+        createdPopup.showInScreenCoordinates(
+            editor.contentComponent,
+            popupLocationAboveAnchor(editor, anchor, panel.preferredSize),
         )
         createdPopup.setLocation(popupLocationAboveAnchor(editor, anchor, createdPopup.size))
         createdPopup.moveToFitScreen()
     }
-
-    private fun popupLocationAboveAnchorInEditor(
-        anchor: Point,
-        size: Dimension,
-    ): Point =
-        Point(
-            anchor.x - JBUI.scale(CURSOR_X_INSET),
-            anchor.y - size.height - JBUI.scale(CURSOR_GAP),
-        )
 
     private fun popupLocationAboveAnchor(
         editor: Editor,
