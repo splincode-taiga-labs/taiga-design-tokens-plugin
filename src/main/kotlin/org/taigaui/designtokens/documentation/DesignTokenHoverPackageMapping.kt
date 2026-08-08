@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.documentation
 
+import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
 
@@ -47,10 +48,11 @@ private fun String.packageSortKey(): String = "${packageDisplayRank()}:$this"
 
 private fun String.packageDisplayRank(): Int =
     when (this) {
-        DEFAULT_SOURCE_PACKAGE -> 0
-        "@taiga-ui/styles" -> 1
-        "@taiga-ui/core" -> 2
-        else -> 3
+        PROJECT_STYLES_PACKAGE -> 0
+        DEFAULT_SOURCE_PACKAGE -> 1
+        "@taiga-ui/styles" -> 2
+        "@taiga-ui/core" -> 3
+        else -> 4
     }
 
 internal val VALUE_ROW_COMPARATOR =
