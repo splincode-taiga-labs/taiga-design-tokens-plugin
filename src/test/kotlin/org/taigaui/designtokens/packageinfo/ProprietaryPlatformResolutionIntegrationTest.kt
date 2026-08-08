@@ -48,6 +48,11 @@ class ProprietaryPlatformResolutionIntegrationTest : BasePlatformTestCase() {
             name = "@taiga-ui/proprietary",
             files =
                 mapOf(
+                    "styles/tbank-theme.less" to
+                        """
+                        @import '@taiga-ui/design-tokens/fonts/desktop.css';
+                        @import 'theme/variables.less';
+                        """.trimIndent(),
                     "styles/theme/variables.less" to
                         """
                         &:root,
@@ -57,6 +62,8 @@ class ProprietaryPlatformResolutionIntegrationTest : BasePlatformTestCase() {
                         """.trimIndent(),
                     "styles/tbank-theme-mobile.less" to
                         """
+                        @import '@taiga-ui/design-tokens/fonts/mobile.css';
+
                         [data-platform='ios'],
                         [data-platform='android'] {
                             --tui-font-text-s: var(--tui-font-body-s);
@@ -97,12 +104,7 @@ class ProprietaryPlatformResolutionIntegrationTest : BasePlatformTestCase() {
             ),
             appliedRows.map { row -> row.platform to row.resolvedValue }.toSet(),
         )
-        assertEquals(1, overriddenRows.size)
-        assertEquals("📱 Mobile · Any theme", overriddenRows.single().platform)
-        assertEquals(
-            "Overridden by a platform-specific declaration",
-            overriddenRows.single().overrideMessage,
-        )
+        assertTrue(overriddenRows.isEmpty())
         assertTrue(index.find(TOKEN).none { variant -> variant.rawValue == "local-component-value" })
     }
 
