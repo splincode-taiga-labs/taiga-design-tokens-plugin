@@ -46,26 +46,19 @@ private fun List<DesignTokenVariantResolution>.effectiveCandidates(): List<Desig
     return scopedCandidates.preferKnownPackageLayer()
 }
 
-private fun List<DesignTokenVariantResolution>.preferKnownPackageLayer(): List<DesignTokenVariantResolution> {
-    if (map(DesignTokenVariantResolution::sourcePackageName).distinct().size < 2) {
-        return this
-    }
+private fun List<DesignTokenVariantResolution>.preferKnownPackageLayer(): List<DesignTokenVariantResolution> =
+    takeIf { candidates ->
+        candidates.map(DesignTokenVariantResolution::sourcePackageName).distinct().size >= 2
+    }?.map { candidate ->
+        candidate to TaigaUiPackagePrecedence.rank(candidate.sourcePackageName())
+    }?.takeUnless { candidates -> candidates.any { (_, rank) -> rank == null } }
+        ?.let { rankedCandidates ->
+            val highestRank = rankedCandidates.maxOf { (_, rank) -> requireNotNull(rank) }
 
-    val rankedCandidates =
-        map { candidate ->
-            candidate to TaigaUiPackagePrecedence.rank(candidate.sourcePackageName())
-        }
-
-    if (rankedCandidates.any { (_, rank) -> rank == null }) {
-        return this
-    }
-
-    val highestRank = rankedCandidates.maxOf { (_, rank) -> requireNotNull(rank) }
-
-    return rankedCandidates
-        .filter { (_, rank) -> rank == highestRank }
-        .map(Pair<DesignTokenVariantResolution, Int?>::first)
-}
+            rankedCandidates
+                .filter { (_, rank) -> rank == highestRank }
+                .map(Pair<DesignTokenVariantResolution, Int?>::first)
+        } ?: this
 
 private fun DesignTokenVariantResolution.platformSpecificity(): Int =
     when {
