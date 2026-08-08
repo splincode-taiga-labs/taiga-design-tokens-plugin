@@ -31,26 +31,18 @@ internal class DesignTokenCandidateSelector(
         }
     }
 
-    private fun List<DesignTokenVariant>.preferKnownPackageLayer(): List<DesignTokenVariant> {
-        if (size < 2) {
-            return this
-        }
-
-        val rankedCandidates =
-            map { variant ->
+    private fun List<DesignTokenVariant>.preferKnownPackageLayer(): List<DesignTokenVariant> =
+        takeIf { candidates -> candidates.size >= 2 }
+            ?.map { variant ->
                 variant to TaigaUiPackagePrecedence.rank(variant.sourcePackageName())
-            }
+            }?.takeUnless { candidates -> candidates.any { (_, rank) -> rank == null } }
+            ?.let { rankedCandidates ->
+                val highestRank = rankedCandidates.maxOf { (_, rank) -> requireNotNull(rank) }
 
-        if (rankedCandidates.any { (_, rank) -> rank == null }) {
-            return this
-        }
-
-        val highestRank = rankedCandidates.maxOf { (_, rank) -> requireNotNull(rank) }
-
-        return rankedCandidates
-            .filter { (_, rank) -> rank == highestRank }
-            .map(Pair<DesignTokenVariant, Int?>::first)
-    }
+                rankedCandidates
+                    .filter { (_, rank) -> rank == highestRank }
+                    .map(Pair<DesignTokenVariant, Int?>::first)
+            } ?: this
 
     private fun DesignTokenVariant.sourcePackageName(): String? =
         origins
