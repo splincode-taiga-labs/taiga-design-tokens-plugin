@@ -1,6 +1,5 @@
 package org.taigaui.designtokens.project
 
-import java.nio.file.Files
 import java.nio.file.Path
 
 internal class ProjectStylesheetImportResolver(

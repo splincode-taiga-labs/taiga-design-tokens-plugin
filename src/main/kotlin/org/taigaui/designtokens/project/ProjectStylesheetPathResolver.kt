@@ -52,12 +52,11 @@ internal object ProjectStylesheetPathResolver {
     fun isPackageImport(value: String): Boolean =
         value.startsWith("@taiga-ui/") || value.startsWith("node_modules/")
 
-    private fun extension(path: Path): String =
-        path.fileName
-            ?.toString()
-            ?.substringAfterLast('.', missingDelimiterValue = "")
-            ?.lowercase()
-            .orEmpty()
+    private fun extension(path: Path): String = path.fileName
+        ?.toString()
+        ?.substringAfterLast('.', missingDelimiterValue = "")
+        ?.lowercase()
+        .orEmpty()
 
     private const val NODE_MODULES = "node_modules"
 }
