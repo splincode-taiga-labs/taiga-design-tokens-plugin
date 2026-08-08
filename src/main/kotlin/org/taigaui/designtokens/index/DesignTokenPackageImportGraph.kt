@@ -18,7 +18,7 @@ internal class DesignTokenPackageImportGraph {
                     .normalize()
                     .nameCount
             }
-        val queue = ArrayDeque(entryFiles.map(Path::normalized))
+        val queue = ArrayDeque(entryFiles.map { path -> path.normalized() })
         val visited = linkedSetOf<Path>()
         val filesByPackage = linkedMapOf<String, MutableSet<Path>>()
 
