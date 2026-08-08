@@ -70,7 +70,11 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
 
         val packageSet = resolvePackageSet()
         val index = buildIndex(packageSet)
-        val result = DesignTokenValueResolver(index).resolveGrouped("--tui-v4-proprietary").single().representative
+        val result =
+            DesignTokenValueResolver(index)
+                .resolveGrouped("--tui-v4-proprietary")
+                .single()
+                .representative
 
         assertEquals(
             setOf(
@@ -78,7 +82,9 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 "@taiga-ui/design-tokens",
                 "@taiga-ui/proprietary",
             ),
-            packageSet.sourcePackages.map { sourcePackage -> sourcePackage.name }.toSet(),
+            packageSet.sourcePackages
+                .map { sourcePackage -> sourcePackage.name }
+                .toSet(),
         )
         assertResolvedValue("#123456", result)
         assertEquals(
@@ -130,19 +136,34 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
         val packageSet = resolvePackageSet()
         val index = buildIndex(packageSet)
         val groups = DesignTokenValueResolver(index).resolveGrouped("--tui-font-text-s")
-        val variant = index.find("--tui-font-text-s").single()
+        val variant =
+            index
+                .find("--tui-font-text-s")
+                .single()
         val model = DesignTokenHoverPopupModel.create("--tui-font-text-s", groups)
 
         assertEquals(1, groups.size)
         assertResolvedValue(fontValue, groups.single().representative)
-        assertTrue(variant.origins.single().sharedAcrossPlatforms)
+        assertTrue(
+            variant.origins
+                .single()
+                .sharedAcrossPlatforms,
+        )
         assertEquals(
             "All platforms · Any theme",
-            model.sections.single().rows.single().platform,
+            model.sections
+                .single()
+                .rows
+                .single()
+                .platform,
         )
         assertEquals(
             setOf("@taiga-ui/proprietary"),
-            groups.single().origins.mapNotNull { origin -> origin.packageName }.toSet(),
+            groups
+                .single()
+                .origins
+                .mapNotNull { origin -> origin.packageName }
+                .toSet(),
         )
     }
 
@@ -193,12 +214,14 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 .flatMap { variant -> variant.origins }
                 .mapNotNull { origin -> origin.packageName }
                 .toSet()
+        val result =
+            DesignTokenValueResolver(index)
+                .resolveGrouped("--tui-text-primary")
+                .single()
+                .representative
 
         assertEquals(setOf("@taiga-ui/design-tokens"), packages)
-        assertResolvedValue(
-            "#000000cc",
-            DesignTokenValueResolver(index).resolveGrouped("--tui-text-primary").single().representative,
-        )
+        assertResolvedValue("#000000cc", result)
     }
 
     fun testResolvesTaigaUi5StylesPackageAndIgnoresUnexportedCoreStyles() {
@@ -255,7 +278,11 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
 
         val packageSet = resolvePackageSet()
         val index = buildIndex(packageSet)
-        val result = DesignTokenValueResolver(index).resolveGrouped("--tui-v5-proprietary").single().representative
+        val result =
+            DesignTokenValueResolver(index)
+                .resolveGrouped("--tui-v5-proprietary")
+                .single()
+                .representative
 
         assertEquals(
             setOf(
@@ -263,7 +290,9 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 "@taiga-ui/proprietary",
                 "@taiga-ui/styles",
             ),
-            packageSet.sourcePackages.map { sourcePackage -> sourcePackage.name }.toSet(),
+            packageSet.sourcePackages
+                .map { sourcePackage -> sourcePackage.name }
+                .toSet(),
         )
         assertTrue(index.find("--tui-v5-ignored-core").isEmpty())
         assertResolvedValue("rgb(10, 20, 30)", result)
