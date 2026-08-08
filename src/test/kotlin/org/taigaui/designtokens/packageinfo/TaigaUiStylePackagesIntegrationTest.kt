@@ -47,7 +47,10 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
             files =
                 mapOf(
                     "styles/variables.less" to
-                        ":root { --tui-v4-core: var(--tui-v4-base); }",
+                        """
+                        @import '@taiga-ui/design-tokens/variables.css';
+                        :root { --tui-v4-core: var(--tui-v4-base); }
+                        """.trimIndent(),
                 ),
         )
         writePackage(
@@ -58,7 +61,10 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
             files =
                 mapOf(
                     "styles/brand/unexpected-file-name.scss" to
-                        ":root { --tui-v4-proprietary: var(--tui-v4-core); }",
+                        """
+                        @import '@taiga-ui/core/styles/variables.less';
+                        :root { --tui-v4-proprietary: var(--tui-v4-core); }
+                        """.trimIndent(),
                 ),
         )
 
@@ -140,6 +146,61 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
         )
     }
 
+    fun testDoesNotExposeCoreVariablesThatProprietaryThemeDoesNotImport() {
+        writePackage(
+            directory = "design-tokens",
+            name = "@taiga-ui/design-tokens",
+            version = "0.277.0",
+            exports = null,
+            files =
+                mapOf(
+                    "palette/text.css" to
+                        ":root { --tui-text-primary: #000000cc; }",
+                ),
+        )
+        writePackage(
+            directory = "core",
+            name = "@taiga-ui/core",
+            version = "4.69.0",
+            exports = "\"./styles/*\": \"./styles/*\"",
+            files =
+                mapOf(
+                    "styles/theme/appearance.less" to
+                        ".host { color: var(--tui-text-primary); }",
+                    "styles/theme/variables.less" to
+                        ":root { --tui-text-primary: rgba(27, 31, 59, 1); }",
+                ),
+        )
+        writePackage(
+            directory = "proprietary",
+            name = "@taiga-ui/proprietary",
+            version = "4.69.0",
+            exports = "\"./styles/*\": \"./styles/*\"",
+            files =
+                mapOf(
+                    "styles/tbank-theme.less" to
+                        """
+                        @import '@taiga-ui/design-tokens/palette/text.css';
+                        @import '@taiga-ui/core/styles/theme/appearance.less';
+                        """.trimIndent(),
+                ),
+        )
+
+        val index = buildIndex(resolvePackageSet())
+        val packages =
+            index
+                .find("--tui-text-primary")
+                .flatMap { variant -> variant.origins }
+                .mapNotNull { origin -> origin.packageName }
+                .toSet()
+
+        assertEquals(setOf("@taiga-ui/design-tokens"), packages)
+        assertResolvedValue(
+            "#000000cc",
+            DesignTokenValueResolver(index).resolveGrouped("--tui-text-primary").single().representative,
+        )
+    }
+
     fun testResolvesTaigaUi5StylesPackageAndIgnoresUnexportedCoreStyles() {
         writePackage(
             directory = "design-tokens",
@@ -160,7 +221,10 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
             files =
                 mapOf(
                     "theme/variables.less" to
-                        ":root { --tui-v5-surface: var(--tui-v5-base); }",
+                        """
+                        @import '@taiga-ui/design-tokens/palette.css';
+                        :root { --tui-v5-surface: var(--tui-v5-base); }
+                        """.trimIndent(),
                 ),
         )
         writePackage(
@@ -182,7 +246,10 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
             files =
                 mapOf(
                     "styles/theme/private-tokens.css" to
-                        ":root { --tui-v5-proprietary: var(--tui-v5-surface); }",
+                        """
+                        @import '@taiga-ui/styles/theme/variables.less';
+                        :root { --tui-v5-proprietary: var(--tui-v5-surface); }
+                        """.trimIndent(),
                 ),
         )
 
