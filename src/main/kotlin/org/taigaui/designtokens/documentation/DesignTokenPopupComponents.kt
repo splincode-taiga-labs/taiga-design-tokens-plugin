@@ -14,7 +14,9 @@ import java.awt.Graphics2D
 import java.awt.Insets
 import java.awt.RenderingHints
 import java.awt.datatransfer.StringSelection
+import java.awt.geom.AffineTransform
 import java.awt.geom.Ellipse2D
+import java.awt.geom.Path2D
 import java.awt.geom.RoundRectangle2D
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -123,16 +125,26 @@ internal class TokenBadge : JComponent() {
 
         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
         graphics2D.color = TOKEN_BADGE_BACKGROUND
-        graphics2D.fillRoundRect(0, 0, width, height, JBUI.scale(6), JBUI.scale(6))
+        val arc = minOf(width, height) * TOKEN_BADGE_CORNER_RATIO
+
+        graphics2D.fillRoundRect(0, 0, width, height, arc.toInt(), arc.toInt())
         graphics2D.color = Color.WHITE
-        graphics2D.font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(13f).toFloat())
 
-        val metrics = graphics2D.fontMetrics
-        val text = "T"
-        val x = (width - metrics.stringWidth(text)) / 2
-        val y = (height - metrics.height) / 2 + metrics.ascent
+        val logoWidth = width * TOKEN_LOGO_WIDTH_RATIO
+        val logoHeight = logoWidth * TOKEN_LOGO_VIEWBOX_HEIGHT / TOKEN_LOGO_VIEWBOX_WIDTH
+        val transform =
+            AffineTransform().apply {
+                translate(
+                    (width - logoWidth) / 2.0,
+                    (height - logoHeight) / 2.0,
+                )
+                scale(
+                    logoWidth / TOKEN_LOGO_VIEWBOX_WIDTH,
+                    logoHeight / TOKEN_LOGO_VIEWBOX_HEIGHT,
+                )
+            }
 
-        graphics2D.drawString(text, x, y)
+        graphics2D.fill(transform.createTransformedShape(TAIGA_LOGO_PATH))
         graphics2D.dispose()
     }
 }
@@ -269,6 +281,21 @@ private fun formatAlpha(alpha: Int): String =
         "%.2f".format(alpha.toDouble() / OPAQUE_ALPHA).trimEnd('0').trimEnd('.')
     }
 
+private val TAIGA_LOGO_PATH =
+    Path2D.Double(Path2D.WIND_EVEN_ODD).apply {
+        moveTo(34.0, 29.4667)
+        lineTo(17.0, 0.0)
+        lineTo(0.0, 29.4667)
+        lineTo(10.3208, 29.4667)
+        lineTo(14.6218, 22.8197)
+        lineTo(11.4867, 22.8197)
+        lineTo(17.0002, 14.09)
+        lineTo(22.5137, 22.8197)
+        lineTo(19.3785, 22.8197)
+        lineTo(23.6795, 29.4667)
+        closePath()
+    }
+
 internal val DESIGN_TOKEN_POPUP_BACKGROUND = JBColor(Color(247, 248, 250), Color(35, 37, 42))
 internal val DESIGN_TOKEN_POPUP_LINK_COLOR = JBColor(Color(45, 108, 223), Color(88, 157, 246))
 internal val DESIGN_TOKEN_POPUP_CODE_FONT = Font(Font.MONOSPACED, Font.PLAIN, JBUI.scale(13))
@@ -282,7 +309,11 @@ private val CHECKER_LIGHT = Color(235, 235, 235)
 private val CHECKER_DARK = Color(185, 185, 185)
 private val SWATCH_BORDER = JBColor(Color(110, 110, 110), Color(170, 170, 170))
 
-private const val TOKEN_BADGE_SIZE = 24
+private const val TOKEN_BADGE_SIZE = 16
+private const val TOKEN_BADGE_CORNER_RATIO = 0.25
+private const val TOKEN_LOGO_WIDTH_RATIO = 0.72
+private const val TOKEN_LOGO_VIEWBOX_WIDTH = 34.0
+private const val TOKEN_LOGO_VIEWBOX_HEIGHT = 30.0
 private const val POPUP_ICON_BUTTON_SIZE = 20
 private const val COPY_FEEDBACK_DURATION_MS = 2_000
 private const val TEXT_WIDTH_PADDING = 2
