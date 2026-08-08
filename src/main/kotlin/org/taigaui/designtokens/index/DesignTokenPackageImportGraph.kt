@@ -22,25 +22,23 @@ internal class DesignTokenPackageImportGraph {
         while (queue.isNotEmpty()) {
             val sourceFile = queue.removeFirst()
 
-            if (!visited.add(sourceFile)) {
-                continue
+            if (visited.add(sourceFile)) {
+                sourceFile.sourcePackage(packagesByRoot)?.let { sourcePackage ->
+                    filesByPackage
+                        .getOrPut(sourcePackage.name, ::linkedSetOf)
+                        .add(sourceFile)
+
+                    sourceFile
+                        .imports()
+                        .mapNotNull { importPath ->
+                            resolveImport(
+                                sourceFile = sourceFile,
+                                importPath = importPath,
+                                packagesByName = packagesByName,
+                            )
+                        }.forEach(queue::addLast)
+                }
             }
-
-            val sourcePackage = sourceFile.sourcePackage(packagesByRoot) ?: continue
-
-            filesByPackage
-                .getOrPut(sourcePackage.name, ::linkedSetOf)
-                .add(sourceFile)
-
-            sourceFile
-                .imports()
-                .mapNotNull { importPath ->
-                    resolveImport(
-                        sourceFile = sourceFile,
-                        importPath = importPath,
-                        packagesByName = packagesByName,
-                    )
-                }.forEach(queue::addLast)
         }
 
         return filesByPackage.mapValues { (_, files) -> files.sortedBy(Path::toString) }
@@ -57,17 +55,16 @@ internal class DesignTokenPackageImportGraph {
                 .substringBefore('#')
                 .removePrefix("~")
                 .trim()
-
-        if (normalizedImport.isEmpty() || normalizedImport.isExternalImport()) {
-            return null
-        }
-
         val importedPath =
-            if (normalizedImport.startsWith(TAIGA_UI_PACKAGE_PREFIX)) {
-                resolvePackageImport(normalizedImport, packagesByName)
-            } else {
-                sourceFile.parent?.resolve(normalizedImport)
-            }
+            normalizedImport
+                .takeUnless { value -> value.isEmpty() || value.isExternalImport() }
+                ?.let { value ->
+                    if (value.startsWith(TAIGA_UI_PACKAGE_PREFIX)) {
+                        resolvePackageImport(value, packagesByName)
+                    } else {
+                        sourceFile.parent?.resolve(value)
+                    }
+                }
 
         return importedPath?.resolveSourceFile()
     }
@@ -75,19 +72,18 @@ internal class DesignTokenPackageImportGraph {
     private fun resolvePackageImport(
         importPath: String,
         packagesByName: Map<String, DesignTokenSourcePackage>,
-    ): Path? {
-        val segments = importPath.split('/')
+    ): Path? =
+        importPath
+            .split('/')
+            .takeIf { segments -> segments.size >= PACKAGE_PATH_SEGMENTS }
+            ?.let { segments ->
+                val packageName = segments.take(PACKAGE_NAME_SEGMENTS).joinToString("/")
+                val relativePath = segments.drop(PACKAGE_NAME_SEGMENTS).joinToString("/")
 
-        if (segments.size < PACKAGE_PATH_SEGMENTS) {
-            return null
-        }
-
-        val packageName = segments.take(PACKAGE_NAME_SEGMENTS).joinToString("/")
-        val packageRoot = packagesByName[packageName]?.realRoot ?: return null
-        val relativePath = segments.drop(PACKAGE_NAME_SEGMENTS).joinToString("/")
-
-        return packageRoot.resolve(relativePath)
-    }
+                packagesByName[packageName]
+                    ?.realRoot
+                    ?.resolve(relativePath)
+            }
 
     private fun Path.resolveSourceFile(): Path? {
         val path = normalized()
