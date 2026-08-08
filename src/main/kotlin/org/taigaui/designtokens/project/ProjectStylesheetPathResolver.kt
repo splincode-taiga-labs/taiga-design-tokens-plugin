@@ -49,14 +49,14 @@ internal object ProjectStylesheetPathResolver {
             value.startsWith("data:", ignoreCase = true) ||
             value.startsWith("sass:", ignoreCase = true)
 
-    fun isPackageImport(value: String): Boolean =
-        value.startsWith("@taiga-ui/") || value.startsWith("node_modules/")
+    fun isPackageImport(value: String): Boolean = value.startsWith("@taiga-ui/") || value.startsWith("node_modules/")
 
-    private fun extension(path: Path): String = path.fileName
-        ?.toString()
-        ?.substringAfterLast('.', missingDelimiterValue = "")
-        ?.lowercase()
-        .orEmpty()
+    private fun extension(path: Path): String =
+        path.fileName
+            ?.toString()
+            ?.substringAfterLast('.', missingDelimiterValue = "")
+            ?.lowercase()
+            .orEmpty()
 
     private const val NODE_MODULES = "node_modules"
 }
