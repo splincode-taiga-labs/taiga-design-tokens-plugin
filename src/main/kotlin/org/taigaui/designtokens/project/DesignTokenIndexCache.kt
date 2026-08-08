@@ -31,6 +31,14 @@ internal class DesignTokenIndexCache(
     val size: Int
         get() = synchronized(lock) { entries.size }
 
+    fun contains(designTokensPackage: DesignTokensPackage): Boolean =
+        synchronized(lock) {
+            val normalizedPackage = normalizePackage(designTokensPackage)
+            val identity = DesignTokensPackageIdentity.from(normalizedPackage)
+
+            entries.containsKey(identity)
+        }
+
     fun getOrBuild(designTokensPackage: DesignTokensPackage): DesignTokenIndex =
         synchronized(lock) {
             val normalizedPackage = normalizePackage(designTokensPackage)

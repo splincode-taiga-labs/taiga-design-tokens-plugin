@@ -48,6 +48,41 @@ class SharedVariablesPlatformTest {
     }
 
     @Test
+    fun `treats theme-only selectors as shared across platforms`() {
+        val declaration =
+            sharedDeclaration().copy(
+                sourceFile = PACKAGE_ROOT.resolve("palette/dark.css"),
+                selectorChain = listOf("[tuiTheme='dark']"),
+            )
+
+        assertEquals(
+            DesignTokenTheme.DARK,
+            classifier.classify(PACKAGE_ROOT, declaration).theme,
+        )
+        assertTrue(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
+    }
+
+    @Test
+    fun `treats selectorless scss theme files as shared across platforms`() {
+        val light = selectorlessScssTheme("palette/scss/light.scss")
+        val dark = selectorlessScssTheme("palette/scss/dark.scss")
+
+        assertTrue(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, light))
+        assertTrue(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, dark))
+    }
+
+    @Test
+    fun `does not treat selectorless mobile scss theme as shared fallback`() {
+        val declaration = selectorlessScssTheme("palette/mobile/scss/dark.scss")
+
+        assertEquals(
+            DesignTokenPlatform.MOBILE,
+            classifier.classify(PACKAGE_ROOT, declaration).platform,
+        )
+        assertFalse(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
+    }
+
+    @Test
     fun `does not treat mobile selectors as shared fallbacks`() {
         val declaration =
             sharedDeclaration().copy(
@@ -64,6 +99,16 @@ class SharedVariablesPlatformTest {
         )
         assertFalse(classifier.isSharedAcrossPlatforms(PACKAGE_ROOT, declaration))
     }
+
+    private fun selectorlessScssTheme(relativePath: String): DesignTokenDeclaration =
+        DesignTokenDeclaration(
+            name = TOKEN,
+            value = "test",
+            sourceFile = PACKAGE_ROOT.resolve(relativePath),
+            line = 1,
+            packageName = "@taiga-ui/design-tokens",
+            packageRoot = PACKAGE_ROOT,
+        )
 
     private fun sharedDeclaration(): DesignTokenDeclaration =
         DesignTokenDeclaration(

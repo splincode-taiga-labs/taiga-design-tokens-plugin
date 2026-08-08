@@ -16,7 +16,7 @@ internal fun DesignTokenValueResolution.hoverReferenceValueText(color: Color?): 
     val rgba = color?.toRgbaText()
 
     return when {
-        rgba == null -> value
+        rgba == null -> value.withRemPixels()
         value.startsWith("rgba(", ignoreCase = true) -> value
         else -> "$value, $rgba"
     }
