@@ -3,6 +3,7 @@ package org.taigaui.designtokens.documentation
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
+import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
@@ -19,10 +20,9 @@ import javax.swing.SwingUtilities
 import javax.swing.text.StyleConstants
 
 internal class DesignTokenHoverPopupPanel(
-    private val model: DesignTokenHoverPopupModel,
     private val popupWidth: Int,
-    onNavigate: (DesignTokenNavigationTarget) -> Unit,
-    onReportBug: () -> Unit,
+    private val onNavigate: (DesignTokenNavigationTarget) -> Unit,
+    private val onReportBug: () -> Unit,
     private val onPreferredSizeChanged: (Dimension) -> Unit,
 ) : JPanel(BorderLayout()) {
     private val contentPanel =
@@ -35,12 +35,33 @@ internal class DesignTokenHoverPopupPanel(
     init {
         background = DESIGN_TOKEN_POPUP_BACKGROUND
         border = JBUI.Borders.empty()
+        add(createScrollPane(contentPanel), BorderLayout.CENTER)
+        minimumSize = Dimension(minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)), JBUI.scale(MIN_POPUP_HEIGHT))
+    }
 
+    fun showLoading(tokenName: String) {
+        contentPanel.removeAll()
+        contentPanel.add(
+            createHeader(
+                tokenName = tokenName,
+                description = null,
+                descriptionWidth = calculateDescriptionWidth(popupWidth),
+            ),
+        )
+        contentPanel.add(Box.createVerticalStrut(JBUI.scale(18)))
+        contentPanel.add(createLoadingRow())
+        updatePreferredSize(notify = true)
+        contentPanel.revalidate()
+        contentPanel.repaint()
+    }
+
+    fun showModel(model: DesignTokenHoverPopupModel) {
         val valueWidth = calculateValueWidth(popupWidth)
         val descriptionWidth = calculateDescriptionWidth(popupWidth)
         val referenceWidth = calculateReferenceWidth(popupWidth)
 
-        contentPanel.add(createHeader(model, descriptionWidth))
+        contentPanel.removeAll()
+        contentPanel.add(createHeader(model.tokenName, model.description, descriptionWidth))
         contentPanel.add(Box.createVerticalStrut(JBUI.scale(14)))
         contentPanel.add(
             createDesignTokenValueSections(
@@ -65,10 +86,9 @@ internal class DesignTokenHoverPopupPanel(
 
         contentPanel.add(Box.createVerticalStrut(JBUI.scale(10)))
         contentPanel.add(createFooter(onReportBug))
-
-        add(createScrollPane(contentPanel), BorderLayout.CENTER)
-        updatePreferredSize(notify = false)
-        minimumSize = Dimension(minOf(popupWidth, JBUI.scale(MIN_POPUP_WIDTH)), JBUI.scale(MIN_POPUP_HEIGHT))
+        updatePreferredSize(notify = true)
+        contentPanel.revalidate()
+        contentPanel.repaint()
     }
 
     private fun setReferenceExpanded(
@@ -109,34 +129,36 @@ private fun createScrollPane(content: JComponent): JComponent =
     }
 
 private fun createHeader(
-    model: DesignTokenHoverPopupModel,
+    tokenName: String,
+    description: String?,
     descriptionWidth: Int,
 ): JComponent =
     JPanel(BorderLayout(JBUI.scale(10), 0)).apply {
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
         add(TokenBadge(), BorderLayout.WEST)
-        add(createHeaderContent(model, descriptionWidth), BorderLayout.CENTER)
+        add(createHeaderContent(tokenName, description, descriptionWidth), BorderLayout.CENTER)
     }
 
 private fun createHeaderContent(
-    model: DesignTokenHoverPopupModel,
+    tokenName: String,
+    description: String?,
     descriptionWidth: Int,
 ): JComponent =
     JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         add(
-            JBLabel(model.tokenName).apply {
+            JBLabel(tokenName).apply {
                 font = font.deriveFont(Font.BOLD, JBUI.scaleFontSize(18f).toFloat())
             },
         )
 
-        model.description?.let { description ->
+        description?.let { text ->
             add(Box.createVerticalStrut(JBUI.scale(3)))
             add(
                 WrappedTextPane(
-                    text = description,
+                    text = text,
                     width = descriptionWidth,
                     textFont = UIUtil.getLabelFont(),
                     textColor = UIUtil.getContextHelpForeground(),
@@ -144,6 +166,19 @@ private fun createHeaderContent(
                 ),
             )
         }
+    }
+
+private fun createLoadingRow(): JComponent =
+    JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+        add(AsyncProcessIcon("Loading design token graph"))
+        add(Box.createHorizontalStrut(JBUI.scale(8)))
+        add(
+            JBLabel("Loading design token graph…").apply {
+                foreground = UIUtil.getContextHelpForeground()
+            },
+        )
     }
 
 private fun createFooter(onReportBug: () -> Unit): JComponent =
