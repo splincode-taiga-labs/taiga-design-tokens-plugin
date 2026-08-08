@@ -50,20 +50,30 @@ class DesignTokenIndex private constructor(
                     groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
                 }
 
-            val variants =
-                groupedOrigins
-                    .map { (key, origins) ->
-                        DesignTokenVariant(
-                            name = key.name,
-                            context = key.context,
-                            rawValue = key.rawValue,
-                            origins =
-                                origins
-                                    .distinct()
-                                    .sortedWith(ORIGIN_COMPARATOR),
-                        )
-                    }.sortedWith(VARIANT_COMPARATOR)
+            return fromVariants(
+                groupedOrigins.map { (key, origins) ->
+                    DesignTokenVariant(
+                        name = key.name,
+                        context = key.context,
+                        rawValue = key.rawValue,
+                        origins =
+                            origins
+                                .distinct()
+                                .sortedWith(ORIGIN_COMPARATOR),
+                    )
+                },
+            )
+        }
 
+        fun merge(indexes: Collection<DesignTokenIndex>): DesignTokenIndex =
+            fromVariants(
+                indexes
+                    .flatMap(DesignTokenIndex::variants)
+                    .distinct(),
+            )
+
+        private fun fromVariants(sourceVariants: List<DesignTokenVariant>): DesignTokenIndex {
+            val variants = sourceVariants.sortedWith(VARIANT_COMPARATOR)
             val variantsByName = linkedMapOf<String, MutableList<DesignTokenVariant>>()
 
             variants.forEach { variant ->
@@ -117,8 +127,10 @@ class DesignTokenIndex private constructor(
                 "@taiga-ui/design-tokens" -> 0
                 "@taiga-ui/styles" -> 1
                 "@taiga-ui/core" -> 2
-                null -> 3
-                else -> 4
+                "@taiga-ui/proprietary" -> 3
+                PROJECT_STYLES_PACKAGE -> 4
+                null -> 5
+                else -> 6
             }
 
         private fun sourceFormatRank(format: DesignTokenSourceFormat): Int =
@@ -152,3 +164,5 @@ class DesignTokenIndex private constructor(
         val packageName: String?,
     )
 }
+
+internal const val PROJECT_STYLES_PACKAGE = "Project styles"
