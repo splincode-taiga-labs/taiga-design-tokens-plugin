@@ -5,6 +5,12 @@ config:
     validation: true
 
 complexity:
+    LongMethod:
+        excludes:
+            - '**/test/**'
+    LongParameterList:
+        excludes:
+            - '**/test/**'
     TooManyFunctions:
         excludes:
             - '**/test/**'
