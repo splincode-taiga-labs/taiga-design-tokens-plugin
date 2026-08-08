@@ -23,6 +23,7 @@ class DesignTokenContextClassifier {
         val selectors = declaration.selectorChain
         val hasGlobalScope =
             selectors.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) } ||
+                selectors.containsThemeScope() ||
                 declaration.isImplicitGlobalScssTheme(markers)
 
         return classifyPlatform(markers, selectors) == DesignTokenPlatform.DESKTOP &&
@@ -100,6 +101,12 @@ class DesignTokenContextClassifier {
             else -> DesignTokenTheme.UNSPECIFIED
         }
     }
+
+    private fun List<String>.containsThemeScope(): Boolean =
+        containsMatch(LIGHT_THEME_SELECTOR) ||
+            containsMatch(DARK_THEME_SELECTOR) ||
+            containsMatch(LIGHT_THEME_MIXIN) ||
+            containsMatch(DARK_THEME_MIXIN)
 
     private fun List<String>.containsMatch(pattern: Regex): Boolean = any(pattern::containsMatchIn)
 
