@@ -21,7 +21,9 @@ import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -32,11 +34,12 @@ import java.awt.MouseInfo
 import java.awt.Point
 import java.nio.file.Path
 import javax.swing.SwingUtilities
+import kotlin.time.Duration.Companion.milliseconds
 
 @Service(Service.Level.PROJECT)
 internal class DesignTokenHoverPopupController(
     private val project: Project,
-    coroutineScope: CoroutineScope,
+    private val coroutineScope: CoroutineScope,
 ) {
     private val requests =
         MutableSharedFlow<HoverRequest>(
@@ -48,6 +51,7 @@ internal class DesignTokenHoverPopupController(
     private var popupContent: DesignTokenHoverPopupPanel? = null
     private var popupKey: PopupKey? = null
     private var activeHoverKey: PopupKey? = null
+    private var pendingHideJob: Job? = null
 
     init {
         coroutineScope.launch(CoroutineName("Taiga UI design token hover popup")) {
@@ -62,9 +66,14 @@ internal class DesignTokenHoverPopupController(
             val anchor = Point(event.mouseEvent.point)
             val reference = event.findReferenceUnderPointer(anchor)
 
-            if (reference != null) {
-                nativeHoverPopupSuppression.suppress(editor)
+            if (reference == null) {
+                scheduleHide()
+
+                return
             }
+
+            cancelScheduledHide()
+            nativeHoverPopupSuppression.suppress(editor)
 
             val request =
                 HoverRequest(
@@ -211,7 +220,6 @@ internal class DesignTokenHoverPopupController(
     ) {
         if (popupKey == data.key && popup?.isVisible == true) {
             popupContent?.showModel(data.model)
-            popup?.moveToFitScreen()
 
             return
         }
@@ -246,6 +254,7 @@ internal class DesignTokenHoverPopupController(
                         ?.takeIf { currentPopup -> currentPopup.isVisible && !currentPopup.isDisposed }
                         ?.let { currentPopup ->
                             currentPopup.setSize(size)
+                            currentPopup.setLocation(popupLocationAboveAnchor(editor, anchor, size))
                             currentPopup.moveToFitScreen()
                         }
                 },
@@ -275,6 +284,7 @@ internal class DesignTokenHoverPopupController(
             object : JBPopupListener {
                 override fun onClosed(event: LightweightWindowEvent) {
                     if (popup === createdPopup) {
+                        cancelScheduledHide()
                         popup = null
                         popupContent = null
                         popupKey = null
@@ -290,10 +300,61 @@ internal class DesignTokenHoverPopupController(
         createdPopup.show(
             RelativePoint(
                 editor.contentComponent,
-                Point(anchor.x + ANCHOR_X_OFFSET, anchor.y + editor.lineHeight + ANCHOR_Y_OFFSET),
+                popupLocationAboveAnchorInEditor(anchor, panel.preferredSize),
             ),
         )
+        createdPopup.setLocation(popupLocationAboveAnchor(editor, anchor, createdPopup.size))
         createdPopup.moveToFitScreen()
+    }
+
+    private fun popupLocationAboveAnchorInEditor(
+        anchor: Point,
+        size: Dimension,
+    ): Point =
+        Point(
+            anchor.x - JBUI.scale(CURSOR_X_INSET),
+            anchor.y - size.height - JBUI.scale(CURSOR_GAP),
+        )
+
+    private fun popupLocationAboveAnchor(
+        editor: Editor,
+        anchor: Point,
+        size: Dimension,
+    ): Point {
+        val screenAnchor = Point(anchor)
+
+        SwingUtilities.convertPointToScreen(screenAnchor, editor.contentComponent)
+
+        return Point(
+            screenAnchor.x - JBUI.scale(CURSOR_X_INSET),
+            screenAnchor.y - size.height - JBUI.scale(CURSOR_GAP),
+        )
+    }
+
+    private fun scheduleHide() {
+        if (popup?.isVisible != true && activeHoverKey == null) {
+            return
+        }
+
+        pendingHideJob?.cancel()
+        pendingHideJob =
+            coroutineScope.launch(CoroutineName("Taiga UI design token hover popup hide")) {
+                delay(HIDE_GRACE_PERIOD)
+
+                withContext(Dispatchers.EDT) {
+                    pendingHideJob = null
+
+                    if (!isPointerInsidePopup()) {
+                        activeHoverKey = null
+                        hidePopup()
+                    }
+                }
+            }
+    }
+
+    private fun cancelScheduledHide() {
+        pendingHideJob?.cancel()
+        pendingHideJob = null
     }
 
     private fun calculatePopupWidth(editor: Editor): Int {
@@ -320,6 +381,7 @@ internal class DesignTokenHoverPopupController(
             (target.line - 1).coerceAtLeast(0),
             0,
         ).navigate(true)
+        cancelScheduledHide()
         activeHoverKey = null
         hidePopup()
     }
@@ -382,13 +444,14 @@ internal class DesignTokenHoverPopupController(
     )
 
     private companion object {
+        val HIDE_GRACE_PERIOD = 250.milliseconds
         val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
         const val PREFERRED_POPUP_WIDTH = 560
         const val MIN_POPUP_WIDTH = 460
         const val MIN_POPUP_HEIGHT = 210
         const val MAX_SCREEN_WIDTH_RATIO = 0.72
-        const val ANCHOR_X_OFFSET = 14
-        const val ANCHOR_Y_OFFSET = 8
+        const val CURSOR_X_INSET = 16
+        const val CURSOR_GAP = 2
         const val REPORT_BUG_URL =
             "https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/new?labels=bug"
     }
