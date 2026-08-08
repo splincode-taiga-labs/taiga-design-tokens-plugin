@@ -2,6 +2,7 @@ package org.taigaui.designtokens.documentation
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.taigaui.designtokens.index.DesignTokenContext
 import org.taigaui.designtokens.index.DesignTokenOrigin
@@ -67,8 +68,16 @@ class DesignTokenOverridePresentationTest {
                 ),
             )
         val model = DesignTokenHoverPopupModel.create(TOKEN, groups)
-        val baseRow = model.sections.first { it.packageName == DESIGN_TOKENS_PACKAGE }.rows.single()
-        val proprietaryRow = model.sections.first { it.packageName == PROPRIETARY_PACKAGE }.rows.single()
+        val baseRow =
+            model.sections
+                .first { section -> section.packageName == DESIGN_TOKENS_PACKAGE }
+                .rows
+                .single()
+        val proprietaryRow =
+            model.sections
+                .first { section -> section.packageName == PROPRIETARY_PACKAGE }
+                .rows
+                .single()
 
         assertEquals("Overridden by @taiga-ui/proprietary", baseRow.overrideMessage)
         assertNull(proprietaryRow.overrideMessage)
@@ -145,8 +154,16 @@ class DesignTokenOverridePresentationTest {
                 TOKEN,
                 listOf(group(proprietaryRoot, designTokensMobile)),
             )
-        val proprietaryRow = model.sections.first { it.packageName == PROPRIETARY_PACKAGE }.rows.single()
-        val designTokensRow = model.sections.first { it.packageName == DESIGN_TOKENS_PACKAGE }.rows.single()
+        val proprietaryRow =
+            model.sections
+                .first { section -> section.packageName == PROPRIETARY_PACKAGE }
+                .rows
+                .single()
+        val designTokensRow =
+            model.sections
+                .first { section -> section.packageName == DESIGN_TOKENS_PACKAGE }
+                .rows
+                .single()
 
         assertEquals("Overridden by a platform-specific declaration", proprietaryRow.overrideMessage)
         assertNull(designTokensRow.overrideMessage)
