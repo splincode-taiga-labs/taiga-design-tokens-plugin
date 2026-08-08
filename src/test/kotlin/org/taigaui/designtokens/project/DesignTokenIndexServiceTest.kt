@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.project
 
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
@@ -8,6 +9,8 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
+import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
+import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -50,6 +53,59 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         assertEquals("#000", tokenValue(rebuilt))
         assertSame(rebuilt, index(fixture))
         assertEquals(1, service.cachedPackageCount)
+    }
+
+    fun testInvalidatesCachedIndexWhenPackageDocumentChangesBeforeSave() {
+        val first = index(fixture)
+        val document = requireNotNull(FileDocumentManager.getInstance().getDocument(fixture.tokenFile))
+
+        WriteCommandAction.runWriteCommandAction(project) {
+            document.setText(":root { --tui-background-base: #123; }")
+        }
+        PsiDocumentManager.getInstance(project).commitDocument(document)
+
+        assertEquals(0, service.cachedPackageCount)
+
+        val rebuilt = index(fixture)
+
+        assertNotSame(first, rebuilt)
+        assertEquals("#123", tokenValue(rebuilt))
+    }
+
+    fun testResolvesTokenDeclaredInCurrentProjectStylesheet() {
+        val sourcePath = tempRoot.resolve("workspace/src/component.css")
+
+        createFile(
+            sourcePath,
+            """
+            :host {
+                --tui-test: red;
+            }
+
+            :host {
+                color: var(--tui-test);
+            }
+            """.trimIndent(),
+        )
+
+        val resolutions =
+            service
+                .resolveToken(sourcePath, "--tui-test")
+                .flatMap { group -> group.resolutions }
+
+        assertTrue(resolutions.isNotEmpty())
+        assertTrue(
+            resolutions.any { resolution ->
+                (resolution.result as? DesignTokenValueResolution.Resolved)?.value == "red"
+            },
+        )
+        assertEquals(
+            setOf(PROJECT_STYLES_PACKAGE),
+            resolutions
+                .flatMap { resolution -> resolution.variant.origins }
+                .mapNotNull { origin -> origin.packageName }
+                .toSet(),
+        )
     }
 
     fun testKeepsCachedIndexForUnrelatedProjectAndPackageFiles() {
