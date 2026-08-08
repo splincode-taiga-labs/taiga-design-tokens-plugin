@@ -21,13 +21,21 @@ class DesignTokenContextClassifier {
     ): Boolean {
         val markers = pathMarkers(packageRoot, declaration.sourceFile)
         val selectors = declaration.selectorChain
+        val hasGlobalScope =
+            selectors.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) } ||
+                declaration.isImplicitGlobalScssTheme(markers)
 
         return classifyPlatform(markers, selectors) == DesignTokenPlatform.DESKTOP &&
             MOBILE_MARKER !in markers &&
-            selectors.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) } &&
+            hasGlobalScope &&
             !selectors.containsMatch(IOS_PLATFORM_SELECTOR) &&
             !selectors.containsMatch(ANDROID_PLATFORM_SELECTOR)
     }
+
+    private fun DesignTokenDeclaration.isImplicitGlobalScssTheme(markers: Set<String>): Boolean =
+        selectorChain.isEmpty() &&
+            DesignTokenSourceFormat.from(sourceFile) == DesignTokenSourceFormat.SCSS &&
+            (LIGHT_MARKER in markers || DARK_MARKER in markers)
 
     private fun pathMarkers(
         packageRoot: Path,
