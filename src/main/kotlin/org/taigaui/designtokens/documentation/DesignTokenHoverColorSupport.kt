@@ -3,6 +3,7 @@ package org.taigaui.designtokens.documentation
 import org.taigaui.designtokens.resolution.DesignTokenColorValue
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 import java.awt.Color
+import java.math.BigDecimal
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -16,10 +17,23 @@ internal fun DesignTokenValueResolution.hoverReferenceValueText(color: Color?): 
     val rgba = color?.toRgbaText()
 
     return when {
-        rgba == null -> value
+        rgba == null -> value.withRemPixels()
         value.startsWith("rgba(", ignoreCase = true) -> value
         else -> "$value, $rgba"
     }
+}
+
+private fun String.withRemPixels(): String {
+    val match = REM_VALUE.matchEntire(trim()) ?: return this
+    val rem = match.groupValues[1].toBigDecimalOrNull() ?: return this
+    val pixels =
+        rem
+            .multiply(REM_BASE_PX)
+            .stripTrailingZeros()
+            .toPlainString()
+            .let { value -> if (value == "-0") "0" else value }
+
+    return "$this, ${pixels}px"
 }
 
 private fun DesignTokenColorValue.toAwtColorOrNull(): Color? =
@@ -142,6 +156,8 @@ private data class RgbFunction(
 }
 
 private val RGB_FUNCTION = Regex("""(?i)(rgb|rgba)\((.*)\)""")
+private val REM_VALUE = Regex("""([+-]?(?:\d+(?:\.\d+)?|\.\d+))rem""", RegexOption.IGNORE_CASE)
+private val REM_BASE_PX = BigDecimal("16")
 private val WHITESPACE = Regex("\\s+")
 private const val OPAQUE_ALPHA = 255
 private const val RGB_CHANNEL_COUNT = 3
