@@ -453,7 +453,7 @@ private data class PopupData(
     val model: DesignTokenHoverPopupModel,
 )
 
-private val HOVER_SHOW_DELAY = 250.milliseconds
+private val HOVER_SHOW_DELAY = 500.milliseconds
 private val HIDE_GRACE_PERIOD = 250.milliseconds
 private val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
 private const val PREFERRED_POPUP_WIDTH = 560
