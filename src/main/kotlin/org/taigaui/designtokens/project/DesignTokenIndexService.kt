@@ -68,6 +68,13 @@ class DesignTokenIndexService(
             ?.let { index -> DesignTokenValueResolver(index).resolveGrouped(tokenName) }
             .orEmpty()
 
+    internal fun isIndexCached(sourceFile: Path): Boolean =
+        runCatching {
+            packageResolver
+                .resolve(sourceFile)
+                ?.let(cache::contains) == true
+        }.getOrDefault(false)
+
     internal fun getIndexOrThrow(sourceFile: Path): DesignTokenIndex? =
         packageResolver
             .resolve(sourceFile)
