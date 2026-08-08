@@ -90,32 +90,8 @@ internal class DesignTokenHoverPopupController(
         }
     }
 
-    private fun EditorMouseEvent.findReferenceUnderPointer(anchor: Point): DesignTokenReferenceAtOffset? {
-        val virtualFile = FileDocumentManager.getInstance().getFile(editor.document)
-
-        return takeIf { area == EditorMouseEventArea.EDITING_AREA }
-            ?.takeIf { virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS }
-            ?.let {
-                DesignTokenReferenceAtOffsetFinder.find(
-                    editor.document.immutableCharSequence,
-                    offset,
-                )
-            }?.takeIf { reference -> editor.isPointerOver(reference, anchor) }
-    }
-
-    private fun Editor.isPointerOver(
-        reference: DesignTokenReferenceAtOffset,
-        pointer: Point,
-    ): Boolean =
-        DesignTokenReferenceHitTester.contains(
-            start = offsetToXY(reference.startOffset),
-            end = offsetToXY(reference.endOffset),
-            lineHeight = lineHeight,
-            pointer = pointer,
-        )
-
     private suspend fun handleRequest(request: HoverRequest) {
-        val target = readAction { request.resolvePopupTarget() }
+        val target = readAction { request.resolvePopupTarget(project) }
 
         if (target == null) {
             withContext(Dispatchers.EDT) {
@@ -163,43 +139,6 @@ internal class DesignTokenHoverPopupController(
             }
         }
     }
-
-    private fun HoverRequest.resolvePopupTarget(): PopupTarget? =
-        reference
-            ?.takeIf { !project.isDisposed && !editor.isDisposed }
-            ?.takeIf { modificationStamp == editor.document.modificationStamp }
-            ?.let { validReference ->
-                FileDocumentManager
-                    .getInstance()
-                    .getFile(editor.document)
-                    ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
-                    ?.path
-                    ?.let { path -> runCatching { Path.of(path) }.getOrNull() }
-                    ?.let { sourceFile ->
-                        PopupTarget(
-                            key =
-                                PopupKey(
-                                    editor = editor,
-                                    tokenName = validReference.name,
-                                    offset = validReference.startOffset,
-                                    modificationStamp = modificationStamp,
-                                ),
-                            sourceFile = sourceFile,
-                            tokenName = validReference.name,
-                        )
-                    }
-            }
-
-    private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData? =
-        indexService
-            .resolveToken(sourceFile, tokenName)
-            .takeIf { groups -> groups.isNotEmpty() }
-            ?.let { groups ->
-                PopupData(
-                    key = key,
-                    model = DesignTokenHoverPopupModel.create(tokenName, groups),
-                )
-            }
 
     private fun showLoadingPopup(
         editor: Editor,
@@ -304,21 +243,6 @@ internal class DesignTokenHoverPopupController(
         createdPopup.moveToFitScreen()
     }
 
-    private fun popupLocationAboveAnchor(
-        editor: Editor,
-        anchor: Point,
-        size: Dimension,
-    ): Point {
-        val screenAnchor = Point(anchor)
-
-        SwingUtilities.convertPointToScreen(screenAnchor, editor.contentComponent)
-
-        return Point(
-            screenAnchor.x - JBUI.scale(CURSOR_X_INSET),
-            screenAnchor.y - size.height - JBUI.scale(CURSOR_GAP),
-        )
-    }
-
     private fun scheduleHide() {
         if (popup?.isVisible != true && activeHoverKey == null) {
             return
@@ -395,52 +319,126 @@ internal class DesignTokenHoverPopupController(
         currentPopup?.cancel()
         nativeHoverPopupSuppression.restore()
     }
+}
 
-    private fun HoverRequest.popupKey(): PopupKey? =
-        reference?.let { validReference ->
-            PopupKey(
-                editor = editor,
-                tokenName = validReference.name,
-                offset = validReference.startOffset,
-                modificationStamp = modificationStamp,
+private fun EditorMouseEvent.findReferenceUnderPointer(anchor: Point): DesignTokenReferenceAtOffset? {
+    val virtualFile = FileDocumentManager.getInstance().getFile(editor.document)
+
+    return takeIf { area == EditorMouseEventArea.EDITING_AREA }
+        ?.takeIf { virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+        ?.let {
+            DesignTokenReferenceAtOffsetFinder.find(
+                editor.document.immutableCharSequence,
+                offset,
+            )
+        }?.takeIf { reference -> editor.isPointerOver(reference, anchor) }
+}
+
+private fun Editor.isPointerOver(
+    reference: DesignTokenReferenceAtOffset,
+    pointer: Point,
+): Boolean =
+    DesignTokenReferenceHitTester.contains(
+        start = offsetToXY(reference.startOffset),
+        end = offsetToXY(reference.endOffset),
+        lineHeight = lineHeight,
+        pointer = pointer,
+    )
+
+private fun HoverRequest.resolvePopupTarget(project: Project): PopupTarget? =
+    reference
+        ?.takeIf { !project.isDisposed && !editor.isDisposed }
+        ?.takeIf { modificationStamp == editor.document.modificationStamp }
+        ?.let { validReference ->
+            FileDocumentManager
+                .getInstance()
+                .getFile(editor.document)
+                ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+                ?.path
+                ?.let { path -> runCatching { Path.of(path) }.getOrNull() }
+                ?.let { sourceFile ->
+                    PopupTarget(
+                        key =
+                            PopupKey(
+                                editor = editor,
+                                tokenName = validReference.name,
+                                offset = validReference.startOffset,
+                                modificationStamp = modificationStamp,
+                            ),
+                        sourceFile = sourceFile,
+                        tokenName = validReference.name,
+                    )
+                }
+        }
+
+private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData? =
+    indexService
+        .resolveToken(sourceFile, tokenName)
+        .takeIf { groups -> groups.isNotEmpty() }
+        ?.let { groups ->
+            PopupData(
+                key = key,
+                model = DesignTokenHoverPopupModel.create(tokenName, groups),
             )
         }
 
-    private data class HoverRequest(
-        val editor: Editor,
-        val reference: DesignTokenReferenceAtOffset?,
-        val anchor: Point,
-        val modificationStamp: Long,
-    )
-
-    private data class PopupKey(
-        val editor: Editor,
-        val tokenName: String,
-        val offset: Int,
-        val modificationStamp: Long,
-    )
-
-    private data class PopupTarget(
-        val key: PopupKey,
-        val sourceFile: Path,
-        val tokenName: String,
-    )
-
-    private data class PopupData(
-        val key: PopupKey,
-        val model: DesignTokenHoverPopupModel,
-    )
-
-    private companion object {
-        val HIDE_GRACE_PERIOD = 250.milliseconds
-        val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
-        const val PREFERRED_POPUP_WIDTH = 560
-        const val MIN_POPUP_WIDTH = 460
-        const val MIN_POPUP_HEIGHT = 210
-        const val MAX_SCREEN_WIDTH_RATIO = 0.72
-        const val CURSOR_X_INSET = 16
-        const val CURSOR_GAP = 2
-        const val REPORT_BUG_URL =
-            "https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/new?labels=bug"
+private fun HoverRequest.popupKey(): PopupKey? =
+    reference?.let { validReference ->
+        PopupKey(
+            editor = editor,
+            tokenName = validReference.name,
+            offset = validReference.startOffset,
+            modificationStamp = modificationStamp,
+        )
     }
+
+private fun popupLocationAboveAnchor(
+    editor: Editor,
+    anchor: Point,
+    size: Dimension,
+): Point {
+    val screenAnchor = Point(anchor)
+
+    SwingUtilities.convertPointToScreen(screenAnchor, editor.contentComponent)
+
+    return Point(
+        screenAnchor.x - JBUI.scale(CURSOR_X_INSET),
+        screenAnchor.y - size.height - JBUI.scale(CURSOR_GAP),
+    )
 }
+
+private data class HoverRequest(
+    val editor: Editor,
+    val reference: DesignTokenReferenceAtOffset?,
+    val anchor: Point,
+    val modificationStamp: Long,
+)
+
+private data class PopupKey(
+    val editor: Editor,
+    val tokenName: String,
+    val offset: Int,
+    val modificationStamp: Long,
+)
+
+private data class PopupTarget(
+    val key: PopupKey,
+    val sourceFile: Path,
+    val tokenName: String,
+)
+
+private data class PopupData(
+    val key: PopupKey,
+    val model: DesignTokenHoverPopupModel,
+)
+
+private val HIDE_GRACE_PERIOD = 250.milliseconds
+private val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
+private const val PREFERRED_POPUP_WIDTH = 560
+private const val MIN_POPUP_WIDTH = 460
+private const val MIN_POPUP_HEIGHT = 210
+private const val MAX_SCREEN_WIDTH_RATIO = 0.72
+private const val CURSOR_X_INSET = 16
+private const val CURSOR_GAP = 2
+private const val REPORT_BUG_URL =
+    "https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/new?labels=bug"
