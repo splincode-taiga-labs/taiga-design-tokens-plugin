@@ -5,6 +5,7 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
+import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
 import org.taigaui.designtokens.packageinfo.TaigaUiPackagePrecedence
 
 internal class DesignTokenCandidateSelector(
@@ -15,14 +16,17 @@ internal class DesignTokenCandidateSelector(
         requestedContext: DesignTokenContext,
     ): DesignTokenCandidateSelection {
         val variants = index.find(name)
-        val contextCandidates =
-            contextPrecedence(requestedContext)
-                .asSequence()
-                .map { compatibleContext ->
-                    variants.filter { variant -> variant.context == compatibleContext }
-                }.firstOrNull(List<DesignTokenVariant>::isNotEmpty)
-                .orEmpty()
-        val candidates = contextCandidates.preferKnownPackageLayer()
+        val projectCandidates = variants.effectiveProjectCandidates(requestedContext)
+        val candidates =
+            projectCandidates.ifEmpty {
+                contextPrecedence(requestedContext)
+                    .asSequence()
+                    .map { compatibleContext ->
+                        variants.filter { variant -> variant.context == compatibleContext }
+                    }.firstOrNull(List<DesignTokenVariant>::isNotEmpty)
+                    .orEmpty()
+                    .preferKnownPackageLayer()
+            }
 
         return when (candidates.size) {
             0 -> DesignTokenCandidateSelection.Missing
@@ -30,6 +34,66 @@ internal class DesignTokenCandidateSelector(
             else -> DesignTokenCandidateSelection.Ambiguous(candidates.toList())
         }
     }
+
+    private fun List<DesignTokenVariant>.effectiveProjectCandidates(
+        requestedContext: DesignTokenContext,
+    ): List<DesignTokenVariant> {
+        val candidates =
+            filter { variant ->
+                variant.sourcePackageName() == PROJECT_STYLES_PACKAGE &&
+                    variant.appliesToProjectContext(requestedContext)
+            }
+
+        if (candidates.isEmpty()) {
+            return emptyList()
+        }
+
+        val platformSpecificity = candidates.maxOf { variant -> variant.projectPlatformSpecificity(requestedContext) }
+        val platformCandidates =
+            candidates.filter { variant -> variant.projectPlatformSpecificity(requestedContext) == platformSpecificity }
+        val themeSpecificity = platformCandidates.maxOf { variant -> variant.projectThemeSpecificity() }
+
+        return platformCandidates.filter { variant -> variant.projectThemeSpecificity() == themeSpecificity }
+    }
+
+    private fun DesignTokenVariant.appliesToProjectContext(requestedContext: DesignTokenContext): Boolean {
+        val sharedAcrossPlatforms = origins.any { origin -> origin.sharedAcrossPlatforms }
+        val platformMatches =
+            when {
+                sharedAcrossPlatforms -> true
+                context.platform == requestedContext.platform -> true
+                context.platform == DesignTokenPlatform.MOBILE ->
+                    requestedContext.platform == DesignTokenPlatform.IOS ||
+                        requestedContext.platform == DesignTokenPlatform.ANDROID
+
+                else -> false
+            }
+        val themeMatches =
+            when (requestedContext.theme) {
+                DesignTokenTheme.UNSPECIFIED -> context.theme == DesignTokenTheme.UNSPECIFIED
+                else ->
+                    context.theme == DesignTokenTheme.UNSPECIFIED ||
+                        context.theme == requestedContext.theme
+            }
+
+        return platformMatches && themeMatches
+    }
+
+    private fun DesignTokenVariant.projectPlatformSpecificity(requestedContext: DesignTokenContext): Int =
+        when {
+            origins.any { origin -> origin.sharedAcrossPlatforms } -> 0
+            context.platform == DesignTokenPlatform.MOBILE &&
+                requestedContext.platform != DesignTokenPlatform.MOBILE -> 1
+
+            else -> 2
+        }
+
+    private fun DesignTokenVariant.projectThemeSpecificity(): Int =
+        if (context.theme == DesignTokenTheme.UNSPECIFIED) {
+            0
+        } else {
+            1
+        }
 
     private fun List<DesignTokenVariant>.preferKnownPackageLayer(): List<DesignTokenVariant> =
         takeIf { candidates -> candidates.size >= 2 }
