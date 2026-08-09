@@ -45,6 +45,7 @@ class DesignTokenIndex private constructor(
                                     declarationPackageRoot,
                                     declaration,
                                 ),
+                            cascadeOrder = declaration.cascadeOrder,
                         )
 
                     groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
