@@ -71,15 +71,20 @@ internal object ProjectStylesCandidateSelector {
         }
 
     private fun List<DesignTokenVariant>.preferLatestCascadeOrder(): List<DesignTokenVariant> {
-        val orders = map(DesignTokenVariant::projectCascadeOrder)
+        val orderedCandidates =
+            mapNotNull { variant ->
+                variant.projectCascadeOrder()?.let { order -> variant to order }
+            }
 
-        if (orders.any { order -> order == null }) {
-            return this
+        return if (orderedCandidates.size != size) {
+            this
+        } else {
+            val latestOrder = orderedCandidates.maxOf { (_, order) -> order }
+
+            orderedCandidates
+                .filter { (_, order) -> order == latestOrder }
+                .map(Pair<DesignTokenVariant, Int>::first)
         }
-
-        val latestOrder = orders.filterNotNull().maxOrNull() ?: return this
-
-        return filter { variant -> variant.projectCascadeOrder() == latestOrder }
     }
 
     private fun DesignTokenVariant.sourcePackageName(): String? =
