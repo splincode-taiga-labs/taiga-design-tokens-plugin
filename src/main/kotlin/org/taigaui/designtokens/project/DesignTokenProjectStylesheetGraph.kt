@@ -2,7 +2,6 @@ package org.taigaui.designtokens.project
 
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.ArrayDeque
 
 internal data class ProjectStylesheetIndexRequest(
     val sourceFile: Path,
@@ -68,27 +67,29 @@ internal class DesignTokenProjectStylesheetGraph(
         projectRoot: Path,
         workspaceRoot: Path,
     ): List<Path> {
-        val queue = ArrayDeque(entryFiles.map(ProjectStylesheetPathResolver::normalize))
         val visited = linkedSetOf<Path>()
+        val ordered = mutableListOf<Path>()
 
-        while (queue.isNotEmpty()) {
-            val sourceFile = queue.removeFirst()
+        fun visit(path: Path) {
+            val sourceFile = ProjectStylesheetPathResolver.normalize(path)
 
             if (
-                visited.add(sourceFile) &&
-                ProjectStylesheetPathResolver.isStylesheet(sourceFile) &&
-                !ProjectStylesheetPathResolver.isNodeModulesPath(sourceFile, workspaceRoot)
+                !ProjectStylesheetPathResolver.isStylesheet(sourceFile) ||
+                ProjectStylesheetPathResolver.isNodeModulesPath(sourceFile, workspaceRoot) ||
+                !visited.add(sourceFile)
             ) {
-                importResolver
-                    .resolveImports(sourceFile, projectRoot, workspaceRoot)
-                    .forEach(queue::addLast)
+                return
             }
+
+            importResolver
+                .resolveImports(sourceFile, projectRoot, workspaceRoot)
+                .forEach(::visit)
+            ordered.add(sourceFile)
         }
 
-        return visited
-            .filter(ProjectStylesheetPathResolver::isStylesheet)
-            .filterNot { path -> ProjectStylesheetPathResolver.isNodeModulesPath(path, workspaceRoot) }
-            .sortedBy(Path::toString)
+        entryFiles.forEach(::visit)
+
+        return ordered
     }
 
     private fun findProjectRoot(
