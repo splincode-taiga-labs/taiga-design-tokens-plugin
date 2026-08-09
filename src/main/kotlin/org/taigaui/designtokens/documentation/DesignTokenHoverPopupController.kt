@@ -171,12 +171,16 @@ internal class DesignTokenHoverPopupController(
                 request.modificationStamp == request.editor.document.modificationStamp
 
             if (activeHoverKey == target.key && requestStillValid) {
-                if (canShowDesignTokenPopup(popup)) {
-                    showResolvedPopup(request.editor, request.anchor, popupData)
-                } else {
+                if (!canShowDesignTokenPopup(popup)) {
                     activeHoverKey = null
                     latestHoverRequest = null
                     nativeHoverPopupSuppression.restore()
+                } else if (popupKey == popupData.key && popup?.isVisible == true) {
+                    popupContent?.showModel(popupData.model)
+                } else {
+                    showPopup(request.editor, request.anchor, popupData.key) { panel ->
+                        panel.showModel(popupData.model)
+                    }
                 }
             }
         }
@@ -190,22 +194,6 @@ internal class DesignTokenHoverPopupController(
     ) {
         showPopup(editor, anchor, key) { panel ->
             panel.showLoading(tokenName)
-        }
-    }
-
-    private fun showResolvedPopup(
-        editor: Editor,
-        anchor: Point,
-        data: PopupData,
-    ) {
-        if (popupKey == data.key && popup?.isVisible == true) {
-            popupContent?.showModel(data.model)
-
-            return
-        }
-
-        showPopup(editor, anchor, data.key) { panel ->
-            panel.showModel(data.model)
         }
     }
 
