@@ -73,17 +73,27 @@ internal object ProjectStylesCandidateSelector {
     private fun List<DesignTokenVariant>.preferLatestCascadeOrder(): List<DesignTokenVariant> {
         val orderedCandidates =
             mapNotNull { variant ->
-                variant.projectCascadeOrder()?.let { order -> variant to order }
-            }
+                val order = variant.projectCascadeOrder()
+                val scope = variant.projectCascadeScope()
 
-        return if (orderedCandidates.size != size) {
-            this
-        } else {
-            val latestOrder = orderedCandidates.maxOf { (_, order) -> order }
+                if (order == null || scope == null) {
+                    null
+                } else {
+                    OrderedProjectCandidate(variant, order, scope)
+                }
+            }
+        val comparable =
+            orderedCandidates.size == size &&
+                orderedCandidates.map(OrderedProjectCandidate::scope).distinct().size == 1
+
+        return if (comparable) {
+            val latestOrder = orderedCandidates.maxOf(OrderedProjectCandidate::order)
 
             orderedCandidates
-                .filter { (_, order) -> order == latestOrder }
-                .map(Pair<DesignTokenVariant, Int>::first)
+                .filter { candidate -> candidate.order == latestOrder }
+                .map(OrderedProjectCandidate::variant)
+        } else {
+            this
         }
     }
 
@@ -92,6 +102,12 @@ internal object ProjectStylesCandidateSelector {
             .mapNotNull { origin -> origin.packageName }
             .distinct()
             .singleOrNull()
+
+    private data class OrderedProjectCandidate(
+        val variant: DesignTokenVariant,
+        val order: Int,
+        val scope: List<String>,
+    )
 }
 
 internal fun DesignTokenVariant.projectCascadeOrder(): Int? {
@@ -102,3 +118,16 @@ internal fun DesignTokenVariant.projectCascadeOrder(): Int? {
         ?.filterNotNull()
         ?.maxOrNull()
 }
+
+internal fun DesignTokenVariant.projectCascadeScope(): List<String>? {
+    val scopes =
+        origins
+            .map { origin -> origin.selectorChain.map(String::normalizeSelectorScope) }
+            .distinct()
+
+    return scopes.singleOrNull()
+}
+
+private fun String.normalizeSelectorScope(): String = replace(WHITESPACE, " ").trim()
+
+private val WHITESPACE = Regex("""\s+""")
