@@ -66,15 +66,20 @@ private fun List<DesignTokenVariantResolution>.mostSpecificCandidates(): List<De
 }
 
 private fun List<DesignTokenVariantResolution>.preferLatestProjectCascade(): List<DesignTokenVariantResolution> {
-    val orders = map { candidate -> candidate.variant.projectCascadeOrder() }
+    val orderedCandidates =
+        mapNotNull { candidate ->
+            candidate.variant.projectCascadeOrder()?.let { order -> candidate to order }
+        }
 
-    if (orders.any { order -> order == null }) {
-        return this
+    return if (orderedCandidates.size != size) {
+        this
+    } else {
+        val latestOrder = orderedCandidates.maxOf { (_, order) -> order }
+
+        orderedCandidates
+            .filter { (_, order) -> order == latestOrder }
+            .map(Pair<DesignTokenVariantResolution, Int>::first)
     }
-
-    val latestOrder = orders.filterNotNull().maxOrNull() ?: return this
-
-    return filter { candidate -> candidate.variant.projectCascadeOrder() == latestOrder }
 }
 
 private fun List<DesignTokenVariantResolution>.preferKnownPackageLayer(): List<DesignTokenVariantResolution> =
