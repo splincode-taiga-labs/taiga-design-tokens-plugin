@@ -5,6 +5,7 @@ import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
 import org.taigaui.designtokens.packageinfo.TaigaUiPackagePrecedence
 import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
+import org.taigaui.designtokens.resolution.projectCascadeOrder
 
 internal fun List<DesignTokenVariantResolution>.withOverrideState(): List<DecoratedResolution> {
     val candidatesByContext = groupBy(DesignTokenVariantResolution::requestedContext)
@@ -48,7 +49,9 @@ private fun List<DesignTokenVariantResolution>.effectiveCandidates(): List<Desig
     val projectCandidates = filter { candidate -> candidate.sourcePackageName() == PROJECT_STYLES_PACKAGE }
 
     return if (projectCandidates.isNotEmpty()) {
-        projectCandidates.mostSpecificCandidates()
+        projectCandidates
+            .mostSpecificCandidates()
+            .preferLatestProjectCascade()
     } else {
         mostSpecificCandidates().preferKnownPackageLayer()
     }
@@ -60,6 +63,18 @@ private fun List<DesignTokenVariantResolution>.mostSpecificCandidates(): List<De
     val themeSpecificity = platformCandidates.maxOf(DesignTokenVariantResolution::themeSpecificity)
 
     return platformCandidates.filter { candidate -> candidate.themeSpecificity() == themeSpecificity }
+}
+
+private fun List<DesignTokenVariantResolution>.preferLatestProjectCascade(): List<DesignTokenVariantResolution> {
+    val orders = map { candidate -> candidate.variant.projectCascadeOrder() }
+
+    if (orders.any { order -> order == null }) {
+        return this
+    }
+
+    val latestOrder = orders.filterNotNull().maxOrNull() ?: return this
+
+    return filter { candidate -> candidate.variant.projectCascadeOrder() == latestOrder }
 }
 
 private fun List<DesignTokenVariantResolution>.preferKnownPackageLayer(): List<DesignTokenVariantResolution> =
@@ -103,9 +118,21 @@ private fun DesignTokenVariantResolution.overrideMessage(overridingResolution: D
         themeSpecificity() < overridingResolution.themeSpecificity() ->
             "Overridden by a theme-specific declaration"
 
+        overridingPackage == PROJECT_STYLES_PACKAGE &&
+            sourcePackageName() == PROJECT_STYLES_PACKAGE &&
+            isEarlierThan(overridingResolution) ->
+            "Overridden by a later $PROJECT_STYLES_PACKAGE declaration"
+
         sourcePackageName() != overridingPackage -> "Overridden by $overridingPackage"
         else -> "Overridden by another declaration"
     }
+}
+
+private fun DesignTokenVariantResolution.isEarlierThan(other: DesignTokenVariantResolution): Boolean {
+    val currentOrder = variant.projectCascadeOrder()
+    val otherOrder = other.variant.projectCascadeOrder()
+
+    return currentOrder != null && otherOrder != null && currentOrder < otherOrder
 }
 
 internal data class DecoratedResolution(
