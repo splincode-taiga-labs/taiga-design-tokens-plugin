@@ -71,7 +71,8 @@ internal class ProjectStylesheetIndexProvider(
                     sourceExtractor
                         .extract(sourceFile)
                         .sortedBy { declaration -> declaration.line }
-                }.mapIndexed { cascadeOrder, declaration ->
+                }
+                .mapIndexed { cascadeOrder, declaration ->
                     declaration.copy(
                         packageName = PROJECT_STYLES_PACKAGE,
                         packageRoot = scope.projectRoot,
