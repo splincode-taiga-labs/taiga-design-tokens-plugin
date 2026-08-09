@@ -183,7 +183,9 @@ internal class DesignTokenIndexCache(
             )
     }
 
-    private class PendingBuild(designTokensPackage: DesignTokensPackage) {
+    private class PendingBuild(
+        designTokensPackage: DesignTokensPackage,
+    ) {
         private val future = CompletableFuture<DesignTokenIndex>()
         val logicalRoots = linkedSetOf<Path>()
         private val packageRoots = linkedSetOf<Path>()
