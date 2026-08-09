@@ -11,6 +11,7 @@ data class DesignTokenDeclaration(
     val packageName: String? = null,
     val packageVersion: String? = null,
     val packageRoot: Path? = null,
+    val cascadeOrder: Int? = null,
 ) {
     override fun equals(other: Any?): Boolean =
         this === other ||
