@@ -52,6 +52,35 @@ class ProjectStylesCascadeOrderTest {
                 declaration(PROJECT_STYLES_PACKAGE, TARGET, "blue"),
                 declaration(PROJECT_STYLES_PACKAGE, TARGET, "red"),
             )
+
+        assertAmbiguous(index)
+    }
+
+    @Test
+    fun `different project selector scopes stay ambiguous despite known source order`() {
+        val index =
+            index(
+                declaration(CORE_PACKAGE, ROOT, "var($TARGET)"),
+                declaration(
+                    packageName = PROJECT_STYLES_PACKAGE,
+                    name = TARGET,
+                    value = "blue",
+                    selectorChain = listOf(":root"),
+                    cascadeOrder = 0,
+                ),
+                declaration(
+                    packageName = PROJECT_STYLES_PACKAGE,
+                    name = TARGET,
+                    value = "red",
+                    selectorChain = listOf("body"),
+                    cascadeOrder = 1,
+                ),
+            )
+
+        assertAmbiguous(index)
+    }
+
+    private fun assertAmbiguous(index: DesignTokenIndex) {
         val resolution =
             DesignTokenValueResolver(index).resolve(
                 variant = index.find(ROOT).single(),
