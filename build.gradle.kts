@@ -1,4 +1,3 @@
-import org.gradle.process.CommandLineArgumentProvider
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -81,12 +80,8 @@ intellijPlatform {
 
 tasks {
     runIde {
-        argumentProviders.add(
-            CommandLineArgumentProvider {
-                debugProjectPath.orNull
-                    ?.let(::listOf)
-                    .orEmpty()
-            },
-        )
+        debugProjectPath.orNull?.let { projectPath ->
+            args(projectPath)
+        }
     }
 }
