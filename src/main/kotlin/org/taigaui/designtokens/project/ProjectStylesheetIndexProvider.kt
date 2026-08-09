@@ -67,11 +67,15 @@ internal class ProjectStylesheetIndexProvider(
         val scope = graph.buildScope(request)
         val declarations =
             scope.sourceFiles
-                .flatMap(sourceExtractor::extract)
-                .map { declaration ->
+                .flatMap { sourceFile ->
+                    sourceExtractor
+                        .extract(sourceFile)
+                        .sortedBy { declaration -> declaration.line }
+                }.mapIndexed { cascadeOrder, declaration ->
                     declaration.copy(
                         packageName = PROJECT_STYLES_PACKAGE,
                         packageRoot = scope.projectRoot,
+                        cascadeOrder = cascadeOrder,
                     )
                 }
 
