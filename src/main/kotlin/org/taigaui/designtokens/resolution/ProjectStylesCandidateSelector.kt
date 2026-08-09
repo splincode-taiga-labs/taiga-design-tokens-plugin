@@ -25,8 +25,10 @@ internal object ProjectStylesCandidateSelector {
         val platformCandidates =
             candidates.filter { variant -> variant.platformSpecificity(requestedContext) == platformSpecificity }
         val themeSpecificity = platformCandidates.maxOf { variant -> variant.themeSpecificity() }
+        val themeCandidates =
+            platformCandidates.filter { variant -> variant.themeSpecificity() == themeSpecificity }
 
-        return platformCandidates.filter { variant -> variant.themeSpecificity() == themeSpecificity }
+        return themeCandidates.preferLatestCascadeOrder()
     }
 
     private fun DesignTokenVariant.appliesTo(requestedContext: DesignTokenContext): Boolean {
@@ -68,9 +70,30 @@ internal object ProjectStylesCandidateSelector {
             1
         }
 
+    private fun List<DesignTokenVariant>.preferLatestCascadeOrder(): List<DesignTokenVariant> {
+        val orders = map(DesignTokenVariant::projectCascadeOrder)
+
+        if (orders.any { order -> order == null }) {
+            return this
+        }
+
+        val latestOrder = orders.filterNotNull().maxOrNull() ?: return this
+
+        return filter { variant -> variant.projectCascadeOrder() == latestOrder }
+    }
+
     private fun DesignTokenVariant.sourcePackageName(): String? =
         origins
             .mapNotNull { origin -> origin.packageName }
             .distinct()
             .singleOrNull()
+}
+
+internal fun DesignTokenVariant.projectCascadeOrder(): Int? {
+    val orders = origins.map { origin -> origin.cascadeOrder }
+
+    return orders
+        .takeIf { values -> values.isNotEmpty() && values.all { order -> order != null } }
+        ?.filterNotNull()
+        ?.maxOrNull()
 }
