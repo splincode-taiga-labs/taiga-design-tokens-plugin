@@ -18,10 +18,7 @@ internal class ProjectStylesheetEntrypointResolver(
                 ?.let(::add)
 
             addAll(configuredEntryFiles(sourceFile, projectRoot, workspaceRoot))
-
-            if (size <= 1) {
-                addAll(conventionalEntryFiles(projectRoot, workspaceRoot))
-            }
+            addAll(conventionalEntryFiles(projectRoot, workspaceRoot))
         }
 
     private fun configuredEntryFiles(
