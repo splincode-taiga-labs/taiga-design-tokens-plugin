@@ -84,7 +84,7 @@ class ProjectStylesUnsavedOverrideIntegrationTest : BasePlatformTestCase() {
                 row.overrideMessage == "Overridden by $PROJECT_STYLES_PACKAGE"
             },
         )
-        assertFalse(FileDocumentManager.getInstance().isDocumentUnsaved(document).not())
+        assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
     }
 
     private fun model(sourcePath: Path): DesignTokenHoverPopupModel =
