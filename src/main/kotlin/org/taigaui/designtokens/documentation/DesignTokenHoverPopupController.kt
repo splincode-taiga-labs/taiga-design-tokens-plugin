@@ -136,7 +136,7 @@ internal class DesignTokenHoverPopupController(
         }
 
         val indexService = project.service<DesignTokenIndexService>()
-        val indexCached = readAction { indexService.isIndexCached(target.sourceFile) }
+        val indexCached = indexService.isIndexCached(target.sourceFile)
 
         if (!indexCached) {
             withContext(Dispatchers.EDT) {
@@ -155,7 +155,7 @@ internal class DesignTokenHoverPopupController(
             PsiDocumentManager.getInstance(project).commitAllDocuments()
         }
 
-        val popupData = readAction { target.resolvePopupData(indexService) }
+        val popupData = target.resolvePopupData(indexService)
 
         withContext(Dispatchers.EDT) {
             if (activeHoverKey == target.key) {

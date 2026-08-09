@@ -1,0 +1,111 @@
+package org.taigaui.designtokens.project
+
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.vfs.LocalFileSystem
+import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.index.DesignTokenSourceExtractor
+import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
+import org.taigaui.designtokens.packageinfo.DesignTokensPackage
+import org.taigaui.designtokens.packageinfo.DesignTokensPackageResolver
+import java.nio.file.Files
+import java.nio.file.Path
+
+internal class ProjectStylesheetIndexProvider(
+    private val packageResolver: DesignTokensPackageResolver,
+    private val sourceExtractor: DesignTokenSourceExtractor,
+) {
+    private val graph = DesignTokenProjectStylesheetGraph(::readProjectText)
+    private val cache =
+        ProjectStylesheetIndexCache { request ->
+            buildIndex(request)
+        }
+
+    val size: Int
+        get() = cache.size
+
+    fun isCached(
+        sourceFile: Path,
+        designTokensPackage: DesignTokensPackage?,
+    ): Boolean =
+        request(sourceFile, designTokensPackage)
+            ?.let(cache::contains)
+            ?: true
+
+    fun getIndex(sourceFile: Path): DesignTokenIndex? =
+        request(sourceFile)
+            ?.let(cache::getOrBuild)
+
+    fun invalidate(changedPaths: Collection<Path>): Int = cache.invalidate(changedPaths)
+
+    fun clear() {
+        cache.clear()
+    }
+
+    private fun request(
+        sourceFile: Path,
+        designTokensPackage: DesignTokensPackage? = packageResolver.resolve(sourceFile),
+    ): ProjectStylesheetIndexRequest? {
+        val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+
+        if (isInstalledTaigaUiSource(normalizedSourceFile, designTokensPackage)) {
+            return null
+        }
+
+        val workspaceRootHint =
+            designTokensPackage
+                ?.discoveryRoot
+                ?.parent
+                ?.parent
+
+        return graph.createRequest(
+            sourceFile = normalizedSourceFile,
+            workspaceRootHint = workspaceRootHint,
+        )
+    }
+
+    private fun buildIndex(request: ProjectStylesheetIndexRequest): DesignTokenIndex {
+        val scope = graph.buildScope(request)
+        val declarations =
+            scope.sourceFiles
+                .flatMap(sourceExtractor::extract)
+                .map { declaration ->
+                    declaration.copy(
+                        packageName = PROJECT_STYLES_PACKAGE,
+                        packageRoot = scope.projectRoot,
+                    )
+                }
+
+        return DesignTokenIndex.build(
+            packageRoot = scope.projectRoot,
+            declarations = declarations,
+        )
+    }
+
+    private fun readProjectText(path: Path): String? {
+        val normalizedPath = path.toAbsolutePath().normalize()
+        val documentText =
+            LocalFileSystem
+                .getInstance()
+                .refreshAndFindFileByNioFile(normalizedPath)
+                ?.let { file -> FileDocumentManager.getInstance().getDocument(file) }
+                ?.text
+
+        return documentText ?: runCatching { Files.readString(normalizedPath) }.getOrNull()
+    }
+
+    private fun isInstalledTaigaUiSource(
+        sourceFile: Path,
+        designTokensPackage: DesignTokensPackage?,
+    ): Boolean =
+        designTokensPackage
+            ?.effectiveSourcePackages
+            ?.any { sourcePackage ->
+                buildList {
+                    add(sourcePackage.root)
+                    add(sourcePackage.realRoot)
+                    addAll(sourcePackage.sourceRoots)
+                }.map(Path::toAbsolutePath)
+                    .map(Path::normalize)
+                    .any(sourceFile::startsWith)
+            } == true
+}

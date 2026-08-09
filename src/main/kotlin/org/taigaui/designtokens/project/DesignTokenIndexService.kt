@@ -15,7 +15,6 @@ import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
-import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
 import org.taigaui.designtokens.packageinfo.DesignTokensPackageResolver
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
@@ -39,9 +38,17 @@ class DesignTokenIndexService(
                 declarations = packageScanner.scan(designTokensPackage),
             )
         }
+    private val projectStylesheetIndexProvider =
+        ProjectStylesheetIndexProvider(
+            packageResolver = packageResolver,
+            sourceExtractor = sourceExtractor,
+        )
 
     internal val cachedPackageCount: Int
         get() = cache.size
+
+    internal val cachedProjectIndexCount: Int
+        get() = projectStylesheetIndexProvider.size
 
     init {
         project.messageBus
@@ -93,75 +100,38 @@ class DesignTokenIndexService(
 
     internal fun isIndexCached(sourceFile: Path): Boolean =
         runCatching {
-            packageResolver
-                .resolve(sourceFile)
-                ?.let(cache::contains)
-                ?: true
-        }.getOrDefault(true)
+            val designTokensPackage = packageResolver.resolve(sourceFile)
+            val packageIndexCached = designTokensPackage?.let(cache::contains) ?: true
+            val projectIndexCached =
+                projectStylesheetIndexProvider.isCached(sourceFile, designTokensPackage)
+
+            packageIndexCached && projectIndexCached
+        }.getOrDefault(false)
 
     internal fun getIndexOrThrow(sourceFile: Path): DesignTokenIndex? =
         packageResolver
             .resolve(sourceFile)
             ?.let(cache::getOrBuild)
 
-    internal fun invalidate(changedPaths: Collection<Path>): Int = cache.invalidate(changedPaths)
+    internal fun invalidate(changedPaths: Collection<Path>): Int =
+        cache.invalidate(changedPaths) + projectStylesheetIndexProvider.invalidate(changedPaths)
 
     internal fun clear() {
         cache.clear()
+        projectStylesheetIndexProvider.clear()
     }
 
     private fun resolutionIndex(sourceFile: Path): DesignTokenIndex? {
         val indexes =
             buildList {
                 getIndex(sourceFile)?.let(::add)
-                currentProjectStyleIndex(sourceFile)?.let(::add)
+                projectStylesheetIndexProvider.getIndex(sourceFile)?.let(::add)
             }
 
         return indexes
             .takeIf { values -> values.isNotEmpty() }
             ?.let { values -> DesignTokenIndex.merge(values) }
     }
-
-    private fun currentProjectStyleIndex(sourceFile: Path): DesignTokenIndex? {
-        val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
-
-        if (isInstalledTaigaUiSource(normalizedSourceFile)) {
-            return null
-        }
-
-        val declarations =
-            sourceExtractor
-                .extract(normalizedSourceFile)
-                .map { declaration ->
-                    declaration.copy(
-                        packageName = PROJECT_STYLES_PACKAGE,
-                        packageRoot = normalizedSourceFile.parent ?: normalizedSourceFile,
-                    )
-                }
-
-        return declarations
-            .takeIf { values -> values.isNotEmpty() }
-            ?.let { projectDeclarations ->
-                DesignTokenIndex.build(
-                    packageRoot = normalizedSourceFile.parent ?: normalizedSourceFile,
-                    declarations = projectDeclarations,
-                )
-            }
-    }
-
-    private fun isInstalledTaigaUiSource(sourceFile: Path): Boolean =
-        packageResolver
-            .resolve(sourceFile)
-            ?.effectiveSourcePackages
-            ?.any { sourcePackage ->
-                buildList {
-                    add(sourcePackage.root)
-                    add(sourcePackage.realRoot)
-                    addAll(sourcePackage.sourceRoots)
-                }.map(Path::toAbsolutePath)
-                    .map(Path::normalize)
-                    .any(sourceFile::startsWith)
-            } == true
 
     private companion object {
         val LOG = Logger.getInstance(DesignTokenIndexService::class.java)

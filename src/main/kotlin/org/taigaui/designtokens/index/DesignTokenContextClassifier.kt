@@ -21,10 +21,11 @@ class DesignTokenContextClassifier {
     ): Boolean {
         val markers = pathMarkers(packageRoot, declaration.sourceFile)
         val selectors = declaration.selectorChain
+        val isProjectStyles = declaration.packageName == PROJECT_STYLES_PACKAGE
         val hasGlobalScope =
             selectors.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) } ||
-                selectors.containsThemeScope() ||
-                declaration.isImplicitGlobalScssTheme(markers)
+                (!isProjectStyles && selectors.containsThemeScope()) ||
+                (!isProjectStyles && declaration.isImplicitGlobalScssTheme(markers))
 
         return classifyPlatform(markers, selectors) == DesignTokenPlatform.DESKTOP &&
             MOBILE_MARKER !in markers &&
