@@ -106,7 +106,7 @@ class DesignTokenIndexService(
                 projectStylesheetIndexProvider.isCached(sourceFile, designTokensPackage)
 
             packageIndexCached && projectIndexCached
-        }.getOrDefault(true)
+        }.getOrDefault(false)
 
     internal fun getIndexOrThrow(sourceFile: Path): DesignTokenIndex? =
         packageResolver
