@@ -87,11 +87,13 @@ internal class ProjectStylesheetIndexProvider(
 
     private fun readProjectText(path: Path): String? {
         val normalizedPath = path.toAbsolutePath().normalize()
+        val localFileSystem = LocalFileSystem.getInstance()
+        val virtualFile =
+            localFileSystem.findFileByNioFile(normalizedPath)
+                ?: localFileSystem.refreshAndFindFileByNioFile(normalizedPath)
         val documentText =
-            LocalFileSystem
-                .getInstance()
-                .refreshAndFindFileByNioFile(normalizedPath)
-                ?.let { file -> FileDocumentManager.getInstance().getDocument(file) }
+            virtualFile
+                ?.let { file -> FileDocumentManager.getInstance().getCachedDocument(file) }
                 ?.text
 
         return documentText ?: runCatching { Files.readString(normalizedPath) }.getOrNull()
