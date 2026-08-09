@@ -47,7 +47,7 @@ class ProjectStylesheetCascadeOrderGraphTest {
                 )
 
             assertEquals(
-                listOf(baseFile, themeFile, stylesFile, sourceFile).map(Path::normalized),
+                listOf(baseFile, themeFile, stylesFile, sourceFile).map { path -> path.normalized() },
                 scope.sourceFiles,
             )
         }
