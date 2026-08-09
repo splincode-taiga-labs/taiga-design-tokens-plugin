@@ -105,26 +105,42 @@ internal class DesignTokenIndexCache(
         designTokensPackage: DesignTokensPackage,
         pendingBuild: PendingBuild,
     ): DesignTokenIndex =
-        try {
-            val index = indexBuilder.build(designTokensPackage)
+        runCatching { indexBuilder.build(designTokensPackage) }
+            .fold(
+                onSuccess = { index -> publishSuccess(identity, pendingBuild, index) },
+                onFailure = { error -> publishFailure(identity, pendingBuild, error) },
+            )
 
-            synchronized(lock) {
-                if (pendingBuilds[identity] === pendingBuild) {
-                    pendingBuilds.remove(identity)
-                    entries[identity] = pendingBuild.toCacheEntry(index)
-                }
+    private fun publishSuccess(
+        identity: DesignTokensPackageIdentity,
+        pendingBuild: PendingBuild,
+        index: DesignTokenIndex,
+    ): DesignTokenIndex {
+        synchronized(lock) {
+            if (pendingBuilds[identity] === pendingBuild) {
+                pendingBuilds.remove(identity)
+                entries[identity] = pendingBuild.toCacheEntry(index)
             }
-            pendingBuild.complete(index)
-            index
-        } catch (error: Throwable) {
-            synchronized(lock) {
-                if (pendingBuilds[identity] === pendingBuild) {
-                    pendingBuilds.remove(identity)
-                }
-            }
-            pendingBuild.completeExceptionally(error)
-            throw error
         }
+        pendingBuild.complete(index)
+
+        return index
+    }
+
+    private fun publishFailure(
+        identity: DesignTokensPackageIdentity,
+        pendingBuild: PendingBuild,
+        error: Throwable,
+    ): Nothing {
+        synchronized(lock) {
+            if (pendingBuilds[identity] === pendingBuild) {
+                pendingBuilds.remove(identity)
+            }
+        }
+        pendingBuild.completeExceptionally(error)
+
+        throw error
+    }
 
     private fun removeReplacedPackages(
         identity: DesignTokensPackageIdentity,
