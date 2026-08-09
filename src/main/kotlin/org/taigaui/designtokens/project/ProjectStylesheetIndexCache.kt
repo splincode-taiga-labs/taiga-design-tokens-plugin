@@ -72,6 +72,7 @@ internal class ProjectStylesheetIndexCache(
         val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
 
         return fileName == ANGULAR_JSON ||
+            fileName == NX_JSON ||
             fileName == PROJECT_JSON ||
             fileName == PACKAGE_JSON ||
             extension in STYLESHEET_EXTENSIONS ||
@@ -80,6 +81,7 @@ internal class ProjectStylesheetIndexCache(
 
     private companion object {
         const val ANGULAR_JSON = "angular.json"
+        const val NX_JSON = "nx.json"
         const val PROJECT_JSON = "project.json"
         const val PACKAGE_JSON = "package.json"
         const val NODE_MODULES = "node_modules"
