@@ -5,6 +5,7 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
+import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
 import org.taigaui.designtokens.packageinfo.TaigaUiPackagePrecedence
 
 internal class DesignTokenCandidateSelector(
@@ -16,12 +17,14 @@ internal class DesignTokenCandidateSelector(
     ): DesignTokenCandidateSelection {
         val variants = index.find(name)
         val projectCandidates = ProjectStylesCandidateSelector.select(variants, requestedContext)
+        val installedPackageVariants =
+            variants.filter { variant -> variant.sourcePackageName() != PROJECT_STYLES_PACKAGE }
         val candidates =
             projectCandidates.ifEmpty {
                 contextPrecedence(requestedContext)
                     .asSequence()
                     .map { compatibleContext ->
-                        variants.filter { variant -> variant.context == compatibleContext }
+                        installedPackageVariants.filter { variant -> variant.context == compatibleContext }
                     }.firstOrNull(List<DesignTokenVariant>::isNotEmpty)
                     .orEmpty()
                     .preferKnownPackageLayer()
