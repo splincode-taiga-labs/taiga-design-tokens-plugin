@@ -76,26 +76,42 @@ internal class ProjectStylesheetIndexCache(
         request: ProjectStylesheetIndexRequest,
         pendingBuild: PendingBuild,
     ): DesignTokenIndex =
-        try {
-            val index = indexBuilder.build(request)
+        runCatching { indexBuilder.build(request) }
+            .fold(
+                onSuccess = { index -> publishSuccess(request, pendingBuild, index) },
+                onFailure = { error -> publishFailure(request, pendingBuild, error) },
+            )
 
-            synchronized(lock) {
-                if (pendingBuilds[request] === pendingBuild) {
-                    pendingBuilds.remove(request)
-                    entries[request] = index
-                }
+    private fun publishSuccess(
+        request: ProjectStylesheetIndexRequest,
+        pendingBuild: PendingBuild,
+        index: DesignTokenIndex,
+    ): DesignTokenIndex {
+        synchronized(lock) {
+            if (pendingBuilds[request] === pendingBuild) {
+                pendingBuilds.remove(request)
+                entries[request] = index
             }
-            pendingBuild.complete(index)
-            index
-        } catch (error: Throwable) {
-            synchronized(lock) {
-                if (pendingBuilds[request] === pendingBuild) {
-                    pendingBuilds.remove(request)
-                }
-            }
-            pendingBuild.completeExceptionally(error)
-            throw error
         }
+        pendingBuild.complete(index)
+
+        return index
+    }
+
+    private fun publishFailure(
+        request: ProjectStylesheetIndexRequest,
+        pendingBuild: PendingBuild,
+        error: Throwable,
+    ): Nothing {
+        synchronized(lock) {
+            if (pendingBuilds[request] === pendingBuild) {
+                pendingBuilds.remove(request)
+            }
+        }
+        pendingBuild.completeExceptionally(error)
+
+        throw error
+    }
 
     private fun ProjectStylesheetIndexRequest.isAffectedBy(changedPath: Path): Boolean {
         val nodeModulesRoot = workspaceRoot.resolve(NODE_MODULES).toAbsolutePath().normalize()
