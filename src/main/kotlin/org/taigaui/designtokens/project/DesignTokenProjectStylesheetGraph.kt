@@ -33,11 +33,7 @@ internal class DesignTokenProjectStylesheetGraph(
         workspaceRootHint: Path? = null,
     ): ProjectStylesheetIndexRequest {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
-        val workspaceRoot =
-            workspaceRootHint
-                ?.toAbsolutePath()
-                ?.normalize()
-                ?: findWorkspaceRoot(normalizedSourceFile)
+        val workspaceRoot = findWorkspaceRoot(normalizedSourceFile, workspaceRootHint)
 
         return ProjectStylesheetIndexRequest(
             sourceFile = normalizedSourceFile,
@@ -107,11 +103,29 @@ internal class DesignTokenProjectStylesheetGraph(
             ?: workspaceRoot
     }
 
-    private fun findWorkspaceRoot(sourceFile: Path): Path {
+    private fun findWorkspaceRoot(
+        sourceFile: Path,
+        workspaceRootHint: Path?,
+    ): Path {
         val sourceDirectory = sourceFile.parent ?: sourceFile
         val ancestors = generateSequence(sourceDirectory, Path::getParent).toList()
+        val markerRoot =
+            ancestors.firstOrNull { directory ->
+                Files.isRegularFile(directory.resolve(ANGULAR_JSON)) ||
+                    Files.isRegularFile(directory.resolve(NX_JSON))
+            }
 
-        return ancestors.firstOrNull { directory -> Files.isRegularFile(directory.resolve(ANGULAR_JSON)) }
+        if (markerRoot != null) {
+            return markerRoot
+        }
+
+        val normalizedHint =
+            workspaceRootHint
+                ?.toAbsolutePath()
+                ?.normalize()
+                ?.takeIf(sourceFile::startsWith)
+
+        return normalizedHint
             ?: ancestors.firstOrNull { directory -> Files.isRegularFile(directory.resolve(PACKAGE_JSON)) }
             ?: sourceDirectory
     }
@@ -126,6 +140,7 @@ internal class DesignTokenProjectStylesheetGraph(
 
     private companion object {
         const val ANGULAR_JSON = "angular.json"
+        const val NX_JSON = "nx.json"
         const val PROJECT_JSON = "project.json"
         const val PACKAGE_JSON = "package.json"
     }
