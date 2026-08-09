@@ -158,6 +158,14 @@ internal class DesignTokenHoverPopupController(
                 target.resolvePopupData(indexService)
             }
 
+        showPopupDataIfCurrent(request, target, popupData)
+    }
+
+    private suspend fun showPopupDataIfCurrent(
+        request: HoverRequest,
+        target: PopupTarget,
+        popupData: PopupData,
+    ) {
         withContext(Dispatchers.EDT) {
             val requestStillValid =
                 request.modificationStamp == request.editor.document.modificationStamp
