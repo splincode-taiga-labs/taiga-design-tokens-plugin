@@ -73,13 +73,37 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         assertFalse(suggestions.contains("--tui-background-base"))
     }
 
-    fun testKeepsExactInstalledTokenInCompletion() {
-        val suggestions = complete("--tui-text-primary")
+    fun testCompletesSingleInstalledTokenMatch() {
+        val tokenPrefix = "--tui-text-prima"
+        val expectedToken = "--tui-text-primary"
+        val sourcePath = configureCompletion(tokenPrefix)
 
-        assertContainsElements(suggestions, "--tui-text-primary")
+        indexService.completionTokenNames(sourcePath)
+        val variants = myFixture.completeBasic()
+
+        if (variants == null) {
+            assertEquals(
+                ".demo { color: var($expectedToken); }",
+                myFixture.editor.document.text,
+            )
+        } else {
+            assertContainsElements(
+                variants.map { variant -> variant.lookupString },
+                expectedToken,
+            )
+        }
     }
 
     private fun complete(tokenPrefix: String): List<String> {
+        val sourcePath = configureCompletion(tokenPrefix)
+
+        indexService.completionTokenNames(sourcePath)
+        myFixture.completeBasic()
+
+        return myFixture.lookupElementStrings.orEmpty()
+    }
+
+    private fun configureCompletion(tokenPrefix: String): Path {
         val sourcePath = workspaceRoot.resolve("src/component.less")
         val sourceFile =
             createFile(
@@ -92,10 +116,8 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         val caretOffset = text.indexOf(tokenPrefix) + tokenPrefix.length
 
         myFixture.editor.caretModel.moveToOffset(caretOffset)
-        indexService.completionTokenNames(sourcePath)
-        myFixture.completeBasic()
 
-        return myFixture.lookupElementStrings.orEmpty()
+        return sourcePath
     }
 
     private fun createFile(
