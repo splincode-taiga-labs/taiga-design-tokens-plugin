@@ -108,7 +108,12 @@ Implemented:
 - Keep overridden project and package declarations visible as explicit `Not applied` rows.
 - Keep cold project/package graph builds off the UI thread and outside cache monitors.
 - Complete installed and project-defined `--tui-*` token names inside the first argument of CSS `var(...)` without hardcoding a token catalog.
-- Reuse the existing package/project indexes for completion and warm cold completion data in the background.
+- Register completion explicitly for CSS, Less, and SCSS and auto-open WebStorm's native completion lookup while a `--tui-*` token is typed.
+- Reuse the existing package/project indexes for completion and warm cold completion data in the background without invalidating an in-progress token typing session.
+- Keep WebStorm's native completion lookup as the primary list instead of rendering a competing token list.
+- Suppress and close the hover popup while the native completion lookup is open.
+- Show a non-focusable side preview for the currently selected `--tui-*` completion item with effective platform/theme values and color swatches.
+- Refresh the side preview as the selected completion item changes through keyboard navigation.
 
 Remaining:
 
