@@ -7,9 +7,10 @@ import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.completion.InsertionContext
-import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.project.Project
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
 import java.nio.file.Path
@@ -30,47 +31,63 @@ private class DesignTokenCompletionProvider : CompletionProvider<CompletionParam
         context: ProcessingContext,
         result: CompletionResultSet,
     ) {
-        val editor = parameters.editor
-        val virtualFile = parameters.originalFile.virtualFile ?: return
-
-        if (virtualFile.extension?.lowercase() !in SUPPORTED_EXTENSIONS) {
-            return
-        }
-
-        val document = editor.document
-        val completionContext =
-            DesignTokenCompletionContextFinder.find(
-                text = document.immutableCharSequence,
-                offset = editor.caretModel.offset,
-            ) ?: return
-        val sourceFile = runCatching { Path.of(virtualFile.path) }.getOrNull() ?: return
-        val project = parameters.originalFile.project
-        val modificationStamp = document.modificationStamp
+        val request = parameters.toDesignTokenCompletionRequest() ?: return
         val names =
-            project
+            request.project
                 .service<DesignTokenCompletionService>()
-                .namesFor(sourceFile) {
-                    if (!editor.isDisposed && document.modificationStamp == modificationStamp) {
-                        AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
-                    }
-                } ?: return
-        val matchingResult = result.withPrefixMatcher(completionContext.prefix)
+                .namesFor(request.sourceFile, request::scheduleRefresh)
+                .orEmpty()
+        val matchingResult = result.withPrefixMatcher(request.prefix)
 
         names.forEach { name ->
             matchingResult.addElement(
                 LookupElementBuilder
                     .create(name)
                     .withTypeText(COMPLETION_TYPE_TEXT, true)
-                    .withInsertHandler(::removeExistingTokenSuffix),
+                    .withInsertHandler { insertionContext, _ ->
+                        removeExistingTokenSuffix(insertionContext)
+                    },
             )
         }
     }
 }
 
-private fun removeExistingTokenSuffix(
-    context: InsertionContext,
-    element: LookupElement,
+private fun CompletionParameters.toDesignTokenCompletionRequest(): DesignTokenCompletionRequest? =
+    originalFile.virtualFile
+        ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+        ?.path
+        ?.let(::pathOrNull)
+        ?.let { sourceFile ->
+            DesignTokenCompletionContextFinder
+                .find(
+                    text = editor.document.immutableCharSequence,
+                    offset = editor.caretModel.offset,
+                )?.let { completionContext ->
+                    DesignTokenCompletionRequest(
+                        project = originalFile.project,
+                        editor = editor,
+                        sourceFile = sourceFile,
+                        prefix = completionContext.prefix,
+                        modificationStamp = editor.document.modificationStamp,
+                    )
+                }
+        }
+
+private data class DesignTokenCompletionRequest(
+    val project: Project,
+    val editor: Editor,
+    val sourceFile: Path,
+    val prefix: String,
+    val modificationStamp: Long,
 ) {
+    fun scheduleRefresh() {
+        if (!editor.isDisposed && editor.document.modificationStamp == modificationStamp) {
+            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        }
+    }
+}
+
+private fun removeExistingTokenSuffix(context: InsertionContext) {
     val document = context.document
     val text = document.charsSequence
     var suffixEnd = context.tailOffset
@@ -83,6 +100,8 @@ private fun removeExistingTokenSuffix(
         document.deleteString(context.tailOffset, suffixEnd)
     }
 }
+
+private fun pathOrNull(value: String): Path? = runCatching { Path.of(value) }.getOrNull()
 
 private fun Char.isTokenNameCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_'
 
