@@ -98,6 +98,13 @@ class DesignTokenIndexService(
             ?.let { index -> DesignTokenValueResolver(index).resolveGrouped(tokenName) }
             .orEmpty()
 
+    internal fun completionTokenNames(sourceFile: Path): List<String> =
+        buildList {
+            getIndexOrThrow(sourceFile)?.names?.let(::addAll)
+            projectStylesheetIndexProvider.getIndex(sourceFile)?.names?.let(::addAll)
+        }.distinct()
+            .sorted()
+
     internal fun isIndexCached(sourceFile: Path): Boolean =
         runCatching {
             val designTokensPackage = packageResolver.resolve(sourceFile)
