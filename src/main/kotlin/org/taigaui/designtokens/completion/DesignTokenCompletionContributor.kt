@@ -32,6 +32,9 @@ private class DesignTokenCompletionProvider : CompletionProvider<CompletionParam
         result: CompletionResultSet,
     ) {
         val request = parameters.toDesignTokenCompletionRequest() ?: return
+
+        request.project.service<DesignTokenCompletionPreviewController>().ensureAttached()
+
         val names =
             request.project
                 .service<DesignTokenCompletionService>()
@@ -101,9 +104,6 @@ private fun removeExistingTokenSuffix(context: InsertionContext) {
     }
 }
 
-private fun pathOrNull(value: String): Path? = runCatching { Path.of(value) }.getOrNull()
+internal fun pathOrNull(value: String): Path? = runCatching { Path.of(value) }.getOrNull()
 
-private fun Char.isTokenNameCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_'
-
-private val SUPPORTED_EXTENSIONS = setOf("css", "less", "scss")
 private const val COMPLETION_TYPE_TEXT = "Taiga UI design token"
