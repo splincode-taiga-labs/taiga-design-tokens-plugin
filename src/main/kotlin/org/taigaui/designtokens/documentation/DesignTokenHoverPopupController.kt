@@ -71,7 +71,10 @@ internal class DesignTokenHoverPopupController(
                     ) {
                         if (newLookup?.isCompletion == true) {
                             coroutineScope.launch(Dispatchers.EDT) {
-                                dismissForCompletion()
+                                cancelScheduledHide()
+                                activeHoverKey = null
+                                latestHoverRequest = null
+                                hidePopup()
                             }
                         }
                     }
@@ -83,7 +86,10 @@ internal class DesignTokenHoverPopupController(
         val editor = event.editor
 
         if (project.hasActiveCompletionLookup()) {
-            dismissForCompletion()
+            cancelScheduledHide()
+            activeHoverKey = null
+            latestHoverRequest = null
+            hidePopup()
             return
         }
 
@@ -131,7 +137,9 @@ internal class DesignTokenHoverPopupController(
         val request =
             withContext(Dispatchers.EDT) {
                 if (project.hasActiveCompletionLookup()) {
-                    dismissForCompletion()
+                    activeHoverKey = null
+                    latestHoverRequest = null
+                    hidePopup()
                     return@withContext null
                 }
 
@@ -172,18 +180,12 @@ internal class DesignTokenHoverPopupController(
 
         if (!indexCached) {
             withContext(Dispatchers.EDT) {
-                if (
-                    !project.hasActiveCompletionLookup() &&
-                    activeHoverKey == target.key &&
-                    canShowDesignTokenPopup(popup)
-                ) {
-                    showLoadingPopup(
-                        editor = request.editor,
-                        anchor = request.anchor,
-                        key = target.key,
-                        tokenName = target.tokenName,
-                    )
-                }
+                showLoadingPopup(
+                    editor = request.editor,
+                    anchor = request.anchor,
+                    key = target.key,
+                    tokenName = target.tokenName,
+                )
             }
         }
 
@@ -206,7 +208,9 @@ internal class DesignTokenHoverPopupController(
 
             if (activeHoverKey == target.key && requestStillValid) {
                 if (project.hasActiveCompletionLookup()) {
-                    dismissForCompletion()
+                    activeHoverKey = null
+                    latestHoverRequest = null
+                    hidePopup()
                 } else if (!canShowDesignTokenPopup(popup)) {
                     activeHoverKey = null
                     latestHoverRequest = null
@@ -228,8 +232,14 @@ internal class DesignTokenHoverPopupController(
         key: PopupKey,
         tokenName: String,
     ) {
-        showPopup(editor, anchor, key) { panel ->
-            panel.showLoading(tokenName)
+        if (
+            !project.hasActiveCompletionLookup() &&
+            activeHoverKey == key &&
+            canShowDesignTokenPopup(popup)
+        ) {
+            showPopup(editor, anchor, key) { panel ->
+                panel.showLoading(tokenName)
+            }
         }
     }
 
@@ -334,13 +344,6 @@ internal class DesignTokenHoverPopupController(
     private fun cancelScheduledHide() {
         pendingHideJob?.cancel()
         pendingHideJob = null
-    }
-
-    private fun dismissForCompletion() {
-        cancelScheduledHide()
-        activeHoverKey = null
-        latestHoverRequest = null
-        hidePopup()
     }
 
     private fun navigateToDefinition(target: DesignTokenNavigationTarget) {
