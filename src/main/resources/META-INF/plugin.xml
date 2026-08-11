@@ -16,6 +16,9 @@
         <completion.contributor
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
+        <typedHandler
+            implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
+        />
         <editorFactoryMouseMotionListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
         />
