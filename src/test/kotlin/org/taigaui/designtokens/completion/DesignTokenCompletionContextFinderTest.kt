@@ -14,6 +14,14 @@ class DesignTokenCompletionContextFinderTest {
     }
 
     @Test
+    fun `finds complete taiga token name in first var argument`() {
+        assertPrefix(
+            ".demo { color: var(--tui-text-primary<caret>); }",
+            "--tui-text-primary",
+        )
+    }
+
+    @Test
     fun `allows whitespace before token prefix`() {
         assertPrefix(
             ".demo { color: var(  --tui-<caret>); }",
