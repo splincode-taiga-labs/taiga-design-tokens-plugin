@@ -63,8 +63,24 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun testCompletesInstalledAndProjectTokensByTypedPrefix() {
+        val suggestions = complete("--tui-te")
+
+        assertContainsElements(
+            suggestions,
+            "--tui-team-color",
+            "--tui-text-primary",
+        )
+        assertFalse(suggestions.contains("--tui-background-base"))
+    }
+
+    fun testKeepsExactInstalledTokenInCompletion() {
+        val suggestions = complete("--tui-text-primary")
+
+        assertContainsElements(suggestions, "--tui-text-primary")
+    }
+
+    private fun complete(tokenPrefix: String): List<String> {
         val sourcePath = workspaceRoot.resolve("src/component.less")
-        val tokenPrefix = "--tui-te"
         val sourceFile =
             createFile(
                 sourcePath,
@@ -79,14 +95,7 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         indexService.completionTokenNames(sourcePath)
         myFixture.completeBasic()
 
-        val suggestions = myFixture.lookupElementStrings.orEmpty()
-
-        assertContainsElements(
-            suggestions,
-            "--tui-team-color",
-            "--tui-text-primary",
-        )
-        assertFalse(suggestions.contains("--tui-background-base"))
+        return myFixture.lookupElementStrings.orEmpty()
     }
 
     private fun createFile(
