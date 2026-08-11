@@ -3,6 +3,7 @@ package org.taigaui.designtokens.completion
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
@@ -14,17 +15,20 @@ class DesignTokenCompletionAutoPopupHandler : TypedHandlerDelegate() {
         editor: Editor,
         file: PsiFile,
     ): Result {
-        val shouldSchedule =
-            charTyped.isTokenNameCharacter() &&
-                file.virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS &&
-                LookupManager.getInstance(project).activeLookup == null &&
-                DesignTokenCompletionContextFinder.find(
-                    text = editor.document.immutableCharSequence,
-                    offset = editor.caretModel.offset,
-                ) != null
+        val completionContext =
+            DesignTokenCompletionContextFinder.find(
+                text = editor.document.immutableCharSequence,
+                offset = editor.caretModel.offset,
+            )
+        val supportedContext =
+            file.virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS && completionContext != null
 
-        if (shouldSchedule) {
-            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        if (supportedContext) {
+            project.service<DesignTokenCompletionPreviewController>()
+
+            if (charTyped.isTokenNameCharacter() && LookupManager.getInstance(project).activeLookup == null) {
+                AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+            }
         }
 
         return Result.CONTINUE
