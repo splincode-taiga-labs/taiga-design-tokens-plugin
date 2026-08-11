@@ -1,5 +1,8 @@
 package org.taigaui.designtokens.documentation
 
+import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
@@ -56,10 +59,31 @@ internal class DesignTokenHoverPopupController(
         coroutineScope.launch(CoroutineName("Taiga UI design token hover popup")) {
             requests.collectLatest(::handleRequest)
         }
+
+        project.messageBus
+            .connect()
+            .subscribe(
+                LookupManagerListener.TOPIC,
+                object : LookupManagerListener {
+                    override fun activeLookupChanged(
+                        oldLookup: Lookup?,
+                        newLookup: Lookup?,
+                    ) {
+                        if (newLookup?.isCompletion == true) {
+                            dismissForCompletion()
+                        }
+                    }
+                },
+            )
     }
 
     fun mouseMoved(event: EditorMouseEvent) {
         val editor = event.editor
+
+        if (hasActiveCompletionLookup()) {
+            dismissForCompletion()
+            return
+        }
 
         if (editor.project == project && !editor.isDisposed) {
             val anchor = Point(event.mouseEvent.point)
@@ -104,10 +128,8 @@ internal class DesignTokenHoverPopupController(
 
         val request =
             withContext(Dispatchers.EDT) {
-                if (!canShowDesignTokenPopup(popup)) {
-                    activeHoverKey = null
-                    latestHoverRequest = null
-                    nativeHoverPopupSuppression.restore()
+                if (hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
+                    clearHoverState()
 
                     return@withContext null
                 }
@@ -142,7 +164,11 @@ internal class DesignTokenHoverPopupController(
 
         if (!indexCached) {
             withContext(Dispatchers.EDT) {
-                if (activeHoverKey == target.key && canShowDesignTokenPopup(popup)) {
+                if (
+                    !hasActiveCompletionLookup() &&
+                    activeHoverKey == target.key &&
+                    canShowDesignTokenPopup(popup)
+                ) {
                     showLoadingPopup(
                         editor = request.editor,
                         anchor = request.anchor,
@@ -171,10 +197,8 @@ internal class DesignTokenHoverPopupController(
                 request.modificationStamp == request.editor.document.modificationStamp
 
             if (activeHoverKey == target.key && requestStillValid) {
-                if (!canShowDesignTokenPopup(popup)) {
-                    activeHoverKey = null
-                    latestHoverRequest = null
-                    nativeHoverPopupSuppression.restore()
+                if (hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
+                    clearHoverState()
                 } else if (popupKey == popupData.key && popup?.isVisible == true) {
                     popupContent?.showModel(popupData.model)
                 } else {
@@ -207,7 +231,7 @@ internal class DesignTokenHoverPopupController(
             return
         }
 
-        if (!canShowDesignTokenPopup(popup)) {
+        if (hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
             return
         }
 
@@ -299,6 +323,23 @@ internal class DesignTokenHoverPopupController(
         pendingHideJob?.cancel()
         pendingHideJob = null
     }
+
+    private fun dismissForCompletion() {
+        coroutineScope.launch(Dispatchers.EDT) {
+            cancelScheduledHide()
+            clearHoverState()
+            hidePopup()
+        }
+    }
+
+    private fun clearHoverState() {
+        activeHoverKey = null
+        latestHoverRequest = null
+        nativeHoverPopupSuppression.restore()
+    }
+
+    private fun hasActiveCompletionLookup(): Boolean =
+        LookupManager.getInstance(project).activeLookup?.isCompletion == true
 
     private fun navigateToDefinition(target: DesignTokenNavigationTarget) {
         val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target.sourceFile) ?: return
