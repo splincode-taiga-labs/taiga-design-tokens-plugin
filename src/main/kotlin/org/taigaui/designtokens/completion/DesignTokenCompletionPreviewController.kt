@@ -152,7 +152,11 @@ internal class DesignTokenCompletionPreviewController(
                         ?.let { values -> DesignTokenHoverPopupModel.create(request.tokenName, values) }
 
                 withContext(Dispatchers.EDT) {
-                    if (previewKey == key && activeLookup === lookup && lookup.currentTokenName() == request.tokenName) {
+                    if (
+                        previewKey == key &&
+                        activeLookup === lookup &&
+                        lookup.currentTokenName() == request.tokenName
+                    ) {
                         if (model == null) {
                             hidePreview()
                         } else {
@@ -199,12 +203,13 @@ internal class DesignTokenCompletionPreviewController(
         val location = previewLocation(lookup, previewSize, layeredPane)
         val hint =
             previewHint
-                ?: LightweightHint(requireNotNull(previewPanel)).apply {
-                    setForceLightweightPopup(true)
-                    setCancelOnClickOutside(false)
-                    setBelongsToGlobalPopupStack(false)
-                    setCancelOnOtherWindowOpen(false)
-                }.also { previewHint = it }
+                ?: LightweightHint(requireNotNull(previewPanel))
+                    .apply {
+                        setForceLightweightPopup(true)
+                        setCancelOnClickOutside(false)
+                        setBelongsToGlobalPopupStack(false)
+                        setCancelOnOtherWindowOpen(false)
+                    }.also { previewHint = it }
 
         if (hint.isVisible) {
             hint.pack()
