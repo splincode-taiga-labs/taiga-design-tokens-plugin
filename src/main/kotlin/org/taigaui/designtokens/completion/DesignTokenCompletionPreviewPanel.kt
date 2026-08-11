@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.completion
 
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.AsyncProcessIcon
@@ -16,6 +17,7 @@ import java.awt.Font
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
+import java.awt.geom.Ellipse2D
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.Icon
@@ -33,7 +35,7 @@ internal class DesignTokenCompletionPreviewPanel : JPanel(BorderLayout()) {
 
     init {
         background = UIUtil.getPanelBackground()
-        border = JBUI.Borders.customLine(UIUtil.getBorderColor(), 1)
+        border = JBUI.Borders.customLine(JBColor.border(), 1)
         add(
             JBScrollPane(
                 content,
@@ -152,7 +154,14 @@ private class ColorPreviewIcon(
         val tile = (size / 4).coerceAtLeast(1)
 
         graphics2D.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        graphics2D.clipOval(x, y, size, size)
+        graphics2D.clip(
+            Ellipse2D.Double(
+                x.toDouble(),
+                y.toDouble(),
+                size.toDouble(),
+                size.toDouble(),
+            ),
+        )
 
         for (row in 0 until 4) {
             for (column in 0 until 4) {
@@ -164,7 +173,7 @@ private class ColorPreviewIcon(
         graphics2D.color = color
         graphics2D.fillOval(x, y, size, size)
         graphics2D.clip = null
-        graphics2D.color = UIUtil.getBorderColor()
+        graphics2D.color = JBColor.border()
         graphics2D.drawOval(x, y, size - 1, size - 1)
         graphics2D.dispose()
     }
