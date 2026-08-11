@@ -64,18 +64,18 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
 
     fun testCompletesInstalledAndProjectTokensByTypedPrefix() {
         val sourcePath = workspaceRoot.resolve("src/component.less")
+        val tokenPrefix = "--tui-te"
         val sourceFile =
             createFile(
                 sourcePath,
-                ".demo { color: var(--tui-te); }",
+                ".demo { color: var($tokenPrefix); }",
             )
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
-        myFixture.editor.caretModel.moveToOffset(
-            myFixture.editor.document.text.indexOf("--tui-te") + "--tui-te".length,
-        )
-        indexService.completionTokenNames(sourcePath)
+        val caretOffset = myFixture.editor.document.text.indexOf(tokenPrefix) + tokenPrefix.length
 
+        myFixture.editor.caretModel.moveToOffset(caretOffset)
+        indexService.completionTokenNames(sourcePath)
         myFixture.completeBasic()
 
         val suggestions = myFixture.lookupElementStrings.orEmpty()
