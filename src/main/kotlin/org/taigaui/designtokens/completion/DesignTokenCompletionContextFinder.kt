@@ -59,31 +59,41 @@ private class DesignTokenCompletionContextScanner(
 
     private fun findFirstArgumentEnd(start: Int): Int? {
         var depth = 0
+        var end: Int? = null
         var index = start
 
-        while (index < text.length) {
+        while (index < text.length && end == null) {
             val character = text[index]
 
-            when {
-                character.isQuote() -> index = findQuotedEnd(index) + 1
-                text.startsComment(index) -> index = findCommentEnd(index)
-                character == '(' -> {
-                    depth++
-                    index++
-                }
+            index =
+                when {
+                    character.isQuote() -> findQuotedEnd(index) + 1
+                    text.startsComment(index) -> findCommentEnd(index)
+                    character == '(' -> {
+                        depth++
+                        index + 1
+                    }
 
-                character == ')' && depth == 0 -> return index
-                character == ')' -> {
-                    depth--
-                    index++
-                }
+                    character == ')' && depth == 0 -> {
+                        end = index
+                        index
+                    }
 
-                character == ',' && depth == 0 -> return index
-                else -> index++
-            }
+                    character == ')' -> {
+                        depth--
+                        index + 1
+                    }
+
+                    character == ',' && depth == 0 -> {
+                        end = index
+                        index
+                    }
+
+                    else -> index + 1
+                }
         }
 
-        return null
+        return end
     }
 
     private fun skipWhitespace(
