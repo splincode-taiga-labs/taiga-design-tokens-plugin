@@ -70,7 +70,9 @@ internal class DesignTokenHoverPopupController(
                         newLookup: Lookup?,
                     ) {
                         if (newLookup?.isCompletion == true) {
-                            dismissForCompletion()
+                            coroutineScope.launch(Dispatchers.EDT) {
+                                dismissForCompletion()
+                            }
                         }
                     }
                 },
@@ -80,7 +82,7 @@ internal class DesignTokenHoverPopupController(
     fun mouseMoved(event: EditorMouseEvent) {
         val editor = event.editor
 
-        if (hasActiveCompletionLookup()) {
+        if (project.hasActiveCompletionLookup()) {
             dismissForCompletion()
             return
         }
@@ -128,9 +130,15 @@ internal class DesignTokenHoverPopupController(
 
         val request =
             withContext(Dispatchers.EDT) {
-                if (hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
-                    clearHoverState()
+                if (project.hasActiveCompletionLookup()) {
+                    dismissForCompletion()
+                    return@withContext null
+                }
 
+                if (!canShowDesignTokenPopup(popup)) {
+                    activeHoverKey = null
+                    latestHoverRequest = null
+                    nativeHoverPopupSuppression.restore()
                     return@withContext null
                 }
 
@@ -165,7 +173,7 @@ internal class DesignTokenHoverPopupController(
         if (!indexCached) {
             withContext(Dispatchers.EDT) {
                 if (
-                    !hasActiveCompletionLookup() &&
+                    !project.hasActiveCompletionLookup() &&
                     activeHoverKey == target.key &&
                     canShowDesignTokenPopup(popup)
                 ) {
@@ -197,8 +205,12 @@ internal class DesignTokenHoverPopupController(
                 request.modificationStamp == request.editor.document.modificationStamp
 
             if (activeHoverKey == target.key && requestStillValid) {
-                if (hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
-                    clearHoverState()
+                if (project.hasActiveCompletionLookup()) {
+                    dismissForCompletion()
+                } else if (!canShowDesignTokenPopup(popup)) {
+                    activeHoverKey = null
+                    latestHoverRequest = null
+                    nativeHoverPopupSuppression.restore()
                 } else if (popupKey == popupData.key && popup?.isVisible == true) {
                     popupContent?.showModel(popupData.model)
                 } else {
@@ -231,7 +243,7 @@ internal class DesignTokenHoverPopupController(
             return
         }
 
-        if (hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
+        if (project.hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
             return
         }
 
@@ -325,21 +337,11 @@ internal class DesignTokenHoverPopupController(
     }
 
     private fun dismissForCompletion() {
-        coroutineScope.launch(Dispatchers.EDT) {
-            cancelScheduledHide()
-            clearHoverState()
-            hidePopup()
-        }
-    }
-
-    private fun clearHoverState() {
+        cancelScheduledHide()
         activeHoverKey = null
         latestHoverRequest = null
-        nativeHoverPopupSuppression.restore()
+        hidePopup()
     }
-
-    private fun hasActiveCompletionLookup(): Boolean =
-        LookupManager.getInstance(project).activeLookup?.isCompletion == true
 
     private fun navigateToDefinition(target: DesignTokenNavigationTarget) {
         val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target.sourceFile) ?: return
@@ -378,6 +380,9 @@ internal class DesignTokenHoverPopupController(
         nativeHoverPopupSuppression.restore()
     }
 }
+
+private fun Project.hasActiveCompletionLookup(): Boolean =
+    LookupManager.getInstance(this).activeLookup?.isCompletion == true
 
 private fun canShowDesignTokenPopup(currentPopup: JBPopup?): Boolean =
     currentPopup?.isVisible == true || !JBPopupFactory.getInstance().isPopupActive
