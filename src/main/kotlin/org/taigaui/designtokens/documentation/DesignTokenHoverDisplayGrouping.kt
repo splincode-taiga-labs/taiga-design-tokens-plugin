@@ -55,11 +55,16 @@ private fun List<DesignTokenVariantResolution>.toPresentationContexts(): List<De
             }
         }
 
-private fun DisplayResolutionGroup.navigationTarget(): DesignTokenNavigationTarget? =
-    resolutions
-        .flatMap { resolution -> resolution.variant.origins }
-        .firstOrNull()
-        ?.let { origin -> DesignTokenNavigationTarget(origin.sourceFile, origin.line) }
+private fun DisplayResolutionGroup.navigationTarget(): DesignTokenNavigationTarget? {
+    val origins = resolutions.flatMap { resolution -> resolution.variant.origins }
+    val origin =
+        origins
+            .filter { candidate -> candidate.cascadeOrder != null }
+            .maxByOrNull { candidate -> requireNotNull(candidate.cascadeOrder) }
+            ?: origins.firstOrNull()
+
+    return origin?.let { candidate -> DesignTokenNavigationTarget(candidate.sourceFile, candidate.line) }
+}
 
 private fun DesignTokenValueResolution.displayKey(): String =
     when (this) {

@@ -25,8 +25,10 @@ internal object ProjectStylesCandidateSelector {
         val platformCandidates =
             candidates.filter { variant -> variant.platformSpecificity(requestedContext) == platformSpecificity }
         val themeSpecificity = platformCandidates.maxOf { variant -> variant.themeSpecificity() }
+        val themeCandidates =
+            platformCandidates.filter { variant -> variant.themeSpecificity() == themeSpecificity }
 
-        return platformCandidates.filter { variant -> variant.themeSpecificity() == themeSpecificity }
+        return themeCandidates.preferLatestCascadeOrder()
     }
 
     private fun DesignTokenVariant.appliesTo(requestedContext: DesignTokenContext): Boolean {
@@ -68,9 +70,64 @@ internal object ProjectStylesCandidateSelector {
             1
         }
 
+    private fun List<DesignTokenVariant>.preferLatestCascadeOrder(): List<DesignTokenVariant> {
+        val orderedCandidates =
+            mapNotNull { variant ->
+                val order = variant.projectCascadeOrder()
+                val scope = variant.projectCascadeScope()
+
+                if (order == null || scope == null) {
+                    null
+                } else {
+                    OrderedProjectCandidate(variant, order, scope)
+                }
+            }
+        val comparable =
+            orderedCandidates.size == size &&
+                orderedCandidates.map(OrderedProjectCandidate::scope).distinct().size == 1
+
+        return if (comparable) {
+            val latestOrder = orderedCandidates.maxOf(OrderedProjectCandidate::order)
+
+            orderedCandidates
+                .filter { candidate -> candidate.order == latestOrder }
+                .map(OrderedProjectCandidate::variant)
+        } else {
+            this
+        }
+    }
+
     private fun DesignTokenVariant.sourcePackageName(): String? =
         origins
             .mapNotNull { origin -> origin.packageName }
             .distinct()
             .singleOrNull()
+
+    private data class OrderedProjectCandidate(
+        val variant: DesignTokenVariant,
+        val order: Int,
+        val scope: List<String>,
+    )
 }
+
+internal fun DesignTokenVariant.projectCascadeOrder(): Int? {
+    val orders = origins.map { origin -> origin.cascadeOrder }
+
+    return orders
+        .takeIf { values -> values.isNotEmpty() && values.all { order -> order != null } }
+        ?.filterNotNull()
+        ?.maxOrNull()
+}
+
+internal fun DesignTokenVariant.projectCascadeScope(): List<String>? {
+    val scopes =
+        origins
+            .map { origin -> origin.selectorChain.map(String::normalizeSelectorScope) }
+            .distinct()
+
+    return scopes.singleOrNull()
+}
+
+private fun String.normalizeSelectorScope(): String = replace(WHITESPACE, " ").trim()
+
+private val WHITESPACE = Regex("""\s+""")

@@ -16,7 +16,6 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -136,7 +135,10 @@ internal class DesignTokenHoverPopupController(
         }
 
         val indexService = project.service<DesignTokenIndexService>()
-        val indexCached = indexService.isIndexCached(target.sourceFile)
+        val indexCached =
+            withContext(Dispatchers.Default) {
+                indexService.isIndexCached(target.sourceFile)
+            }
 
         if (!indexCached) {
             withContext(Dispatchers.EDT) {
@@ -151,20 +153,34 @@ internal class DesignTokenHoverPopupController(
             }
         }
 
-        withContext(Dispatchers.EDT) {
-            PsiDocumentManager.getInstance(project).commitAllDocuments()
-        }
+        val popupData =
+            withContext(Dispatchers.Default) {
+                target.resolvePopupData(indexService)
+            }
 
-        val popupData = target.resolvePopupData(indexService)
+        showPopupDataIfCurrent(request, target, popupData)
+    }
 
+    private suspend fun showPopupDataIfCurrent(
+        request: HoverRequest,
+        target: PopupTarget,
+        popupData: PopupData,
+    ) {
         withContext(Dispatchers.EDT) {
-            if (activeHoverKey == target.key) {
-                if (canShowDesignTokenPopup(popup)) {
-                    showResolvedPopup(request.editor, request.anchor, popupData)
-                } else {
+            val requestStillValid =
+                request.modificationStamp == request.editor.document.modificationStamp
+
+            if (activeHoverKey == target.key && requestStillValid) {
+                if (!canShowDesignTokenPopup(popup)) {
                     activeHoverKey = null
                     latestHoverRequest = null
                     nativeHoverPopupSuppression.restore()
+                } else if (popupKey == popupData.key && popup?.isVisible == true) {
+                    popupContent?.showModel(popupData.model)
+                } else {
+                    showPopup(request.editor, request.anchor, popupData.key) { panel ->
+                        panel.showModel(popupData.model)
+                    }
                 }
             }
         }
@@ -178,22 +194,6 @@ internal class DesignTokenHoverPopupController(
     ) {
         showPopup(editor, anchor, key) { panel ->
             panel.showLoading(tokenName)
-        }
-    }
-
-    private fun showResolvedPopup(
-        editor: Editor,
-        anchor: Point,
-        data: PopupData,
-    ) {
-        if (popupKey == data.key && popup?.isVisible == true) {
-            popupContent?.showModel(data.model)
-
-            return
-        }
-
-        showPopup(editor, anchor, data.key) { panel ->
-            panel.showModel(data.model)
         }
     }
 

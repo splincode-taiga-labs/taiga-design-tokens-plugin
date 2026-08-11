@@ -33,4 +33,5 @@ data class DesignTokenOrigin(
     val packageName: String? = null,
     val packageVersion: String? = null,
     val sharedAcrossPlatforms: Boolean = false,
+    val cascadeOrder: Int? = null,
 )

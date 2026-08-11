@@ -10,23 +10,22 @@ internal class ProjectStylesheetEntrypointResolver(
         sourceFile: Path,
         projectRoot: Path,
         workspaceRoot: Path,
-    ): Set<Path> =
-        buildSet {
+    ): List<Path> =
+        buildList {
+            addAll(configuredEntryFiles(sourceFile, projectRoot, workspaceRoot))
+            addAll(conventionalEntryFiles(projectRoot, workspaceRoot))
             sourceFile
                 .takeIf { path -> ProjectStylesheetPathResolver.isStylesheet(path) }
                 ?.takeIf { path -> !ProjectStylesheetPathResolver.isNodeModulesPath(path, workspaceRoot) }
                 ?.let(::add)
-
-            addAll(configuredEntryFiles(sourceFile, projectRoot, workspaceRoot))
-            addAll(conventionalEntryFiles(projectRoot, workspaceRoot))
-        }
+        }.distinct()
 
     private fun configuredEntryFiles(
         sourceFile: Path,
         projectRoot: Path,
         workspaceRoot: Path,
-    ): Set<Path> =
-        buildSet {
+    ): List<Path> =
+        buildList {
             val projectConfig = projectRoot.resolve(PROJECT_JSON)
             val workspaceConfig = workspaceRoot.resolve(ANGULAR_JSON)
 
@@ -51,13 +50,13 @@ internal class ProjectStylesheetEntrypointResolver(
 
                 addAll(projectEntries)
             }
-        }
+        }.distinct()
 
     private fun readConfiguredStyleGroups(
         configFile: Path,
         projectRoot: Path,
         workspaceRoot: Path,
-    ): List<Set<Path>> =
+    ): List<List<Path>> =
         readText(configFile)
             ?.let { content -> STYLES_ARRAY_PATTERN.findAll(content) }
             ?.map { match ->
@@ -71,7 +70,7 @@ internal class ProjectStylesheetEntrypointResolver(
                             projectRoot = projectRoot,
                             workspaceRoot = workspaceRoot,
                         )
-                    }.toSet()
+                    }.toList()
             }?.filter { group -> group.isNotEmpty() }
             ?.toList()
             .orEmpty()
@@ -106,8 +105,8 @@ internal class ProjectStylesheetEntrypointResolver(
     private fun conventionalEntryFiles(
         projectRoot: Path,
         workspaceRoot: Path,
-    ): Set<Path> =
-        buildSet {
+    ): List<Path> =
+        buildList {
             listOf(projectRoot, workspaceRoot)
                 .distinct()
                 .forEach { root ->
@@ -120,9 +119,9 @@ internal class ProjectStylesheetEntrypointResolver(
                             .forEach(::add)
                     }
                 }
-        }
+        }.distinct()
 
-    private fun List<Set<Path>>.closestTo(sourceFile: Path): List<Set<Path>> {
+    private fun List<List<Path>>.closestTo(sourceFile: Path): List<List<Path>> {
         val groupsWithScore =
             map { group ->
                 group to group.maxOf { path -> sharedPrefixSize(sourceFile, path) }
@@ -131,7 +130,7 @@ internal class ProjectStylesheetEntrypointResolver(
 
         return groupsWithScore
             .filter { (_, score) -> score == highestScore }
-            .map(Pair<Set<Path>, Int>::first)
+            .map(Pair<List<Path>, Int>::first)
     }
 
     private fun sharedPrefixSize(

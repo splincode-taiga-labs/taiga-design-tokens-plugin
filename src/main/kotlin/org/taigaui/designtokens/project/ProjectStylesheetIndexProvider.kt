@@ -67,11 +67,15 @@ internal class ProjectStylesheetIndexProvider(
         val scope = graph.buildScope(request)
         val declarations =
             scope.sourceFiles
-                .flatMap(sourceExtractor::extract)
-                .map { declaration ->
+                .flatMap { sourceFile ->
+                    sourceExtractor
+                        .extract(sourceFile)
+                        .sortedBy { declaration -> declaration.line }
+                }.mapIndexed { cascadeOrder, declaration ->
                     declaration.copy(
                         packageName = PROJECT_STYLES_PACKAGE,
                         packageRoot = scope.projectRoot,
+                        cascadeOrder = cascadeOrder,
                     )
                 }
 
@@ -83,11 +87,13 @@ internal class ProjectStylesheetIndexProvider(
 
     private fun readProjectText(path: Path): String? {
         val normalizedPath = path.toAbsolutePath().normalize()
+        val localFileSystem = LocalFileSystem.getInstance()
+        val virtualFile =
+            localFileSystem.findFileByNioFile(normalizedPath)
+                ?: localFileSystem.refreshAndFindFileByNioFile(normalizedPath)
         val documentText =
-            LocalFileSystem
-                .getInstance()
-                .refreshAndFindFileByNioFile(normalizedPath)
-                ?.let { file -> FileDocumentManager.getInstance().getDocument(file) }
+            virtualFile
+                ?.let { file -> FileDocumentManager.getInstance().getCachedDocument(file) }
                 ?.text
 
         return documentText ?: runCatching { Files.readString(normalizedPath) }.getOrNull()

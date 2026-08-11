@@ -1,8 +1,8 @@
 package org.taigaui.designtokens.psi
 
-import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Computable
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
@@ -21,22 +21,24 @@ class PsiDesignTokenSourceExtractor(
 ) : DesignTokenSourceExtractor {
     override fun extract(sourceFile: Path): List<DesignTokenDeclaration> {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+        val localFileSystem = LocalFileSystem.getInstance()
         val virtualFile =
-            LocalFileSystem
-                .getInstance()
-                .refreshAndFindFileByNioFile(normalizedSourceFile)
+            localFileSystem.findFileByNioFile(normalizedSourceFile)
+                ?: localFileSystem.refreshAndFindFileByNioFile(normalizedSourceFile)
                 ?: return emptyList()
 
-        return ApplicationManager.getApplication().runReadAction(
-            Computable {
-                val psiFile =
-                    PsiManager.getInstance(project).findFile(virtualFile)
-                        ?: return@Computable emptyList()
-
-                extract(psiFile, normalizedSourceFile)
-                    .filter { declaration -> declaration.isGlobalDeclaration() }
-            },
-        )
+        return ReadAction
+            .nonBlocking<List<DesignTokenDeclaration>> {
+                PsiManager
+                    .getInstance(project)
+                    .findFile(virtualFile)
+                    ?.let { psiFile ->
+                        extract(psiFile, normalizedSourceFile)
+                            .filter { declaration -> declaration.isGlobalDeclaration() }
+                    }.orEmpty()
+            }.withDocumentsCommitted(project)
+            .expireWith(project)
+            .executeSynchronously()
     }
 
     internal fun extract(
@@ -51,6 +53,8 @@ class PsiDesignTokenSourceExtractor(
         psiFile.accept(
             object : PsiRecursiveElementWalkingVisitor() {
                 override fun visitElement(element: PsiElement) {
+                    ProgressManager.checkCanceled()
+
                     if (element is CssDeclaration) {
                         element
                             .toDesignTokenDeclaration(
