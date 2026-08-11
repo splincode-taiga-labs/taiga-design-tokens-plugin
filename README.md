@@ -8,7 +8,7 @@ The plugin reads the Taiga UI packages installed in the current project instead 
 
 ### Completion
 
-Inside the first argument of CSS `var(...)`, typing a Taiga UI prefix offers tokens known to the current project:
+Inside the first argument of CSS `var(...)`, typing a Taiga UI prefix automatically opens WebStorm's native completion lookup with tokens known to the current project:
 
 ```css
 .alert-icon {
@@ -18,7 +18,9 @@ Inside the first argument of CSS `var(...)`, typing a Taiga UI prefix offers tok
 
 Completion is available in CSS, Less, and SCSS. Suggestions come from the existing installed-package and project stylesheet indexes, so project-defined `--tui-*` tokens appear together with tokens from the installed Taiga UI version. The plugin inserts only the token name and does not add another `var(...)` wrapper.
 
-A cold completion request does not build the graph on the completion/UI path. The graph is warmed in a project-service coroutine; the latest token-name snapshot remains usable while an invalidated graph refreshes.
+The native WebStorm lookup remains the primary completion UI. When a `--tui-*` item is selected, the plugin shows a non-focusable side preview with the effective platform/theme values and color swatches. Moving through the lookup with the Up/Down keys updates the preview for the newly selected token. The normal hover popup is suppressed while completion is open, so the two presentations never compete for the editor area.
+
+A cold completion request does not build the graph on the completion/UI path. The graph is warmed in a project-service coroutine; the latest token-name snapshot remains usable while an invalidated graph refreshes. If the first completion request starts a cold build, completion is reopened only when the caret is still inside a current `var(--tui-...)` context, so continuing to type does not invalidate the warmup result.
 
 ### Hover
 
@@ -53,6 +55,8 @@ sequenceDiagram
     actor User as Editor user
     participant Completion as Completion contributor
     participant CompletionService as Completion service
+    participant Lookup as WebStorm lookup
+    participant Preview as Completion side preview
     participant Hover as Hover popup controller
     participant Service as Project token service
     participant PackageCache as Installed-package cache
@@ -67,21 +71,29 @@ sequenceDiagram
     participant VFS as VFS/document changes
 
     rect rgb(245, 245, 245)
-        Note over User,CompletionService: Completion flow
+        Note over User,Preview: Completion flow
         User->>Completion: Type var(--tui-te|)
         Completion->>CompletionService: namesFor(sourceFile)
 
         alt Token-name snapshot or indexes are ready
             CompletionService-->>Completion: Installed + project token names
-            Completion-->>User: Filtered completion items
+            Completion->>Lookup: Contribute filtered lookup items
         else Cold or invalidated graph
             CompletionService-->>Completion: Latest snapshot or no custom items yet
             CompletionService->>Service: Warm completionTokenNames(sourceFile) in background
             Service->>PackageCache: getOrBuild(package index)
             Service->>ProjectCache: getOrBuild(project index)
-            CompletionService-->>Completion: Schedule a fresh auto-popup if names changed
-            Completion-->>User: Updated completion items
+            CompletionService-->>Completion: Reopen lookup if caret still matches var(--tui-...)
+            Completion->>Lookup: Contribute refreshed lookup items
         end
+
+        Lookup-->>User: Native completion list
+        Lookup->>Preview: Selected --tui-* item changed
+        Preview->>Service: resolveToken(sourceFile, selectedToken)
+        Service->>Values: Resolve effective contexts
+        Values-->>Preview: Resolved values + colors
+        Preview-->>User: Side value/color preview
+        Note over Hover,Lookup: Hover popup is closed and suppressed while lookup is active
     end
 
     rect rgb(245, 245, 245)
@@ -127,7 +139,7 @@ Architecture status:
 - implemented: balanced `var(...)` parsing, recursive reference resolution, structured fallback/cycle results, terminal color detection, and equivalent-result grouping;
 - implemented: project stylesheet entrypoint discovery, local import graph traversal, project override semantics, deterministic source/cascade order where it can be proven, and safe ambiguity where it cannot;
 - implemented: custom Swing hover UX with loading state, package/project grouping, `Not applied` presentation, copy/navigation actions, and non-blocking cold graph construction;
-- implemented in Stage 5: installed + project token-name completion inside the first `var(...)` argument with background cold-cache warmup;
+- implemented in Stage 5: installed + project token-name completion through WebStorm's native CSS/Less/SCSS lookup, background cold-cache warmup, live selected-item value/color preview, and mutual exclusion between completion and hover;
 - remaining production work: unknown-token inspections, deprecated-token replacements, optional source details/settings, accessibility validation, diagnostics, verifier matrix, signing, and Marketplace publishing.
 
 Package boundaries:
@@ -139,7 +151,7 @@ org.taigaui.designtokens
 ├── resolution     var() parsing, candidate selection, recursive resolution, and grouping
 ├── psi            IntelliJ CSS/SCSS/Less PSI adapter
 ├── project        package/project graph orchestration, caches, invalidation, and resolution entry point
-├── completion     completion-context detection, background warmup, snapshots, and lookup items
+├── completion     completion context, background warmup, native lookup integration, and selected-item preview
 └── documentation  hover detection, controller, Swing model, and Swing popup
 ```
 
@@ -161,7 +173,7 @@ Reachable project declarations receive project origin metadata and a monotonic c
 
 Cache monitors protect only cache bookkeeping. Expensive graph construction and PSI scanning execute outside those monitors, so document/VFS invalidation cannot freeze the IDE by waiting for a long build. PSI extraction uses non-blocking/cancellable read actions and checks cancellation during traversal.
 
-Hover resolution and cold completion warming run off the UI thread. Completion keeps a token-name snapshot so normal typing can continue to show known suggestions while document edits invalidate and refresh the underlying project graph.
+Hover resolution, cold completion warming, and selected-item preview resolution run off the UI thread. Completion keeps a token-name snapshot so normal typing can continue to show known suggestions while document edits invalidate and refresh the underlying project graph. The completion preview listens to native lookup selection changes without requesting focus, and stale preview jobs are cancelled when keyboard navigation selects another token.
 
 ### Resolution model
 
@@ -175,7 +187,7 @@ Project overrides are evaluated as an application layer before installed package
 
 ## Development status
 
-Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support and token-name completion are implemented; inspections, deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
+Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support and native token-name completion with live selected-token preview are implemented; inspections, deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
 
 ## Requirements
 
