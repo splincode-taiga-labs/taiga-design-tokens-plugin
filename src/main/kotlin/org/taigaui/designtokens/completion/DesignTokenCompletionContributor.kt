@@ -71,7 +71,6 @@ private fun CompletionParameters.toDesignTokenCompletionRequest(): DesignTokenCo
                         editor = editor,
                         sourceFile = sourceFile,
                         prefix = completionContext.prefix,
-                        modificationStamp = editor.document.modificationStamp,
                     )
                 }
         }
@@ -81,10 +80,19 @@ private data class DesignTokenCompletionRequest(
     val editor: Editor,
     val sourceFile: Path,
     val prefix: String,
-    val modificationStamp: Long,
 ) {
     fun scheduleRefresh() {
-        if (!editor.isDisposed && editor.document.modificationStamp == modificationStamp) {
+        val currentContext =
+            if (editor.isDisposed) {
+                null
+            } else {
+                DesignTokenCompletionContextFinder.find(
+                    text = editor.document.immutableCharSequence,
+                    offset = editor.caretModel.offset,
+                )
+            }
+
+        if (currentContext != null) {
             AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
         }
     }
