@@ -118,12 +118,13 @@ internal class DesignTokenCompletionPreviewController(
     }
 
     private fun requestPreview(lookup: Lookup) {
-        val request = lookup.previewRequest() ?: run {
-            previewKey = null
-            previewJob?.cancel()
-            hidePreview()
+        val request = lookup.previewRequest()
+
+        if (request == null) {
+            clearPreviewRequest()
             return
         }
+
         val key = PreviewKey(lookup, request.tokenName, request.sourceFile)
 
         if (previewKey == key && previewJob?.isActive == true) {
@@ -133,11 +134,11 @@ internal class DesignTokenCompletionPreviewController(
         previewKey = key
         previewJob?.cancel()
 
-        val indexService = project.service<DesignTokenIndexService>()
-
-        if (!indexService.isIndexCached(request.sourceFile)) {
+        if (previewHint?.isVisible != true) {
             showLoading(lookup, request.tokenName)
         }
+
+        val indexService = project.service<DesignTokenIndexService>()
 
         previewJob =
             coroutineScope.launch(CoroutineName("Taiga UI design token completion preview")) {
@@ -160,6 +161,13 @@ internal class DesignTokenCompletionPreviewController(
                     }
                 }
             }
+    }
+
+    private fun clearPreviewRequest() {
+        previewKey = null
+        previewJob?.cancel()
+        previewJob = null
+        hidePreview()
     }
 
     private fun showLoading(
@@ -217,29 +225,33 @@ internal class DesignTokenCompletionPreviewController(
     }
 }
 
-private fun Lookup.previewRequest(): CompletionPreviewRequest? {
-    val tokenName = currentTokenName() ?: return null
-    val sourceFile =
-        psiFile
-            ?.virtualFile
+private fun Lookup.previewRequest(): CompletionPreviewRequest? =
+    currentTokenName()?.let { tokenName ->
+        sourceFilePath()?.let { sourceFile ->
+            DesignTokenCompletionContextFinder
+                .find(
+                    text = topLevelEditor.document.immutableCharSequence,
+                    offset = topLevelEditor.caretModel.offset,
+                )?.takeIf { context -> context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
+                ?.let {
+                    CompletionPreviewRequest(
+                        tokenName = tokenName,
+                        sourceFile = sourceFile,
+                    )
+                }
+        }
+    }
+
+private fun Lookup.sourceFilePath(): Path? =
+    psiFile
+        ?.virtualFile
+        ?.path
+        ?.let(::pathOrNull)
+        ?: FileDocumentManager
+            .getInstance()
+            .getFile(topLevelEditor.document)
             ?.path
             ?.let(::pathOrNull)
-            ?: FileDocumentManager
-                .getInstance()
-                .getFile(topLevelEditor.document)
-                ?.path
-                ?.let(::pathOrNull)
-            ?: return null
-    val context =
-        DesignTokenCompletionContextFinder.find(
-            text = topLevelEditor.document.immutableCharSequence,
-            offset = topLevelEditor.caretModel.offset,
-        ) ?: return null
-
-    return tokenName
-        .takeIf { context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
-        ?.let { validTokenName -> CompletionPreviewRequest(validTokenName, sourceFile) }
-}
 
 private fun Lookup.currentTokenName(): String? =
     currentItem
