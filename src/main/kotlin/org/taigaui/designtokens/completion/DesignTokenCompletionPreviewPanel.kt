@@ -24,6 +24,7 @@ import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollPane
+import javax.swing.JTextArea
 
 internal class DesignTokenCompletionPreviewPanel : JPanel(BorderLayout()) {
     private val content =
@@ -120,20 +121,48 @@ private fun createTitle(tokenName: String): JComponent =
     }
 
 private fun createValueRow(row: DesignTokenHoverValueRow): JComponent =
-    JPanel(BorderLayout(JBUI.scale(12), 0)).apply {
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
-        border = JBUI.Borders.empty(4, 0)
+        border = JBUI.Borders.empty(5, 0)
 
-        add(JBLabel(row.platform), BorderLayout.WEST)
         add(
-            JPanel(FlowLayout(FlowLayout.RIGHT, JBUI.scale(8), 0)).apply {
-                isOpaque = false
-                row.color?.let { color -> add(JBLabel(ColorPreviewIcon(color))) }
-                add(JBLabel(row.resolvedValue))
+            JBLabel(row.platform).apply {
+                alignmentX = JComponent.LEFT_ALIGNMENT
             },
-            BorderLayout.EAST,
         )
+        add(Box.createVerticalStrut(JBUI.scale(4)))
+        add(createResolvedValue(row))
+    }
+
+private fun createResolvedValue(row: DesignTokenHoverValueRow): JComponent =
+    JPanel(BorderLayout(JBUI.scale(8), 0)).apply {
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+
+        row.color?.let { color ->
+            add(
+                JBLabel(ColorPreviewIcon(color)).apply {
+                    verticalAlignment = JBLabel.TOP
+                },
+                BorderLayout.WEST,
+            )
+        }
+        add(createWrappingValue(row.resolvedValue), BorderLayout.CENTER)
+    }
+
+private fun createWrappingValue(value: String): JTextArea =
+    JTextArea(value).apply {
+        isEditable = false
+        isFocusable = false
+        isOpaque = false
+        lineWrap = true
+        wrapStyleWord = true
+        font = UIUtil.getLabelFont()
+        foreground = UIUtil.getLabelForeground()
+        border = JBUI.Borders.empty()
+        columns = VALUE_COLUMNS
     }
 
 private class ColorPreviewIcon(
@@ -184,3 +213,4 @@ private const val PREVIEW_PADDING = 12
 private const val MIN_PREVIEW_HEIGHT = 72
 private const val MAX_PREVIEW_HEIGHT = 420
 private const val COLOR_PREVIEW_SIZE = 18
+private const val VALUE_COLUMNS = 34
