@@ -25,6 +25,17 @@ internal class DesignTokenCompletionService(
     fun namesFor(
         sourceFile: Path,
         onUpdated: () -> Unit,
+    ): List<String>? = namesFor(sourceFile, onUpdated, allowStaleSnapshot = true)
+
+    fun namesForInspection(
+        sourceFile: Path,
+        onUpdated: () -> Unit,
+    ): List<String>? = namesFor(sourceFile, onUpdated, allowStaleSnapshot = false)
+
+    private fun namesFor(
+        sourceFile: Path,
+        onUpdated: () -> Unit,
+        allowStaleSnapshot: Boolean,
     ): List<String>? {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val indexService = project.service<DesignTokenIndexService>()
@@ -38,7 +49,7 @@ internal class DesignTokenCompletionService(
 
         scheduleWarmup(normalizedSourceFile, onUpdated)
 
-        return snapshot
+        return snapshot.takeIf { allowStaleSnapshot }
     }
 
     private fun scheduleWarmup(
