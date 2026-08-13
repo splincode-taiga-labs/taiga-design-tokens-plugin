@@ -17,6 +17,28 @@ class DesignTokenReferenceAtOffsetFinderTest {
     }
 
     @Test
+    fun `finds all Taiga references used by a stylesheet`() {
+        val text =
+            """
+            .button {
+                color: var(--tui-text-primary);
+                background: var(--tui-background-base, var(--tui-background-neutral-1));
+                content: "var(--tui-ignored-string)";
+                /* border-color: var(--tui-ignored-comment); */
+            }
+            """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "--tui-text-primary",
+                "--tui-background-base",
+                "--tui-background-neutral-1",
+            ),
+            DesignTokenReferenceAtOffsetFinder.findAll(text).map(DesignTokenReferenceAtOffset::name),
+        )
+    }
+
+    @Test
     fun `finds reference with whitespace and uppercase var function`() {
         val text = ".button { color: VAR(  $TOKEN  , red); }"
         val offset = text.indexOf(TOKEN) + 3
@@ -120,5 +142,38 @@ class DesignTokenReferenceAtOffsetFinderTest {
 
     private companion object {
         const val TOKEN = "--tui-text-primary"
+    }
+}
+
+class DesignTokenNameMatcherTest {
+    @Test
+    fun `suggests a close token typo`() {
+        assertEquals(
+            "--tui-text-primary",
+            DesignTokenNameMatcher.closest(
+                "--tui-text-primari",
+                listOf("--tui-text-primary", "--tui-text-secondary"),
+            ),
+        )
+    }
+
+    @Test
+    fun `does not suggest a distant token`() {
+        assertNull(
+            DesignTokenNameMatcher.closest(
+                "--tui-completely-unknown-token",
+                listOf("--tui-text-primary", "--tui-radius-m"),
+            ),
+        )
+    }
+
+    @Test
+    fun `does not guess between equally close tokens`() {
+        assertNull(
+            DesignTokenNameMatcher.closest(
+                "--tui-color-fed",
+                listOf("--tui-color-red", "--tui-color-bed"),
+            ),
+        )
     }
 }
