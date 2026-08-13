@@ -1,10 +1,28 @@
 # Taiga UI Design Tokens Plugin
 
-WebStorm plugin for exploring Taiga UI CSS custom properties directly in the editor.
+WebStorm plugin for exploring and using Taiga UI CSS custom properties directly in the editor.
 
-The plugin reads the version of `@taiga-ui/design-tokens` installed in the current project instead of shipping a hardcoded token catalog. Hovering a Taiga UI token opens one custom Swing popup with desktop, mobile, light, and dark values.
+The plugin reads the Taiga UI packages installed in the current project instead of shipping a hardcoded token catalog. It combines installed Taiga UI declarations with reachable project styles, resolves effective platform/theme values, and exposes that model through editor completion and a custom Swing hover popup.
 
 ## Editor experience
+
+### Completion
+
+Inside the first argument of CSS `var(...)`, typing a Taiga UI prefix automatically opens WebStorm's native completion lookup with tokens known to the current project:
+
+```css
+.alert-icon {
+    color: var(--tui-text-);
+}
+```
+
+Completion is available in CSS, Less, and SCSS. Suggestions come from the existing installed-package and project stylesheet indexes, so project-defined `--tui-*` tokens appear together with tokens from the installed Taiga UI version. The plugin inserts only the token name and does not add another `var(...)` wrapper.
+
+The native WebStorm lookup remains the primary completion UI. When a `--tui-*` item is selected, the plugin shows a non-focusable side preview with the effective platform/theme values and color swatches. Moving through the lookup with the Up/Down keys updates the preview for the newly selected token. The normal hover popup is suppressed while completion is open, so the two presentations never compete for the editor area.
+
+A cold completion request does not build the graph on the completion/UI path. The graph is warmed in a project-service coroutine; the latest token-name snapshot remains usable while an invalidated graph refreshes. If the first completion request starts a cold build, completion is reopened only when the caret is still inside a current `var(--tui-...)` context, so continuing to type does not invalidate the warmup result.
+
+### Hover
 
 Given:
 
@@ -16,18 +34,17 @@ Given:
 
 The hover popup shows:
 
-- matching desktop and mobile declarations;
-- light and dark theme values;
+- matching desktop, iOS, Android, light, and dark declarations;
+- project-level overrides before installed package declarations;
 - the declared value and recursively resolved result without duplicating equal values;
 - separate reference chains for distinct results;
 - color previews;
+- explicit `Not applied` rows for declarations shadowed by a more specific package/project declaration or later project cascade position;
 - actions to copy the value, navigate to the declaration, and report a bug.
 
-Equivalent values across all four platform/theme combinations are shown as one row labeled `All platforms · Light ☀️ and dark 🌚`. Incomplete combinations stay explicit, so the UI never implies that a value applies to contexts that were not resolved.
+Equivalent values across complete platform/theme combinations are collapsed into explicit applicability labels. Incomplete combinations stay explicit, so the UI never implies that a value applies to contexts that were not resolved.
 
-Source files, line numbers, and selector chains remain available in the resolution model. The popup uses the first root origin for `Go to definition`; detailed source lists may be exposed later through an optional setting.
-
-The plugin shows all statically known candidates. It does not claim to know one runtime value when CSS cascade, DOM state, media queries, or project overrides make the result ambiguous.
+Source files, line numbers, selector chains, package origins, and project cascade order remain available in the resolution model. The plugin shows all statically known candidates and does not claim to know one runtime value when DOM state, media queries, unrelated selector specificity, or runtime component load order keep the CSS result ambiguous.
 
 ## Architecture
 
@@ -36,167 +53,159 @@ This sequence diagram is the architectural contract for the plugin. Pull request
 ```mermaid
 sequenceDiagram
     actor User as Editor user
-    participant Listener as Editor mouse listener
-    participant Controller as Hover popup controller
-    participant Offset as Reference-at-offset finder
+    participant Completion as Completion contributor
+    participant CompletionService as Completion service
+    participant Lookup as WebStorm lookup
+    participant Preview as Completion side preview
+    participant Hover as Hover popup controller
     participant Service as Project token service
-    participant Cache as Project index cache
-    participant Resolver as Package resolver
+    participant PackageCache as Installed-package cache
+    participant ProjectCache as Project-styles cache
+    participant PackageResolver as Package resolver
+    participant ProjectGraph as Project stylesheet graph
     participant Scanner as Package scanner
-    participant Finder as Source-file finder
     participant Extractor as CSS/SCSS/Less PSI adapter
-    participant Classifier as Context classifier
     participant Index as Token index
     participant Values as Value resolver
-    participant Parser as var() value parser
-    participant Colors as Color detector
-    participant Model as Swing popup model
-    participant Popup as Swing popup panel
-    participant VFS as VFS change listener
-    participant FS as Project filesystem
+    participant Popup as Swing popup
+    participant VFS as VFS/document changes
 
-    User->>Listener: Move pointer over var(--tui-*)
-    Listener->>Controller: Debounced hover request
-    Controller->>Offset: Find token at editor offset
-    Offset-->>Controller: Token name or no target
-    Controller->>Service: resolveToken(sourceFile, tokenName)
-    Service->>Resolver: resolve(sourceFile)
-    Resolver->>FS: Find nearest package.json
-    FS-->>Resolver: Logical root, real root, and version
-    Resolver-->>Service: DesignTokensPackage
-    Service->>Cache: getOrBuild(package identity)
+    rect rgb(245, 245, 245)
+        Note over User,Preview: Completion flow
+        User->>Completion: Type var(--tui-te|)
+        Completion->>CompletionService: namesFor(sourceFile)
 
-    alt Cache miss
-        Cache->>Scanner: scan(package)
-        Scanner->>Finder: find(package.realRoot)
-        Finder->>FS: Walk CSS, SCSS and Less files
-        FS-->>Finder: Sorted source files
-        Finder-->>Scanner: Source files
-
-        loop Every source file
-            Scanner->>Extractor: extract(sourceFile)
-            Extractor->>FS: Resolve VirtualFile and PSI
-            FS-->>Extractor: Syntax tree and source ranges
-            Extractor-->>Scanner: Raw declarations with selector chains
+        alt Token-name snapshot or indexes are ready
+            CompletionService-->>Completion: Installed + project token names
+            Completion->>Lookup: Contribute filtered lookup items
+        else Cold or invalidated graph
+            CompletionService-->>Completion: Latest snapshot or no custom items yet
+            CompletionService->>Service: Warm completionTokenNames(sourceFile) in background
+            Service->>PackageCache: getOrBuild(package index)
+            Service->>ProjectCache: getOrBuild(project index)
+            CompletionService-->>Completion: Reopen lookup if caret still matches var(--tui-...)
+            Completion->>Lookup: Contribute refreshed lookup items
         end
 
-        Scanner-->>Cache: Physical declarations
-        Cache->>Index: build(package.realRoot, declarations)
-
-        loop Every physical declaration
-            Index->>Classifier: classify(packageRoot, declaration)
-            Classifier-->>Index: Platform and theme context
-            Index->>Index: Group by name, context, and raw value
-            Index->>Index: Retain every CSS, Less, and SCSS origin
-        end
-
-        Index-->>Cache: Logical token variants
-        Cache->>Cache: Store by real root and version
-    else Cache hit
-        Cache->>Cache: Reuse immutable index
+        Lookup-->>User: Native completion list
+        Lookup->>Preview: Selected --tui-* item changed
+        Preview->>Service: resolveToken(sourceFile, selectedToken)
+        Service->>Values: Resolve effective contexts
+        Values-->>Preview: Resolved values + colors
+        Preview-->>User: Side value/color preview
+        Note over Hover,Lookup: Hover popup is closed and suppressed while lookup is active
     end
 
-    Cache-->>Service: DesignTokenIndex
-    Service->>Index: Find variants by token name
-    Index-->>Service: Context-grouped logical variants
-
-    loop Every matching logical variant
-        Service->>Values: resolve(variant, index)
-        Values->>Parser: Parse raw value
-        Parser-->>Values: Text and reference AST or invalid expression
-
-        loop Every var(--tui-*) reference
-            Values->>Index: Find candidate in active context
-            Index-->>Values: Selected, missing, or ambiguous candidates
-            Values->>Values: Resolve selected value recursively
-            Values->>Values: Apply fallback when statically valid
-            Values->>Values: Detect cycles in declaration plus active context
-        end
-
-        Values->>Colors: Detect terminal color
-        Colors-->>Values: Canonical color metadata or none
-        Values-->>Service: Final value, reference tree, or unresolved reason
+    rect rgb(245, 245, 245)
+        Note over User,Popup: Hover flow
+        User->>Hover: Hover var(--tui-token)
+        Hover->>Service: resolveToken(sourceFile, tokenName)
+        Service->>PackageCache: getOrBuild(package index)
+        Service->>ProjectCache: getOrBuild(project index)
+        PackageCache-->>Service: Installed Taiga UI variants
+        ProjectCache-->>Service: Reachable Project styles variants
+        Service->>Index: Merge package + project indexes
+        Service->>Values: Resolve concrete platform/theme contexts recursively
+        Values-->>Service: Resolved groups + reference trees + origins
+        Service-->>Hover: Context-grouped results
+        Hover->>Popup: Build presentation model
+        Popup-->>User: Values, overrides, chains, copy and navigation
     end
 
-    Service->>Values: Group equivalent terminal results
-    Values-->>Service: Resolution groups with root and complete-tree origins
-    Service-->>Controller: Context-grouped resolved candidates
-    Controller->>Model: Build rows, reference chains, actions, and navigation target
-    Model-->>Popup: Presentation data
-    Popup-->>User: One custom Swing hover popup
+    rect rgb(245, 245, 245)
+        Note over PackageResolver,Index: Index construction on cache miss
+        PackageCache->>PackageResolver: Resolve installed Taiga UI style packages
+        PackageResolver-->>PackageCache: Package/style roots and versions
+        PackageCache->>Scanner: Scan public package styles
+        Scanner->>Extractor: Extract global --tui-* declarations
+        Extractor-->>Scanner: Values + selector chains + source origins
+        Scanner->>Index: Build context-aware package index
 
-    FS-->>VFS: Relevant package path changed
-    VFS->>Cache: Invalidate affected package entries
-    Cache->>Cache: Remove entries without rebuilding
-    Note over Cache: Rebuild lazily on the next request
+        ProjectCache->>ProjectGraph: Build reachable stylesheet scope
+        ProjectGraph->>ProjectGraph: Angular/Nx entrypoints + @import/@use/@forward
+        ProjectGraph->>Extractor: Extract reachable project declarations
+        Extractor-->>ProjectGraph: Values + selector chains + source origins
+        ProjectGraph->>Index: Build project index with cascade order
+    end
+
+    VFS->>PackageCache: Invalidate affected installed-package entries
+    VFS->>ProjectCache: Invalidate affected project-style entries
+    Note over PackageCache,ProjectCache: Rebuild lazily; expensive builds run outside cache monitors
 ```
 
 Architecture status:
 
-- implemented: package discovery, PSI extraction, context classification, immutable indexing, project-level caching, and targeted VFS invalidation;
-- implemented in Stage 3: balanced `var(...)` parsing, context-aware recursive resolution, structured fallback and cycle results, color detection, and equivalent-result grouping;
-- implemented in Stage 4: caret-offset token detection, CSS/SCSS/Less support, debounced hover handling, a custom Swing popup, context comparison rows, resolved values, reference chains, copy, navigation, and color previews;
-- remaining in Stage 4: optional source details and accessibility validation.
+- implemented: installed Taiga UI package discovery, public stylesheet discovery, PSI extraction, context classification, immutable indexing, targeted cache invalidation, and single-flight cache builds;
+- implemented: balanced `var(...)` parsing, recursive reference resolution, structured fallback/cycle results, terminal color detection, and equivalent-result grouping;
+- implemented: project stylesheet entrypoint discovery, local import graph traversal, project override semantics, deterministic source/cascade order where it can be proven, and safe ambiguity where it cannot;
+- implemented: custom Swing hover UX with loading state, package/project grouping, `Not applied` presentation, copy/navigation actions, and non-blocking cold graph construction;
+- implemented in Stage 5: installed + project token-name completion through WebStorm's native CSS/Less/SCSS lookup, background cold-cache warmup, live selected-item value/color preview, and mutual exclusion between completion and hover;
+- remaining production work: unknown-token inspections, deprecated-token replacements, optional source details/settings, accessibility validation, diagnostics, verifier matrix, signing, and Marketplace publishing.
 
 Package boundaries:
 
 ```text
 org.taigaui.designtokens
-├── packageinfo    package discovery and installed-package metadata
-├── index          physical declarations, logical variants, classification, and indexing
-├── resolution     pure var parsing, candidate selection, recursive resolution, and grouping
-├── psi            IntelliJ PSI adapter for CSS, SCSS, and Less
-├── project        project service, package cache, VFS invalidation, and resolution entry point
-└── documentation  offset detection, hover controller, Swing model, and Swing popup
+├── packageinfo    installed-package discovery and metadata
+├── index          declarations, variants, contexts, origins, and immutable indexes
+├── resolution     var() parsing, candidate selection, recursive resolution, and grouping
+├── psi            IntelliJ CSS/SCSS/Less PSI adapter
+├── project        package/project graph orchestration, caches, invalidation, and resolution entry point
+├── completion     completion context, background warmup, native lookup integration, and selected-item preview
+└── documentation  hover detection, controller, Swing model, and Swing popup
 ```
 
-Dependencies point inward: `documentation` consumes the project resolution entry point; `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` depends on extraction contracts from `index`; and `index` depends only on `packageinfo` where installed-package information is required. Package discovery, the cache core, recursive resolution, offset detection, and popup-model mapping remain independently testable.
+Dependencies point inward. `completion` and `documentation` consume the project-level token service; `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` adapts IntelliJ Platform syntax trees into index declarations.
 
-The project cache is keyed by normalized real package root and installed version. Multiple logical npm or pnpm paths that point to the same physical package reuse one immutable index. A version change or a logical package pointing to a different real target replaces the old entry.
+### Installed package graph
 
-VFS events only remove affected cache entries. CSS, SCSS, Less, `package.json`, package-root replacement, and relevant directory changes invalidate the matching package. Unrelated project files and documentation files inside the package do not rebuild the index. Rebuilding is lazy, so a burst of package-manager events produces at most one scan on the next request.
+Installed style discovery starts from the Taiga UI packages reachable from the current project. The package graph understands the published `@taiga-ui/design-tokens` sources, Taiga UI style exports, and proprietary style exports instead of assuming that every token lives in one package.
 
-Platform classification has no unknown state. A declaration under a `mobile` package path or a mobile `tuiPlatform` or `data-platform` selector is mobile; every other declaration is desktop. Theme may remain unspecified when neither light nor dark context is encoded by the source.
+The installed-package cache is keyed by normalized real package identity/version while retaining logical roots for invalidation. Multiple npm/pnpm aliases that resolve to one physical package can share immutable data. Relevant package CSS, Less, SCSS, metadata, root, symlink-target, or directory changes invalidate only affected entries.
 
-A `DesignTokenDeclaration` is an immutable physical source fact: its `value` remains exactly what was parsed from CSS, SCSS, or Less. The declaration also retains its outer-to-inner selector chain. A `DesignTokenVariant` is a logical value candidate identified by token name, platform/theme context, and raw value. Exact copies published in CSS, Less, and SCSS become one logical variant with multiple origins rather than duplicate popup entries.
+### Project stylesheet graph
 
-The value parser scans balanced functions and emits text/reference parts. It resolves several references inside compound values, nested fallbacks, and empty fallbacks without replacing `var(...)` text inside quoted strings or comments. Raw variant values are never mutated.
+Project styles are a separate application layer. The graph discovers Angular/Nx global style entrypoints, conventional `styles.css`/`styles.less`/`styles.scss` entrypoints, and the currently relevant stylesheet. It recursively follows local CSS/Less `@import` plus Sass `@import`, `@use`, and `@forward` edges while leaving external URLs, Sass built-ins, `node_modules`, and installed Taiga UI packages to the package graph.
 
-Reference selection is deterministic. Mobile light/dark first uses the matching mobile theme, then mobile unspecified, then the matching desktop theme, and finally desktop unspecified. Desktop references stay on desktop. Unspecified themes never guess between light and dark. Several distinct variants at the first compatible precedence produce an explicit ambiguity.
+Reachable project declarations receive project origin metadata and a monotonic cascade order. Project candidates are selected before installed packages, but only for the concrete platform/theme contexts they match. Source order is used only when competing project declarations have equal applicability and the same normalized selector scope; unrelated selectors remain ambiguous rather than pretending that source order alone implements the full browser cascade.
 
-The active resolution context is separate from the selected declaration context. When a mobile lookup uses a compatible desktop declaration, references inside that declaration continue to resolve against the original mobile context, matching how default custom-property declarations and mobile overrides interact.
+### Threading and invalidation
 
-A `DesignTokenValueResolution` is either resolved or unresolved. Resolved results contain the final value, nested reference tree, fallback decisions, and optional canonical color metadata. Unresolved results retain explicit missing, ambiguous, circular, or invalid-expression reasons. Cycle nodes include both the declaration context and active resolution context. A fallback inside a cyclic token cannot hide its own cycle, while an outer consumer fallback may recover from an invalid cyclic referenced value.
+Cache monitors protect only cache bookkeeping. Expensive graph construction and PSI scanning execute outside those monitors, so document/VFS invalidation cannot freeze the IDE by waiting for a long build. PSI extraction uses non-blocking/cancellable read actions and checks cancellation during traversal.
 
-`DesignTokenResolutionGroup` collapses equal terminal values for presentation. Hex colors such as `#fff` and `#FFFFFF` share a canonical key. Each group retains root origins separately from all origins reachable through selected references and evaluated fallbacks.
+Hover resolution, cold completion warming, and selected-item preview resolution run off the UI thread. Completion keeps a token-name snapshot so normal typing can continue to show known suggestions while document edits invalidate and refresh the underlying project graph. The completion preview listens to native lookup selection changes without requesting focus, and stale preview jobs are cancelled when keyboard navigation selects another token.
 
-The hover listener only resolves a token when the pointer offset is inside a `--tui-*` name used as the first argument of `var(...)`. It ignores declarations, comments, strings, unrelated custom properties, unknown tokens, and unsupported file types. Nested fallback references and several references in one value are resolved independently.
+### Resolution model
 
-The Swing popup renders one row per distinct terminal result with `Platform` and `Value` columns. It shows the original CSS color notation, uses the canonical color only for grouping and swatch painting, and displays separate reference chains for distinct results.
+A `DesignTokenDeclaration` is an immutable physical source fact: its raw value, source file, line, selector chain, package/project origin, and optional project cascade order are preserved. A `DesignTokenVariant` is a logical value candidate identified by token name, context, raw value, and origins. Equivalent physical CSS/Less/SCSS copies are grouped without losing navigation sources.
+
+The value parser scans balanced functions and resolves multiple/nested references and fallbacks without replacing `var(...)` text inside strings or comments. Raw variants are never mutated.
+
+Resolution keeps the active lookup context separate from the declaration context. A mobile lookup may use a compatible desktop fallback while references inside that declaration continue resolving in the original mobile context. Missing, ambiguous, circular, and malformed cases stay explicit.
+
+Project overrides are evaluated as an application layer before installed package fallback. A generic project `:root` token can override all concrete package contexts; a `[tuiTheme='dark']` project declaration affects only its classified dark context; a platform + theme declaration affects only that concrete context. Non-matching project declarations are not allowed to leak back through package fallback.
 
 ## Development status
 
-Stages 1 through 3 provide the buildable WebStorm plugin scaffold, installed-package discovery, PSI extraction, logical indexing, project caching, VFS invalidation, and pure recursive value resolution. Stage 4 connects those results to one custom Swing hover popup. See [the implementation roadmap](docs/roadmap.md) for the remaining work.
+Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support and native token-name completion with live selected-token preview are implemented; inspections, deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
 
 ## Requirements
 
 - JDK 21
-- Node.js 22 and npm for the real-package test fixture only
+- Node.js 22 and npm for real-package test fixtures only
 - the checked-in Gradle Wrapper
 
-The installed plugin itself does not require Node.js. The npm dependency in this repository is only a real-world fixture for tests.
+The installed plugin itself does not require Node.js. npm dependencies in this repository are test fixtures only.
 
 ## Commands
 
-Run tests without installing the npm fixture:
+Run tests without installing npm fixtures:
 
 ```bash
 ./gradlew test
 ```
 
-The real-package tests are skipped when `node_modules/@taiga-ui/design-tokens` is absent.
-
-Install the pinned package fixture and run the complete quality gate:
+Install the pinned package fixtures and run the complete quality gate:
 
 ```bash
 npm ci

@@ -97,7 +97,29 @@ Remaining:
 
 ## Stage 5 — Production features
 
-- Detect project-level token overrides.
-- Add completion metadata and unknown-token inspections.
+Status: in progress.
+
+Implemented:
+
+- Discover project-level global stylesheet entrypoints from Angular and Nx configuration.
+- Build a project stylesheet graph across local CSS, Less, and Sass `@import`, `@use`, and `@forward` edges.
+- Resolve project-level token overrides before installed Taiga UI package declarations while preserving platform/theme scope.
+- Preserve project cascade/source order for reachable stylesheets and equal-scope declarations.
+- Keep overridden project and package declarations visible as explicit `Not applied` rows.
+- Keep cold project/package graph builds off the UI thread and outside cache monitors.
+- Complete installed and project-defined `--tui-*` token names inside the first argument of CSS `var(...)` without hardcoding a token catalog.
+- Register completion explicitly for CSS, Less, and SCSS and auto-open WebStorm's native completion lookup while a `--tui-*` token is typed.
+- Reuse the existing package/project indexes for completion and warm cold completion data in the background without invalidating an in-progress token typing session.
+- Keep WebStorm's native completion lookup as the primary list instead of rendering a competing token list.
+- Suppress and close the hover popup while the native completion lookup is open.
+- Show a non-focusable side preview for the currently selected `--tui-*` completion item with effective platform/theme values and color swatches.
+- Refresh the side preview as the selected completion item changes through keyboard navigation.
+
+Remaining:
+
+- Add unknown-token inspections and quick fixes.
 - Mark deprecated tokens and suggest replacements.
-- Add settings, telemetry-free diagnostics, Plugin Verifier checks, signing, and Marketplace publishing.
+- Add an optional setting for completion/source-detail behavior where useful.
+- Add telemetry-free diagnostics.
+- Run Plugin Verifier against the supported IDE matrix.
+- Add signing and Marketplace publishing.

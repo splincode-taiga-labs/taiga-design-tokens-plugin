@@ -13,6 +13,21 @@
     <depends>com.intellij.css</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <completion.contributor
+            language="CSS"
+            implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
+        />
+        <completion.contributor
+            language="LESS"
+            implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
+        />
+        <completion.contributor
+            language="SCSS"
+            implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
+        />
+        <typedHandler
+            implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
+        />
         <editorFactoryMouseMotionListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
         />
