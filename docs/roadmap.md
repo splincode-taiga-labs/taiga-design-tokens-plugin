@@ -114,10 +114,13 @@ Implemented:
 - Suppress and close the hover popup while the native completion lookup is open.
 - Show a non-focusable side preview for the currently selected `--tui-*` completion item with effective platform/theme values and color swatches.
 - Refresh the side preview as the selected completion item changes through keyboard navigation.
+- Highlight unknown installed/project `--tui-*` references in the first `var(...)` argument for CSS, Less, and SCSS.
+- Reuse the completion token-name index for inspections without building a cold graph on the inspection/UI path.
+- Restart highlighting after background token-index warmup instead of reporting false unknown-token warnings from a stale catalog.
+- Offer `Replace with ...` only when the closest known design token is sufficiently close and unambiguous.
 
 Remaining:
 
-- Add unknown-token inspections and quick fixes.
 - Mark deprecated tokens and suggest replacements.
 - Add an optional setting for completion/source-detail behavior where useful.
 - Add telemetry-free diagnostics.
