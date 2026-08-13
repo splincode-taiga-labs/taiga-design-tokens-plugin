@@ -2,10 +2,14 @@ package org.taigaui.designtokens.completion
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
@@ -63,15 +67,41 @@ private fun inspectUnknownDesignTokens(
         .findAll(file.text)
         .filterNot { reference -> reference.name in knownTokens }
         .forEach { reference ->
-            DesignTokenNameMatcher.closest(reference.name, knownTokens)
+            val replacement = DesignTokenNameMatcher.closest(reference.name, knownTokens)
+            val fixes =
+                replacement
+                    ?.let(::ReplaceUnknownDesignTokenQuickFix)
+                    ?.let { fix -> arrayOf<LocalQuickFix>(fix) }
+                    .orEmpty()
 
             holder.registerProblem(
                 file,
                 TextRange(reference.startOffset, reference.endOffset),
                 UNKNOWN_TOKEN_MESSAGE,
                 ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+                *fixes,
             )
         }
+}
+
+private class ReplaceUnknownDesignTokenQuickFix(
+    private val replacement: String,
+) : LocalQuickFix {
+    override fun getFamilyName(): String = "Replace with $replacement"
+
+    override fun applyFix(
+        project: Project,
+        descriptor: ProblemDescriptor,
+    ) {
+        val element = descriptor.psiElement
+        val file = element.containingFile ?: return
+        val document = PsiDocumentManager.getInstance(project).getDocument(file) ?: return
+        val range = descriptor.textRangeInElement.shiftRight(element.textRange.startOffset)
+
+        if (range.endOffset <= document.textLength) {
+            document.replaceString(range.startOffset, range.endOffset, replacement)
+        }
+    }
 }
 
 private class DesignTokenCompletionContextScanner(
