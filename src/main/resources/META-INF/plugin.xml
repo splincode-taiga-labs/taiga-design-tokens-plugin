@@ -26,25 +26,6 @@
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
         <localInspection
-            language="CSS"
-            shortName="UnknownTaigaUIDesignToken"
-            displayName="Unknown Taiga UI design token"
-            groupName="Taiga UI"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
-        />
-        <localInspection
-            language="LESS"
-            shortName="UnknownTaigaUIDesignToken"
-            displayName="Unknown Taiga UI design token"
-            groupName="Taiga UI"
-            enabledByDefault="true"
-            level="WARNING"
-            implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
-        />
-        <localInspection
-            language="SCSS"
             shortName="UnknownTaigaUIDesignToken"
             displayName="Unknown Taiga UI design token"
             groupName="Taiga UI"
