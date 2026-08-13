@@ -18,6 +18,7 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         workspaceRoot = tempRoot.resolve("workspace")
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
+        myFixture.enableInspections(UnknownDesignTokenInspection())
 
         createFile(workspaceRoot.resolve("package.json"), "{}")
         createFile(
@@ -94,6 +95,59 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         }
     }
 
+    fun testHighlightsOnlyUnknownTaigaToken() {
+        val sourcePath = workspaceRoot.resolve("src/inspection.less")
+        val sourceFile =
+            createFile(
+                sourcePath,
+                """
+                .demo {
+                    color: var(--tui-text-primary);
+                    background: var(--tui-team-color);
+                    border-color: var(--tui-text-primari);
+                }
+                """.trimIndent(),
+            )
+
+        myFixture.configureFromExistingVirtualFile(sourceFile)
+        indexService.completionTokenNames(sourcePath)
+
+        val problems =
+            myFixture
+                .doHighlighting()
+                .filter { info -> info.description == UNKNOWN_TOKEN_MESSAGE }
+
+        assertEquals(1, problems.size)
+        val problem = problems.single()
+        val highlightedText =
+            myFixture.editor.document.charsSequence
+                .subSequence(problem.startOffset, problem.endOffset)
+                .toString()
+
+        assertEquals("--tui-text-primari", highlightedText)
+    }
+
+    fun testReplacesUnknownTokenWithClosestKnownToken() {
+        val sourcePath = workspaceRoot.resolve("src/quick-fix.less")
+        val sourceFile =
+            createFile(
+                sourcePath,
+                ".demo { color: var(--tui-text-primari); }",
+            )
+
+        myFixture.configureFromExistingVirtualFile(sourceFile)
+        indexService.completionTokenNames(sourcePath)
+        myFixture.doHighlighting()
+
+        val quickFix = myFixture.findSingleIntention("Replace with --tui-text-primary")
+
+        myFixture.launchAction(quickFix)
+        assertEquals(
+            ".demo { color: var(--tui-text-primary); }",
+            myFixture.editor.document.text,
+        )
+    }
+
     private fun complete(tokenPrefix: String): List<String> {
         val sourcePath = configureCompletion(tokenPrefix)
 
@@ -130,5 +184,9 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         return requireNotNull(
             LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path),
         )
+    }
+
+    private companion object {
+        const val UNKNOWN_TOKEN_MESSAGE = "Unknown Taiga UI design token"
     }
 }
