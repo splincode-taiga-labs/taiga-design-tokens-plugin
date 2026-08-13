@@ -18,6 +18,7 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         workspaceRoot = tempRoot.resolve("workspace")
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
+        myFixture.enableInspections(UnknownDesignTokenInspection::class.java)
 
         createFile(workspaceRoot.resolve("package.json"), "{}")
         createFile(
