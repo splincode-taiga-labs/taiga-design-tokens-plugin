@@ -14,6 +14,9 @@ internal object DesignTokenReferenceAtOffsetFinder {
         offset
             .takeIf { it in 0..text.length }
             ?.let { validOffset -> DesignTokenReferenceScanner(text).find(validOffset) }
+
+    fun findAll(text: CharSequence): List<DesignTokenReferenceAtOffset> =
+        DesignTokenReferenceScanner(text).findAll()
 }
 
 private class DesignTokenReferenceScanner(
@@ -34,6 +37,18 @@ private class DesignTokenReferenceScanner(
 
         return result
     }
+
+    fun findAll(): List<DesignTokenReferenceAtOffset> =
+        buildList {
+            var index = 0
+
+            while (index < text.length) {
+                val step = scanAt(index)
+
+                step.reference?.let(::add)
+                index = step.nextOffset
+            }
+        }
 
     private fun scanAt(index: Int): ScanStep =
         when {
