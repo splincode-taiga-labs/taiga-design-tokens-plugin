@@ -13,7 +13,9 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
+import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffset
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffsetFinder
+import java.nio.file.Path
 
 internal data class DesignTokenCompletionContext(
     val prefix: String,
@@ -45,11 +47,7 @@ private fun inspectUnknownDesignTokens(
     file: PsiFile,
     holder: ProblemsHolder,
 ) {
-    val virtualFile =
-        file.virtualFile
-            ?.takeIf { candidate -> candidate.extension?.lowercase() in SUPPORTED_EXTENSIONS }
-            ?: return
-    val sourceFile = pathOrNull(virtualFile.path) ?: return
+    val sourceFile = file.inspectionSourceFile() ?: return
     val project = file.project
     val knownTokens =
         project
@@ -67,21 +65,43 @@ private fun inspectUnknownDesignTokens(
         .findAll(file.text)
         .filterNot { reference -> reference.name in knownTokens }
         .forEach { reference ->
-            val replacement = DesignTokenNameMatcher.closest(reference.name, knownTokens)
-            val fixes =
-                replacement
-                    ?.let(::ReplaceUnknownDesignTokenQuickFix)
-                    ?.let { fix -> arrayOf<LocalQuickFix>(fix) }
-                    .orEmpty()
-
-            holder.registerProblem(
+            holder.registerUnknownTokenProblem(
                 file,
-                TextRange(reference.startOffset, reference.endOffset),
-                UNKNOWN_TOKEN_MESSAGE,
-                ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-                *fixes,
+                reference,
+                DesignTokenNameMatcher.closest(reference.name, knownTokens),
             )
         }
+}
+
+private fun PsiFile.inspectionSourceFile(): Path? =
+    virtualFile
+        ?.takeIf { candidate -> candidate.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+        ?.path
+        ?.let(::pathOrNull)
+
+private fun ProblemsHolder.registerUnknownTokenProblem(
+    file: PsiFile,
+    reference: DesignTokenReferenceAtOffset,
+    replacement: String?,
+) {
+    val range = TextRange(reference.startOffset, reference.endOffset)
+
+    if (replacement == null) {
+        registerProblem(
+            file,
+            range,
+            UNKNOWN_TOKEN_MESSAGE,
+            ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+        )
+    } else {
+        registerProblem(
+            file,
+            range,
+            UNKNOWN_TOKEN_MESSAGE,
+            ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+            ReplaceUnknownDesignTokenQuickFix(replacement),
+        )
+    }
 }
 
 private class ReplaceUnknownDesignTokenQuickFix(
