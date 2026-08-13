@@ -89,16 +89,16 @@ private fun ProblemsHolder.registerUnknownTokenProblem(
     if (replacement == null) {
         registerProblem(
             file,
-            range,
             UNKNOWN_TOKEN_MESSAGE,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+            range,
         )
     } else {
         registerProblem(
             file,
-            range,
             UNKNOWN_TOKEN_MESSAGE,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+            range,
             ReplaceUnknownDesignTokenQuickFix(replacement),
         )
     }
