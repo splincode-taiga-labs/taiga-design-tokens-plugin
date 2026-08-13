@@ -15,8 +15,7 @@ internal object DesignTokenReferenceAtOffsetFinder {
             .takeIf { it in 0..text.length }
             ?.let { validOffset -> DesignTokenReferenceScanner(text).find(validOffset) }
 
-    fun findAll(text: CharSequence): List<DesignTokenReferenceAtOffset> =
-        DesignTokenReferenceScanner(text).findAll()
+    fun findAll(text: CharSequence): List<DesignTokenReferenceAtOffset> = DesignTokenReferenceScanner(text).findAll()
 }
 
 internal object DesignTokenNameMatcher {
