@@ -20,7 +20,7 @@ internal class DesignTokenCompletionService(
     private val lock = Any()
     private val snapshots = mutableMapOf<Path, List<String>>()
     private val pendingWarmups = mutableSetOf<Path>()
-    private val pendingCallbacks = mutableMapOf<Path, PendingCallback>()
+    private val pendingCallbacks = mutableMapOf<Path, MutableList<PendingCallback>>()
 
     fun namesFor(
         sourceFile: Path,
@@ -74,7 +74,9 @@ internal class DesignTokenCompletionService(
     ) {
         val shouldStart =
             synchronized(lock) {
-                pendingCallbacks[sourceFile] = callback
+                pendingCallbacks
+                    .getOrPut(sourceFile, ::mutableListOf)
+                    .add(callback)
                 pendingWarmups.add(sourceFile)
             }
 
@@ -105,23 +107,23 @@ internal class DesignTokenCompletionService(
         sourceFile: Path,
         names: List<String>,
     ) {
-        val update =
+        val callbacks =
             synchronized(lock) {
                 val previous = snapshots.put(sourceFile, names)
-                val pendingCallback = pendingCallbacks.remove(sourceFile)
+                val namesChanged = previous != names
+                val pending = pendingCallbacks.remove(sourceFile).orEmpty()
 
                 pendingWarmups.remove(sourceFile)
-                CompletionUpdate(
-                    callback = pendingCallback?.callback,
-                    shouldNotify =
-                        names.isNotEmpty() &&
-                            (previous != names || pendingCallback?.notifyWhenUnchanged == true),
-                )
+                pending
+                    .filter { callback -> namesChanged || callback.notifyWhenUnchanged }
+                    .map(PendingCallback::callback)
+                    .takeIf { names.isNotEmpty() }
+                    .orEmpty()
             }
 
-        if (update.shouldNotify && !project.isDisposed) {
+        if (callbacks.isNotEmpty() && !project.isDisposed) {
             withContext(Dispatchers.EDT) {
-                update.callback?.invoke()
+                callbacks.forEach { callback -> callback() }
             }
         }
     }
@@ -138,10 +140,5 @@ internal class DesignTokenCompletionService(
     private data class PendingCallback(
         val callback: () -> Unit,
         val notifyWhenUnchanged: Boolean,
-    )
-
-    private data class CompletionUpdate(
-        val callback: (() -> Unit)?,
-        val shouldNotify: Boolean,
     )
 }
