@@ -7,6 +7,7 @@ import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
@@ -30,7 +31,7 @@ internal object DesignTokenCompletionContextFinder {
             ?.let { validOffset -> DesignTokenCompletionContextScanner(text).find(validOffset) }
 }
 
-class UnknownTaigaUIDesignTokenInspection : LocalInspectionTool() {
+class UnknownTaigaUIDesignTokenInspection : LocalInspectionTool(), DumbAware {
     override fun checkFile(
         file: PsiFile,
         manager: InspectionManager,
