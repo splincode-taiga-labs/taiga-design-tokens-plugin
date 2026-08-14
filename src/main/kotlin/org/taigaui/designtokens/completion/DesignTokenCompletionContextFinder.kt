@@ -1,16 +1,17 @@
 package org.taigaui.designtokens.completion
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
-import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffset
@@ -31,51 +32,48 @@ internal object DesignTokenCompletionContextFinder {
             ?.let { validOffset -> DesignTokenCompletionContextScanner(text).find(validOffset) }
 }
 
-class UnknownTaigaUIDesignTokenInspection :
+class UnknownDesignTokenInspection :
     LocalInspectionTool(),
     DumbAware {
-    override fun checkFile(
-        file: PsiFile,
-        manager: InspectionManager,
+    override fun buildVisitor(
+        holder: ProblemsHolder,
         isOnTheFly: Boolean,
-    ): Array<ProblemDescriptor> = inspectUnknownDesignTokens(file, manager, isOnTheFly)
+    ): PsiElementVisitor =
+        object : PsiElementVisitor() {
+            override fun visitFile(file: PsiFile) {
+                inspectUnknownDesignTokens(file, holder)
+            }
+        }
 }
 
 private fun inspectUnknownDesignTokens(
     file: PsiFile,
-    manager: InspectionManager,
-    isOnTheFly: Boolean,
-): Array<ProblemDescriptor> {
-    val sourceFile = file.inspectionSourceFile()
+    holder: ProblemsHolder,
+) {
+    val sourceFile = file.inspectionSourceFile() ?: return
     val project = file.project
     val knownTokens =
-        sourceFile
-            ?.let { path ->
-                project
-                    .service<DesignTokenCompletionService>()
-                    .namesForInspection(path) {
-                        if (file.isValid) {
-                            DaemonCodeAnalyzer
-                                .getInstance(project)
-                                .restart(file, INSPECTION_RESTART_REASON)
-                        }
-                    }
+        project
+            .service<DesignTokenCompletionService>()
+            .namesForInspection(sourceFile) {
+                if (file.isValid) {
+                    DaemonCodeAnalyzer
+                        .getInstance(project)
+                        .restart(file, INSPECTION_RESTART_REASON)
+                }
             }?.toSet()
+            ?: return
 
-    return knownTokens
-        ?.let { tokens ->
-            DesignTokenReferenceAtOffsetFinder
-                .findAll(file.text)
-                .filterNot { reference -> reference.name in tokens }
-                .map { reference ->
-                    manager.createUnknownTokenProblem(
-                        file = file,
-                        reference = reference,
-                        replacement = DesignTokenNameMatcher.closest(reference.name, tokens),
-                        isOnTheFly = isOnTheFly,
-                    )
-                }.toTypedArray()
-        } ?: emptyArray()
+    DesignTokenReferenceAtOffsetFinder
+        .findAll(file.text)
+        .filterNot { reference -> reference.name in knownTokens }
+        .forEach { reference ->
+            holder.registerUnknownTokenProblem(
+                file,
+                reference,
+                DesignTokenNameMatcher.closest(reference.name, knownTokens),
+            )
+        }
 }
 
 private fun PsiFile.inspectionSourceFile(): Path? =
@@ -84,29 +82,26 @@ private fun PsiFile.inspectionSourceFile(): Path? =
         ?.path
         ?.let(::pathOrNull)
 
-private fun InspectionManager.createUnknownTokenProblem(
+private fun ProblemsHolder.registerUnknownTokenProblem(
     file: PsiFile,
     reference: DesignTokenReferenceAtOffset,
     replacement: String?,
-    isOnTheFly: Boolean,
-): ProblemDescriptor {
+) {
     val range = TextRange(reference.startOffset, reference.endOffset)
 
-    return if (replacement == null) {
-        createProblemDescriptor(
+    if (replacement == null) {
+        registerProblem(
             file,
-            range,
             UNKNOWN_TOKEN_MESSAGE,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-            isOnTheFly,
+            range,
         )
     } else {
-        createProblemDescriptor(
+        registerProblem(
             file,
-            range,
             UNKNOWN_TOKEN_MESSAGE,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-            isOnTheFly,
+            range,
             ReplaceUnknownDesignTokenQuickFix(replacement),
         )
     }
