@@ -116,8 +116,14 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
             myFixture
                 .doHighlighting()
                 .filter { info -> info.description == UNKNOWN_TOKEN_MESSAGE }
+        val problemTexts =
+            problems.map { problem ->
+                myFixture.editor.document.charsSequence
+                    .subSequence(problem.startOffset, problem.endOffset)
+                    .toString()
+            }
 
-        assertEquals(1, problems.size)
+        assertEquals("Unexpected unknown-token highlights: $problemTexts", 1, problems.size)
         val problem = problems.single()
         val highlightedText =
             myFixture.editor.document.charsSequence
@@ -139,7 +145,12 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         indexService.completionTokenNames(sourcePath)
         myFixture.doHighlighting()
 
-        val quickFix = myFixture.findSingleIntention("Replace with --tui-text-primary")
+        val quickFixText = "Replace with --tui-text-primary"
+        val intentions = myFixture.availableIntentions
+        val intentionTexts = intentions.map { intention -> intention.text }
+
+        assertTrue("Available intentions: $intentionTexts", quickFixText in intentionTexts)
+        val quickFix = intentions.single { intention -> intention.text == quickFixText }
 
         myFixture.launchAction(quickFix)
         assertEquals(
