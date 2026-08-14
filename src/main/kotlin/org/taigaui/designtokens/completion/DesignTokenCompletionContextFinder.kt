@@ -30,7 +30,7 @@ internal object DesignTokenCompletionContextFinder {
             ?.let { validOffset -> DesignTokenCompletionContextScanner(text).find(validOffset) }
 }
 
-class UnknownDesignTokenInspection : LocalInspectionTool() {
+class UnknownTaigaUIDesignTokenInspection : LocalInspectionTool() {
     override fun checkFile(
         file: PsiFile,
         manager: InspectionManager,
