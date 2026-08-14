@@ -9,6 +9,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.HintedPsiElementVisitor
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
@@ -36,10 +37,12 @@ class UnknownDesignTokenInspection : LocalInspectionTool() {
         holder: ProblemsHolder,
         isOnTheFly: Boolean,
     ): PsiElementVisitor =
-        object : PsiElementVisitor() {
+        object : PsiElementVisitor(), HintedPsiElementVisitor {
             override fun visitFile(file: PsiFile) {
                 inspectUnknownDesignTokens(file, holder)
             }
+
+            override fun getHintPsiElements(): List<Class<*>> = listOf(PsiFile::class.java)
         }
 }
 
