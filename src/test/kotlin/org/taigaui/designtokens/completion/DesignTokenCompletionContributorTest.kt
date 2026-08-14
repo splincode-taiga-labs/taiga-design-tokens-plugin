@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.completion
 
+import com.intellij.codeInspection.InspectionManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -111,6 +112,17 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
         indexService.completionTokenNames(sourcePath)
+
+        assertTrue("Design token index is not cached after warmup", indexService.isIndexCached(sourcePath))
+
+        val directProblems =
+            UnknownDesignTokenInspection().checkFile(
+                myFixture.file,
+                InspectionManager.getInstance(project),
+                true,
+            )
+
+        assertEquals("Direct inspection returned ${directProblems.size} problems", 1, directProblems.size)
 
         val problems =
             myFixture
