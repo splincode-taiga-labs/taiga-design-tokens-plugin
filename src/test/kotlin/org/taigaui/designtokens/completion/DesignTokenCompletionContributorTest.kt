@@ -9,14 +9,12 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
-    private lateinit var tempRoot: Path
     private lateinit var workspaceRoot: Path
     private lateinit var indexService: DesignTokenIndexService
 
     override fun setUp() {
         super.setUp()
-        tempRoot = Files.createTempDirectory("design-token-completion")
-        workspaceRoot = tempRoot.resolve("workspace")
+        workspaceRoot = Path.of(myFixture.tempDirPath).resolve("workspace")
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
         myFixture.enableInspections(UnknownDesignTokenInspection())
@@ -58,7 +56,7 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
     override fun tearDown() {
         try {
             indexService.clear()
-            tempRoot.toFile().deleteRecursively()
+            workspaceRoot.toFile().deleteRecursively()
         } finally {
             super.tearDown()
         }
