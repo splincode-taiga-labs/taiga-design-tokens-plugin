@@ -31,8 +31,7 @@
             groupName="Taiga UI"
             enabledByDefault="true"
             level="WARNING"
-            runForWholeFile="true"
-            implementationClass="org.taigaui.designtokens.completion.UnknownTaigaUIDesignTokenInspection"
+            implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
         />
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
