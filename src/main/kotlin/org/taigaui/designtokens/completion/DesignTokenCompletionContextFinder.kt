@@ -31,7 +31,9 @@ internal object DesignTokenCompletionContextFinder {
             ?.let { validOffset -> DesignTokenCompletionContextScanner(text).find(validOffset) }
 }
 
-class UnknownTaigaUIDesignTokenInspection : LocalInspectionTool(), DumbAware {
+class UnknownTaigaUIDesignTokenInspection :
+    LocalInspectionTool(),
+    DumbAware {
     override fun checkFile(
         file: PsiFile,
         manager: InspectionManager,
