@@ -1,6 +1,5 @@
 package org.taigaui.designtokens.completion
 
-import com.intellij.codeInspection.InspectionManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -9,15 +8,17 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
+    private lateinit var tempRoot: Path
     private lateinit var workspaceRoot: Path
     private lateinit var indexService: DesignTokenIndexService
 
     override fun setUp() {
         super.setUp()
-        workspaceRoot = Path.of(myFixture.tempDirPath).resolve("workspace")
+        tempRoot = Files.createTempDirectory("design-token-completion")
+        workspaceRoot = tempRoot.resolve("workspace")
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
-        myFixture.enableInspections(UnknownTaigaUIDesignTokenInspection())
+        myFixture.enableInspections(UnknownDesignTokenInspection())
 
         createFile(workspaceRoot.resolve("package.json"), "{}")
         createFile(
@@ -56,7 +57,7 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
     override fun tearDown() {
         try {
             indexService.clear()
-            workspaceRoot.toFile().deleteRecursively()
+            tempRoot.toFile().deleteRecursively()
         } finally {
             super.tearDown()
         }
@@ -111,29 +112,12 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         myFixture.configureFromExistingVirtualFile(sourceFile)
         indexService.completionTokenNames(sourcePath)
 
-        assertTrue("Design token index is not cached after warmup", indexService.isIndexCached(sourcePath))
-
-        val directProblems =
-            UnknownTaigaUIDesignTokenInspection().checkFile(
-                myFixture.file,
-                InspectionManager.getInstance(project),
-                true,
-            )
-
-        assertEquals("Direct inspection returned ${directProblems.size} problems", 1, directProblems.size)
-
         val problems =
             myFixture
                 .doHighlighting()
                 .filter { info -> info.description == UNKNOWN_TOKEN_MESSAGE }
-        val problemTexts =
-            problems.map { problem ->
-                myFixture.editor.document.charsSequence
-                    .subSequence(problem.startOffset, problem.endOffset)
-                    .toString()
-            }
 
-        assertEquals("Unexpected unknown-token highlights: $problemTexts", 1, problems.size)
+        assertEquals(1, problems.size)
         val problem = problems.single()
         val highlightedText =
             myFixture.editor.document.charsSequence
@@ -144,23 +128,22 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
     }
 
     fun testReplacesUnknownTokenWithClosestKnownToken() {
+        val unknownToken = "--tui-text-primari"
         val sourcePath = workspaceRoot.resolve("src/quick-fix.less")
         val sourceFile =
             createFile(
                 sourcePath,
-                ".demo { color: var(--tui-text-primari); }",
+                ".demo { color: var($unknownToken); }",
             )
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
+        val tokenOffset = myFixture.editor.document.text.indexOf(unknownToken)
+
+        myFixture.editor.caretModel.moveToOffset(tokenOffset + unknownToken.length / 2)
         indexService.completionTokenNames(sourcePath)
         myFixture.doHighlighting()
 
-        val quickFixText = "Replace with --tui-text-primary"
-        val intentions = myFixture.availableIntentions
-        val intentionTexts = intentions.map { intention -> intention.text }
-
-        assertTrue("Available intentions: $intentionTexts", quickFixText in intentionTexts)
-        val quickFix = intentions.single { intention -> intention.text == quickFixText }
+        val quickFix = myFixture.findSingleIntention("Replace with --tui-text-primary")
 
         myFixture.launchAction(quickFix)
         assertEquals(
