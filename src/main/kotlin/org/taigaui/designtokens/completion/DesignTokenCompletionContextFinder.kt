@@ -1,17 +1,15 @@
 package org.taigaui.designtokens.completion
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.codeInspection.InspectionManager
 import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.LocalQuickFix
 import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.codeInspection.ProblemHighlightType
-import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.HintedPsiElementVisitor
 import com.intellij.psi.PsiDocumentManager
-import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
 import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffset
@@ -33,24 +31,19 @@ internal object DesignTokenCompletionContextFinder {
 }
 
 class UnknownDesignTokenInspection : LocalInspectionTool() {
-    override fun buildVisitor(
-        holder: ProblemsHolder,
+    override fun checkFile(
+        file: PsiFile,
+        manager: InspectionManager,
         isOnTheFly: Boolean,
-    ): PsiElementVisitor =
-        object : PsiElementVisitor(), HintedPsiElementVisitor {
-            override fun visitFile(file: PsiFile) {
-                inspectUnknownDesignTokens(file, holder)
-            }
-
-            override fun getHintPsiElements(): List<Class<*>> = listOf(PsiFile::class.java)
-        }
+    ): Array<ProblemDescriptor> = inspectUnknownDesignTokens(file, manager, isOnTheFly)
 }
 
 private fun inspectUnknownDesignTokens(
     file: PsiFile,
-    holder: ProblemsHolder,
-) {
-    val sourceFile = file.inspectionSourceFile() ?: return
+    manager: InspectionManager,
+    isOnTheFly: Boolean,
+): Array<ProblemDescriptor> {
+    val sourceFile = file.inspectionSourceFile() ?: return emptyArray()
     val project = file.project
     val knownTokens =
         project
@@ -62,18 +55,19 @@ private fun inspectUnknownDesignTokens(
                         .restart(file, INSPECTION_RESTART_REASON)
                 }
             }?.toSet()
-            ?: return
+            ?: return emptyArray()
 
-    DesignTokenReferenceAtOffsetFinder
+    return DesignTokenReferenceAtOffsetFinder
         .findAll(file.text)
         .filterNot { reference -> reference.name in knownTokens }
-        .forEach { reference ->
-            holder.registerUnknownTokenProblem(
-                file,
-                reference,
-                DesignTokenNameMatcher.closest(reference.name, knownTokens),
+        .map { reference ->
+            manager.createUnknownTokenProblem(
+                file = file,
+                reference = reference,
+                replacement = DesignTokenNameMatcher.closest(reference.name, knownTokens),
+                isOnTheFly = isOnTheFly,
             )
-        }
+        }.toTypedArray()
 }
 
 private fun PsiFile.inspectionSourceFile(): Path? =
@@ -82,26 +76,29 @@ private fun PsiFile.inspectionSourceFile(): Path? =
         ?.path
         ?.let(::pathOrNull)
 
-private fun ProblemsHolder.registerUnknownTokenProblem(
+private fun InspectionManager.createUnknownTokenProblem(
     file: PsiFile,
     reference: DesignTokenReferenceAtOffset,
     replacement: String?,
-) {
+    isOnTheFly: Boolean,
+): ProblemDescriptor {
     val range = TextRange(reference.startOffset, reference.endOffset)
 
-    if (replacement == null) {
-        registerProblem(
+    return if (replacement == null) {
+        createProblemDescriptor(
             file,
+            range,
             UNKNOWN_TOKEN_MESSAGE,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-            range,
+            isOnTheFly,
         )
     } else {
-        registerProblem(
+        createProblemDescriptor(
             file,
+            range,
             UNKNOWN_TOKEN_MESSAGE,
             ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-            range,
+            isOnTheFly,
             ReplaceUnknownDesignTokenQuickFix(replacement),
         )
     }
