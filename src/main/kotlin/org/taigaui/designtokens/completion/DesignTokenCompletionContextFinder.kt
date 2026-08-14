@@ -43,31 +43,36 @@ private fun inspectUnknownDesignTokens(
     manager: InspectionManager,
     isOnTheFly: Boolean,
 ): Array<ProblemDescriptor> {
-    val sourceFile = file.inspectionSourceFile() ?: return emptyArray()
+    val sourceFile = file.inspectionSourceFile()
     val project = file.project
     val knownTokens =
-        project
-            .service<DesignTokenCompletionService>()
-            .namesForInspection(sourceFile) {
-                if (file.isValid) {
-                    DaemonCodeAnalyzer
-                        .getInstance(project)
-                        .restart(file, INSPECTION_RESTART_REASON)
-                }
+        sourceFile
+            ?.let { path ->
+                project
+                    .service<DesignTokenCompletionService>()
+                    .namesForInspection(path) {
+                        if (file.isValid) {
+                            DaemonCodeAnalyzer
+                                .getInstance(project)
+                                .restart(file, INSPECTION_RESTART_REASON)
+                        }
+                    }
             }?.toSet()
-            ?: return emptyArray()
 
-    return DesignTokenReferenceAtOffsetFinder
-        .findAll(file.text)
-        .filterNot { reference -> reference.name in knownTokens }
-        .map { reference ->
-            manager.createUnknownTokenProblem(
-                file = file,
-                reference = reference,
-                replacement = DesignTokenNameMatcher.closest(reference.name, knownTokens),
-                isOnTheFly = isOnTheFly,
-            )
-        }.toTypedArray()
+    return knownTokens
+        ?.let { tokens ->
+            DesignTokenReferenceAtOffsetFinder
+                .findAll(file.text)
+                .filterNot { reference -> reference.name in tokens }
+                .map { reference ->
+                    manager.createUnknownTokenProblem(
+                        file = file,
+                        reference = reference,
+                        replacement = DesignTokenNameMatcher.closest(reference.name, tokens),
+                        isOnTheFly = isOnTheFly,
+                    )
+                }.toTypedArray()
+        } ?: emptyArray()
 }
 
 private fun PsiFile.inspectionSourceFile(): Path? =
