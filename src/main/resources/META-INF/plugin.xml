@@ -32,7 +32,7 @@
             enabledByDefault="true"
             level="WARNING"
             runForWholeFile="true"
-            implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
+            implementationClass="org.taigaui.designtokens.completion.UnknownTaigaUIDesignTokenInspection"
         />
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
