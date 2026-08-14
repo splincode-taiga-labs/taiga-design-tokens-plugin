@@ -17,7 +17,7 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         workspaceRoot = Path.of(myFixture.tempDirPath).resolve("workspace")
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
-        myFixture.enableInspections(UnknownDesignTokenInspection())
+        myFixture.enableInspections(UnknownTaigaUIDesignTokenInspection())
 
         createFile(workspaceRoot.resolve("package.json"), "{}")
         createFile(
@@ -114,7 +114,7 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         assertTrue("Design token index is not cached after warmup", indexService.isIndexCached(sourcePath))
 
         val directProblems =
-            UnknownDesignTokenInspection().checkFile(
+            UnknownTaigaUIDesignTokenInspection().checkFile(
                 myFixture.file,
                 InspectionManager.getInstance(project),
                 true,
