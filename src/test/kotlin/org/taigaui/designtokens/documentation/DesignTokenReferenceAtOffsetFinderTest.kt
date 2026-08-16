@@ -207,6 +207,61 @@ class DesignTokenNameMatcherTest {
     }
 
     @Test
+    fun `suggests variants while the last token segment is still partial`() {
+        assertEquals(
+            listOf(
+                "--tui-font-text",
+                "--tui-font-text-m",
+                "--tui-font-text-s",
+                "--tui-font-text-xs",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-font-te",
+                listOf(
+                    "--tui-font-text-xs",
+                    "--tui-font-heading",
+                    "--tui-font-text-s",
+                    "--tui-font-text",
+                    "--tui-font-text-m",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `suggests a longer token when its suffix is only partially typed`() {
+        assertEquals(
+            listOf(
+                "--tui-text-secondary",
+                "--tui-text-secondary-hover",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-text-secon",
+                listOf(
+                    "--tui-text-primary",
+                    "--tui-text-secondary-hover",
+                    "--tui-text-secondary",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `falls back to typo correction when no token starts with the unknown name`() {
+        assertEquals(
+            listOf("--tui-font-text-xs"),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-font-text-xs2",
+                listOf(
+                    "--tui-font-text-xs",
+                    "--tui-font-text-s",
+                    "--tui-font-text-m",
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun `does not suggest a distant token`() {
         assertNull(
             DesignTokenNameMatcher.closest(
