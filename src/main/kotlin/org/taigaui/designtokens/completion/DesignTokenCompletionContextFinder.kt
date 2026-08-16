@@ -88,15 +88,15 @@ private fun ProblemsHolder.registerUnknownTokenProblem(
     replacements: List<String>,
 ) {
     val range = TextRange(reference.startOffset, reference.endOffset)
-    val quickFixes = replacements.map(::ReplaceUnknownDesignTokenQuickFix).toTypedArray()
+    val problemBuilder =
+        problem(file, UNKNOWN_TOKEN_MESSAGE)
+            .highlight(ProblemHighlightType.GENERIC_ERROR_OR_WARNING)
+            .range(range)
 
-    registerProblem(
-        file,
-        UNKNOWN_TOKEN_MESSAGE,
-        ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-        range,
-        *quickFixes,
-    )
+    replacements.forEach { replacement ->
+        problemBuilder.fix(ReplaceUnknownDesignTokenQuickFix(replacement))
+    }
+    problemBuilder.register()
 }
 
 private class ReplaceUnknownDesignTokenQuickFix(
