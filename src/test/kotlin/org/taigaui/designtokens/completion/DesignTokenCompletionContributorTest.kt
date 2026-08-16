@@ -30,11 +30,15 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
             """
             :root {
                 --tui-text-primary: #000;
+                --tui-text-secondary: #666;
                 --tui-background-base: #fff;
                 --tui-background-elevation-1: #fff;
                 --tui-background-elevation-2: #fff;
                 --tui-border-hover: #ccc;
                 --tui-border-normal: #ddd;
+                --tui-font-text: 16px;
+                --tui-font-text-s: 14px;
+                --tui-font-text-xs: 12px;
             }
             """.trimIndent(),
         )
@@ -192,6 +196,64 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         myFixture.launchAction(quickFix)
         assertEquals(
             ".demo { border-color: var(--tui-border-normal); }",
+            myFixture.editor.document.text,
+        )
+    }
+
+    fun testOffersQuickFixesWhileLastTokenSegmentIsPartial() {
+        val unknownToken = "--tui-font-te"
+        val sourcePath = workspaceRoot.resolve("src/partial-prefix-quick-fix.less")
+        val sourceFile =
+            createFile(
+                sourcePath,
+                ".demo { font: var($unknownToken); }",
+            )
+
+        myFixture.configureFromExistingVirtualFile(sourceFile)
+        val tokenOffset =
+            myFixture.editor.document.text
+                .indexOf(unknownToken)
+
+        myFixture.editor.caretModel.moveToOffset(tokenOffset + unknownToken.length / 2)
+        indexService.completionTokenNames(sourcePath)
+        myFixture.doHighlighting()
+
+        val quickFixNames =
+            myFixture
+                .filterAvailableIntentions("Replace with --tui-font-text")
+                .map { action -> action.text }
+
+        assertContainsElements(
+            quickFixNames,
+            "Replace with --tui-font-text",
+            "Replace with --tui-font-text-s",
+            "Replace with --tui-font-text-xs",
+        )
+    }
+
+    fun testOffersClosestQuickFixForMistypedTokenSuffix() {
+        val unknownToken = "--tui-font-text-xs2"
+        val sourcePath = workspaceRoot.resolve("src/typo-suffix-quick-fix.less")
+        val sourceFile =
+            createFile(
+                sourcePath,
+                ".demo { font: var($unknownToken); }",
+            )
+
+        myFixture.configureFromExistingVirtualFile(sourceFile)
+        val tokenOffset =
+            myFixture.editor.document.text
+                .indexOf(unknownToken)
+
+        myFixture.editor.caretModel.moveToOffset(tokenOffset + unknownToken.length / 2)
+        indexService.completionTokenNames(sourcePath)
+        myFixture.doHighlighting()
+
+        val quickFix = myFixture.findSingleIntention("Replace with --tui-font-text-xs")
+
+        myFixture.launchAction(quickFix)
+        assertEquals(
+            ".demo { font: var(--tui-font-text-xs); }",
             myFixture.editor.document.text,
         )
     }
