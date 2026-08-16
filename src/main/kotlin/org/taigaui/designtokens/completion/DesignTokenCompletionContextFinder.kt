@@ -110,7 +110,7 @@ private fun ProblemsHolder.registerUnknownTokenProblem(
 private class ReplaceUnknownDesignTokenQuickFix(
     private val replacement: String,
 ) : LocalQuickFix,
-        DumbAware {
+    DumbAware {
     override fun getFamilyName(): String = "Replace with $replacement"
 
     override fun applyFix(
