@@ -1,7 +1,6 @@
 package org.taigaui.designtokens.documentation
 
 import com.intellij.codeInsight.lookup.Lookup
-import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.EDT
@@ -31,7 +30,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
-import java.awt.MouseInfo
 import java.awt.Point
 import java.nio.file.Path
 import javax.swing.SwingUtilities
@@ -77,12 +75,6 @@ internal class DesignTokenHoverPopupController(
                     }
                 },
             )
-    }
-
-    fun editorInteraction(editor: Editor) {
-        if (editor.project == project && !editor.isDisposed) {
-            dismissHover()
-        }
     }
 
     fun mouseMoved(event: EditorMouseEvent) {
@@ -332,7 +324,11 @@ internal class DesignTokenHoverPopupController(
         pendingHideJob = null
     }
 
-    private fun dismissHover() {
+    fun dismissHover(editor: Editor? = null) {
+        if (editor != null && (editor.project != project || editor.isDisposed)) {
+            return
+        }
+
         cancelScheduledHide()
         activeHoverKey = null
         latestHoverRequest = null
@@ -362,44 +358,8 @@ internal class DesignTokenHoverPopupController(
     }
 }
 
-private fun Project.hasActiveCompletionLookup(): Boolean =
-    LookupManager.getInstance(this).activeLookup?.isCompletion == true
-
-private fun Project.blocksDesignTokenPopup(editor: Editor): Boolean =
-    hasActiveCompletionLookup() || editor.isDisposed || editor.selectionModel.hasSelection()
-
 private fun canShowDesignTokenPopup(currentPopup: JBPopup?): Boolean =
     currentPopup?.isVisible == true || !JBPopupFactory.getInstance().isPopupActive
-
-private fun createDesignTokenPopup(
-    project: Project,
-    panel: DesignTokenHoverPopupPanel,
-): JBPopup =
-    JBPopupFactory
-        .getInstance()
-        .createComponentPopupBuilder(panel, panel)
-        .setProject(project)
-        .setRequestFocus(false)
-        .setFocusable(true)
-        .setCancelOnClickOutside(true)
-        .setCancelOnOtherWindowOpen(true)
-        .setCancelOnWindowDeactivation(true)
-        .setCancelKeyEnabled(true)
-        .setMovable(false)
-        .setResizable(false)
-        .createPopup()
-
-private fun DesignTokenHoverPopupPanel?.containsPointer(): Boolean {
-    val content = this?.takeIf { component -> component.isShowing }
-    val pointer = MouseInfo.getPointerInfo()?.location
-
-    return if (content == null || pointer == null) {
-        false
-    } else {
-        SwingUtilities.convertPointFromScreen(pointer, content)
-        content.contains(pointer)
-    }
-}
 
 private fun Editor.calculateDesignTokenPopupWidth(): Int {
     val preferredWidth = JBUI.scale(PREFERRED_POPUP_WIDTH)
