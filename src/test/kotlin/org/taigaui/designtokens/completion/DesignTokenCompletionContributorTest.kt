@@ -168,7 +168,9 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
             )
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
-        val tokenOffset = myFixture.editor.document.text.indexOf(unknownToken)
+        val tokenOffset =
+            myFixture.editor.document.text
+                .indexOf(unknownToken)
 
         myFixture.editor.caretModel.moveToOffset(tokenOffset + unknownToken.length / 2)
         indexService.completionTokenNames(sourcePath)
