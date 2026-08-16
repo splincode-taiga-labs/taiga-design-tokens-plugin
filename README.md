@@ -99,8 +99,8 @@ sequenceDiagram
             Completion->>Lookup: Contribute filtered lookup items
         else Cold or invalidated graph
             CompletionService-->>Completion: Latest snapshot or no custom items yet
-            CompletionService->>Service: Warm completionTokenNames(sourceFile) in background
-            Service->>PackageCache: getOrBuild(package index)
+            CompletionService->>Service: Warm complete token-name catalog in background
+            Service->>PackageCache: Build installed name and resolution indexes
             Service->>ProjectCache: getOrBuild(project index)
             CompletionService-->>Completion: Reopen lookup if caret still matches var(--tui-...)
             Completion->>Lookup: Contribute refreshed lookup items
@@ -125,8 +125,8 @@ sequenceDiagram
             Inspection-->>User: Warning + safe closest-token quick fix
         else Cold or invalidated graph
             CompletionService-->>Inspection: No stale inspection catalog
-            CompletionService->>Service: Warm completionTokenNames(sourceFile) in background
-            Service->>PackageCache: getOrBuild(package index)
+            CompletionService->>Service: Warm complete token-name catalog in background
+            Service->>PackageCache: Build installed name and resolution indexes
             Service->>ProjectCache: getOrBuild(project index)
             CompletionService-->>Inspection: Restart highlighting after warmup
         end
@@ -136,7 +136,7 @@ sequenceDiagram
         Note over User,Popup: Hover flow
         User->>Hover: Hover var(--tui-token)
         Hover->>Service: resolveToken(sourceFile, tokenName)
-        Service->>PackageCache: getOrBuild(package index)
+        Service->>PackageCache: getOrBuild(reachable resolution index)
         Service->>ProjectCache: getOrBuild(project index)
         PackageCache-->>Service: Installed Taiga UI variants
         ProjectCache-->>Service: Reachable Project styles variants
@@ -155,7 +155,7 @@ sequenceDiagram
         PackageCache->>Scanner: Scan public package styles
         Scanner->>Extractor: Extract global --tui-* declarations
         Extractor-->>Scanner: Values + selector chains + source origins
-        Scanner->>Index: Build context-aware package index
+        Scanner->>Index: Build complete name catalog and reachable resolution index
 
         ProjectCache->>ProjectGraph: Build reachable stylesheet scope
         ProjectGraph->>ProjectGraph: Angular/Nx entrypoints + @import/@use/@forward
