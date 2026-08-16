@@ -30,5 +30,5 @@ internal class DesignTokenHoverPopupListener :
 private fun EditorMouseEvent.dismissDesignTokenHoverPopup() {
     val project = editor.project ?: return
 
-    project.service<DesignTokenHoverPopupController>().editorInteraction(editor)
+    project.service<DesignTokenHoverPopupController>().dismissHover(editor)
 }
