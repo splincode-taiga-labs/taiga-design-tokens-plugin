@@ -23,13 +23,12 @@ internal object DesignTokenNameMatcher {
         unknown: String,
         candidates: Collection<String>,
     ): List<String> {
-        val prefix = if (unknown.endsWith('-')) unknown else "$unknown-"
         val prefixMatches =
             candidates
                 .asSequence()
-                .filter { candidate -> candidate != unknown && candidate.startsWith(prefix) }
+                .filter { candidate -> candidate != unknown && candidate.startsWith(unknown) }
                 .distinct()
-                .sorted()
+                .sortedWith(compareBy<String>(String::length).thenBy { candidate -> candidate })
                 .take(MAX_SUGGESTIONS)
                 .toList()
 
