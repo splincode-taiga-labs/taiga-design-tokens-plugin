@@ -459,11 +459,15 @@ private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService):
     val groups = indexService.resolveToken(sourceFile, tokenName)
     val model =
         if (groups.isEmpty()) {
-            DesignTokenHoverPopupModel(
-                tokenName = tokenName,
-                description = "Nothing found",
-                sections = emptyList(),
-            )
+            val suggestions =
+                runCatching {
+                    DesignTokenNameMatcher.suggestions(
+                        tokenName,
+                        indexService.completionTokenNames(sourceFile),
+                    )
+                }.getOrDefault(emptyList())
+
+            DesignTokenHoverPopupModel.notFound(tokenName, suggestions)
         } else {
             DesignTokenHoverPopupModel.create(tokenName, groups)
         }
