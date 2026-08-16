@@ -31,6 +31,10 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
             :root {
                 --tui-text-primary: #000;
                 --tui-background-base: #fff;
+                --tui-background-elevation-1: #fff;
+                --tui-background-elevation-2: #fff;
+                --tui-border-hover: #ccc;
+                --tui-border-normal: #ddd;
             }
             """.trimIndent(),
         )
@@ -150,6 +154,42 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         myFixture.launchAction(quickFix)
         assertEquals(
             ".demo { color: var(--tui-text-primary); }",
+            myFixture.editor.document.text,
+        )
+    }
+
+    fun testOffersPrefixQuickFixesForIncompleteToken() {
+        val unknownToken = "--tui-border"
+        val sourcePath = workspaceRoot.resolve("src/prefix-quick-fix.less")
+        val sourceFile =
+            createFile(
+                sourcePath,
+                ".demo { border-color: var($unknownToken); }",
+            )
+
+        myFixture.configureFromExistingVirtualFile(sourceFile)
+        val tokenOffset = myFixture.editor.document.text.indexOf(unknownToken)
+
+        myFixture.editor.caretModel.moveToOffset(tokenOffset + unknownToken.length / 2)
+        indexService.completionTokenNames(sourcePath)
+        myFixture.doHighlighting()
+
+        val quickFixNames =
+            myFixture
+                .filterAvailableIntentions("Replace with --tui-border")
+                .map { action -> action.text }
+
+        assertContainsElements(
+            quickFixNames,
+            "Replace with --tui-border-hover",
+            "Replace with --tui-border-normal",
+        )
+
+        val quickFix = myFixture.findSingleIntention("Replace with --tui-border-normal")
+
+        myFixture.launchAction(quickFix)
+        assertEquals(
+            ".demo { border-color: var(--tui-border-normal); }",
             myFixture.editor.document.text,
         )
     }
