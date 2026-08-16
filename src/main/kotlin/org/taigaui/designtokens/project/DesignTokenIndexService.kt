@@ -119,7 +119,7 @@ class DesignTokenIndexService(
             val packageIndexCached = designTokensPackage?.let(cache::contains) ?: true
             val packageNameCatalogCached =
                 designTokensPackage
-                    ?.takeIf(DesignTokensPackage::needsCompleteNameCatalog)
+                    ?.takeIf { packageSet -> packageSet.needsCompleteNameCatalog() }
                     ?.let(packageNameCatalogCache::contains)
                     ?: true
             val projectIndexCached =
