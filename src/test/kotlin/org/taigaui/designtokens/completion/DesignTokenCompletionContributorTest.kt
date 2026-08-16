@@ -258,6 +258,64 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         )
     }
 
+    fun testOffersCoreTypoQuickFixWhenProprietaryDoesNotImportCoreVariables() {
+        val proprietaryWorkspace = tempRoot.resolve("proprietary-workspace")
+        val scopeRoot = proprietaryWorkspace.resolve("node_modules/@taiga-ui")
+        val unknownToken = "--tui-font-text-xs2"
+        val sourcePath = proprietaryWorkspace.resolve("src/component.less")
+        val sourceFile =
+            createFile(
+                sourcePath,
+                ".demo { font: var($unknownToken); }",
+            )
+
+        createFile(
+            scopeRoot.resolve("core/package.json"),
+            """
+            {
+                "name": "@taiga-ui/core",
+                "version": "4.21.0",
+                "exports": {"./styles/*": "./styles/*"}
+            }
+            """.trimIndent(),
+        )
+        createFile(
+            scopeRoot.resolve("core/styles/theme/variables.less"),
+            ":root { --tui-font-text-xs: normal 0.6875rem/1rem sans-serif; }",
+        )
+        createFile(
+            scopeRoot.resolve("proprietary/package.json"),
+            """
+            {
+                "name": "@taiga-ui/proprietary",
+                "version": "4.21.0",
+                "exports": {"./styles/*": "./styles/*"}
+            }
+            """.trimIndent(),
+        )
+        createFile(
+            scopeRoot.resolve("proprietary/styles/theme.less"),
+            ":root { --tui-proprietary-only: red; }",
+        )
+
+        myFixture.configureFromExistingVirtualFile(sourceFile)
+        val tokenOffset =
+            myFixture.editor.document.text
+                .indexOf(unknownToken)
+
+        myFixture.editor.caretModel.moveToOffset(tokenOffset + unknownToken.length / 2)
+        indexService.completionTokenNames(sourcePath)
+        myFixture.doHighlighting()
+
+        val quickFix = myFixture.findSingleIntention("Replace with --tui-font-text-xs")
+
+        myFixture.launchAction(quickFix)
+        assertEquals(
+            ".demo { font: var(--tui-font-text-xs); }",
+            myFixture.editor.document.text,
+        )
+    }
+
     private fun complete(tokenPrefix: String): List<String> {
         val sourcePath = configureCompletion(tokenPrefix)
 
