@@ -18,6 +18,8 @@ Inside the first argument of CSS `var(...)`, typing a Taiga UI prefix automatica
 
 Completion is available in CSS, Less, and SCSS. Suggestions come from the existing installed-package and project stylesheet indexes, so project-defined `--tui-*` tokens appear together with tokens from the installed Taiga UI version. The plugin inserts only the token name and does not add another `var(...)` wrapper.
 
+The token-name catalog intentionally includes declarations from all public style roots of the installed Taiga UI packages. Value resolution remains stricter: when proprietary themes are installed, only declarations reachable through the proprietary theme import graph participate in effective-value resolution. This keeps completion and typo fixes aware of valid core tokens without allowing unrelated core declarations to change hover values or override semantics.
+
 The native WebStorm lookup remains the primary completion UI. When a `--tui-*` item is selected, the plugin shows a non-focusable side preview with the effective platform/theme values and color swatches. Moving through the lookup with the Up/Down keys updates the preview for the newly selected token. The normal hover popup is suppressed while completion is open, so the two presentations never compete for the editor area.
 
 A cold completion request does not build the graph on the completion/UI path. The graph is warmed in a project-service coroutine; the latest token-name snapshot remains usable while an invalidated graph refreshes. If the first completion request starts a cold build, completion is reopened only when the caret is still inside a current `var(--tui-...)` context, so continuing to type does not invalidate the warmup result.
@@ -32,9 +34,9 @@ Unknown Taiga UI token names used as the first argument of `var(...)` are highli
 }
 ```
 
-The inspection validates against the same installed-package and project stylesheet indexes as completion, so project-defined `--tui-*` tokens are valid too. It ignores declarations, comments, strings, unrelated custom properties, and other `var(...)` arguments.
+The inspection validates against the same installed-package and project stylesheet token-name catalog as completion, so project-defined tokens and valid public tokens from installed Taiga UI style packages remain valid too. It ignores declarations, comments, strings, unrelated custom properties, and other `var(...)` arguments.
 
-When one known token is sufficiently close and unambiguous, WebStorm offers a `Replace with ...` quick fix. Distant or equally plausible matches stay as warnings without a guessed replacement.
+When one known token is sufficiently close and unambiguous, WebStorm offers a `Replace with ...` quick fix. Incomplete prefixes can expose multiple matching replacements; distant or equally plausible matches stay as warnings without a guessed replacement.
 
 The inspection never builds a cold token graph synchronously. While the graph is cold or invalidated it reports no unknown-token problem, warms the strict token-name catalog in the background, and restarts highlighting after the fresh catalog is ready. Completion may use its last snapshot while refreshing; inspection deliberately does not use stale names.
 
