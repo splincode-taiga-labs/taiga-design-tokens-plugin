@@ -24,6 +24,26 @@ internal data class DesignTokenHoverPopupModel(
                     ),
                 sections = groups.toHoverPackageSections(tokenName),
             )
+
+        fun notFound(
+            tokenName: String,
+            suggestions: List<String>,
+        ): DesignTokenHoverPopupModel =
+            DesignTokenHoverPopupModel(
+                tokenName = tokenName,
+                description =
+                    buildString {
+                        append("Nothing found")
+
+                        if (suggestions.isNotEmpty()) {
+                            appendLine()
+                            appendLine()
+                            appendLine("Did you mean another variable?")
+                            append(suggestions.joinToString("\n"))
+                        }
+                    },
+                sections = emptyList(),
+            )
     }
 }
 
