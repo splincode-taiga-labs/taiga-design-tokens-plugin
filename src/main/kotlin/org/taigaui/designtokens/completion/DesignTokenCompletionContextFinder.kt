@@ -71,7 +71,7 @@ private fun inspectUnknownDesignTokens(
             holder.registerUnknownTokenProblem(
                 file,
                 reference,
-                DesignTokenNameMatcher.closest(reference.name, knownTokens),
+                DesignTokenNameMatcher.suggestions(reference.name, knownTokens),
             )
         }
 }
@@ -85,26 +85,18 @@ private fun PsiFile.inspectionSourceFile(): Path? =
 private fun ProblemsHolder.registerUnknownTokenProblem(
     file: PsiFile,
     reference: DesignTokenReferenceAtOffset,
-    replacement: String?,
+    replacements: List<String>,
 ) {
     val range = TextRange(reference.startOffset, reference.endOffset)
+    val quickFixes = replacements.map(::ReplaceUnknownDesignTokenQuickFix).toTypedArray()
 
-    if (replacement == null) {
-        registerProblem(
-            file,
-            UNKNOWN_TOKEN_MESSAGE,
-            ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-            range,
-        )
-    } else {
-        registerProblem(
-            file,
-            UNKNOWN_TOKEN_MESSAGE,
-            ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
-            range,
-            ReplaceUnknownDesignTokenQuickFix(replacement),
-        )
-    }
+    registerProblem(
+        file,
+        UNKNOWN_TOKEN_MESSAGE,
+        ProblemHighlightType.GENERIC_ERROR_OR_WARNING,
+        range,
+        *quickFixes,
+    )
 }
 
 private class ReplaceUnknownDesignTokenQuickFix(
