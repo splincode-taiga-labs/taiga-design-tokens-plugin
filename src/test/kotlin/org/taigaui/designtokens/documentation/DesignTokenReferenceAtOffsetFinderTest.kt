@@ -158,6 +158,55 @@ class DesignTokenNameMatcherTest {
     }
 
     @Test
+    fun `uses typo match when there are no prefix variants`() {
+        assertEquals(
+            listOf("--tui-text-primary"),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-text-primari",
+                listOf("--tui-text-primary", "--tui-text-secondary"),
+            ),
+        )
+    }
+
+    @Test
+    fun `suggests elevation variants for incomplete elevation token`() {
+        assertEquals(
+            listOf(
+                "--tui-background-elevation-1",
+                "--tui-background-elevation-2",
+                "--tui-background-elevation-3",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-background-elevation",
+                listOf(
+                    "--tui-background-base",
+                    "--tui-background-elevation-3",
+                    "--tui-background-elevation-1",
+                    "--tui-background-elevation-2",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `suggests border variants for incomplete border token`() {
+        assertEquals(
+            listOf(
+                "--tui-border-hover",
+                "--tui-border-normal",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-border",
+                listOf(
+                    "--tui-border-normal",
+                    "--tui-text-primary",
+                    "--tui-border-hover",
+                ),
+            ),
+        )
+    }
+
+    @Test
     fun `does not suggest a distant token`() {
         assertNull(
             DesignTokenNameMatcher.closest(
