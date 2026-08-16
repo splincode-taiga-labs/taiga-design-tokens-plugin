@@ -19,6 +19,24 @@ internal object DesignTokenReferenceAtOffsetFinder {
 }
 
 internal object DesignTokenNameMatcher {
+    fun suggestions(
+        unknown: String,
+        candidates: Collection<String>,
+    ): List<String> {
+        val prefix = if (unknown.endsWith('-')) unknown else "$unknown-"
+        val prefixMatches =
+            candidates
+                .asSequence()
+                .filter { candidate -> candidate != unknown && candidate.startsWith(prefix) }
+                .distinct()
+                .sorted()
+                .take(MAX_SUGGESTIONS)
+                .toList()
+
+        return prefixMatches.takeIf { matches -> matches.isNotEmpty() }
+            ?: listOfNotNull(closest(unknown, candidates))
+    }
+
     fun closest(
         unknown: String,
         candidates: Collection<String>,
@@ -87,6 +105,7 @@ internal object DesignTokenNameMatcher {
 
     private const val MIN_DISTANCE = 2
     private const val MAX_DISTANCE = 4
+    private const val MAX_SUGGESTIONS = 8
 }
 
 private class DesignTokenReferenceScanner(
