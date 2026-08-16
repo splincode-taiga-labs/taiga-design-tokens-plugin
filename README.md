@@ -164,7 +164,7 @@ sequenceDiagram
 
     VFS->>PackageCache: Invalidate affected installed-package entries
     VFS->>ProjectCache: Invalidate affected project-style entries
-    Note over PackageCache,ProjectCache: Rebuild lazily; expensive builds run outside cache monitors
+    Note over PackageCache,ProjectCache: Rebuild lazily with expensive builds outside cache monitors
 ```
 
 Architecture status:
