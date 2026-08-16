@@ -261,7 +261,14 @@ private fun Lookup.sourceFilePath(): Path? =
 private fun Lookup.currentTokenName(): String? =
     currentItem
         ?.lookupString
-        ?.takeIf { value -> value.startsWith(TAIGA_TOKEN_ROOT) }
+        ?.let(::normalizeDesignTokenLookupString)
+
+internal fun normalizeDesignTokenLookupString(value: String): String? =
+    when {
+        value.startsWith(TAIGA_TOKEN_ROOT) -> value
+        value.startsWith(TAIGA_TOKEN_BARE_ROOT) -> "--$value"
+        else -> null
+    }
 
 private fun Lookup.supportsDesignTokenPreview(): Boolean =
     psiFile?.virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS ||
@@ -299,4 +306,5 @@ private data class PreviewKey(
 )
 
 private const val TAIGA_TOKEN_ROOT = "--tui-"
+private const val TAIGA_TOKEN_BARE_ROOT = "tui-"
 private const val PREVIEW_GAP = 8
