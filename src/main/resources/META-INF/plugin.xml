@@ -25,8 +25,19 @@
             language="SCSS"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
+        <localInspection
+            shortName="UnknownTaigaUIDesignToken"
+            displayName="Unknown Taiga UI design token"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
+        />
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
+        />
+        <editorFactoryMouseListener
+            implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
         />
         <editorFactoryMouseMotionListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"

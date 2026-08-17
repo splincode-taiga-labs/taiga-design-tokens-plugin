@@ -20,11 +20,35 @@ internal class DesignTokenCompletionService(
     private val lock = Any()
     private val snapshots = mutableMapOf<Path, List<String>>()
     private val pendingWarmups = mutableSetOf<Path>()
-    private val pendingCallbacks = mutableMapOf<Path, () -> Unit>()
+    private val pendingCallbacks = mutableMapOf<Path, MutableList<PendingCallback>>()
 
     fun namesFor(
         sourceFile: Path,
         onUpdated: () -> Unit,
+    ): List<String>? =
+        namesFor(
+            sourceFile = sourceFile,
+            onUpdated = onUpdated,
+            allowStaleSnapshot = true,
+            notifyWhenUnchanged = false,
+        )
+
+    fun namesForInspection(
+        sourceFile: Path,
+        onUpdated: () -> Unit,
+    ): List<String>? =
+        namesFor(
+            sourceFile = sourceFile,
+            onUpdated = onUpdated,
+            allowStaleSnapshot = false,
+            notifyWhenUnchanged = true,
+        )
+
+    private fun namesFor(
+        sourceFile: Path,
+        onUpdated: () -> Unit,
+        allowStaleSnapshot: Boolean,
+        notifyWhenUnchanged: Boolean,
     ): List<String>? {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val indexService = project.service<DesignTokenIndexService>()
@@ -36,18 +60,23 @@ internal class DesignTokenCompletionService(
                 .also { names -> storeSnapshot(normalizedSourceFile, names) }
         }
 
-        scheduleWarmup(normalizedSourceFile, onUpdated)
+        scheduleWarmup(
+            sourceFile = normalizedSourceFile,
+            callback = PendingCallback(onUpdated, notifyWhenUnchanged),
+        )
 
-        return snapshot
+        return snapshot.takeIf { allowStaleSnapshot }
     }
 
     private fun scheduleWarmup(
         sourceFile: Path,
-        onUpdated: () -> Unit,
+        callback: PendingCallback,
     ) {
         val shouldStart =
             synchronized(lock) {
-                pendingCallbacks[sourceFile] = onUpdated
+                pendingCallbacks
+                    .getOrPut(sourceFile, ::mutableListOf)
+                    .add(callback)
                 pendingWarmups.add(sourceFile)
             }
 
@@ -78,21 +107,23 @@ internal class DesignTokenCompletionService(
         sourceFile: Path,
         names: List<String>,
     ) {
-        val update =
+        val callbacks =
             synchronized(lock) {
                 val previous = snapshots.put(sourceFile, names)
-                val callback = pendingCallbacks.remove(sourceFile)
+                val namesChanged = previous != names
+                val pending = pendingCallbacks.remove(sourceFile).orEmpty()
 
                 pendingWarmups.remove(sourceFile)
-                CompletionUpdate(
-                    callback = callback,
-                    shouldNotify = names.isNotEmpty() && previous != names,
-                )
+                pending
+                    .filter { callback -> namesChanged || callback.notifyWhenUnchanged }
+                    .map(PendingCallback::callback)
+                    .takeIf { names.isNotEmpty() }
+                    .orEmpty()
             }
 
-        if (update.shouldNotify && !project.isDisposed) {
+        if (callbacks.isNotEmpty() && !project.isDisposed) {
             withContext(Dispatchers.EDT) {
-                update.callback?.invoke()
+                callbacks.forEach { callback -> callback() }
             }
         }
     }
@@ -106,8 +137,8 @@ internal class DesignTokenCompletionService(
         }
     }
 
-    private data class CompletionUpdate(
-        val callback: (() -> Unit)?,
-        val shouldNotify: Boolean,
+    private data class PendingCallback(
+        val callback: () -> Unit,
+        val notifyWhenUnchanged: Boolean,
     )
 }

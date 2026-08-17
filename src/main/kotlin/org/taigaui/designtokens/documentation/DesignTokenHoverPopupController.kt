@@ -1,7 +1,6 @@
 package org.taigaui.designtokens.documentation
 
 import com.intellij.codeInsight.lookup.Lookup
-import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.application.EDT
@@ -31,7 +30,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
-import java.awt.MouseInfo
 import java.awt.Point
 import java.nio.file.Path
 import javax.swing.SwingUtilities
@@ -71,10 +69,7 @@ internal class DesignTokenHoverPopupController(
                     ) {
                         if (newLookup?.isCompletion == true) {
                             coroutineScope.launch(Dispatchers.EDT) {
-                                cancelScheduledHide()
-                                activeHoverKey = null
-                                latestHoverRequest = null
-                                hidePopup()
+                                dismissHover()
                             }
                         }
                     }
@@ -85,15 +80,12 @@ internal class DesignTokenHoverPopupController(
     fun mouseMoved(event: EditorMouseEvent) {
         val editor = event.editor
 
-        if (project.hasActiveCompletionLookup()) {
-            cancelScheduledHide()
-            activeHoverKey = null
-            latestHoverRequest = null
-            hidePopup()
-            return
-        }
-
         if (editor.project == project && !editor.isDisposed) {
+            if (project.blocksDesignTokenPopup(editor)) {
+                dismissHover()
+                return
+            }
+
             val anchor = Point(event.mouseEvent.point)
             val reference = event.findReferenceUnderPointer(anchor)
 
@@ -106,27 +98,30 @@ internal class DesignTokenHoverPopupController(
                     activeHoverKey = null
                     nativeHoverPopupSuppression.restore()
                 }
+            } else {
+                cancelScheduledHide()
 
-                return
-            }
+                val request =
+                    HoverRequest(
+                        editor = editor,
+                        reference = reference,
+                        anchor = anchor,
+                        modificationStamp = editor.document.modificationStamp,
+                    )
+                val requestKey = request.popupKey()
 
-            cancelScheduledHide()
-            nativeHoverPopupSuppression.suppress(editor)
+                latestHoverRequest = request
 
-            val request =
-                HoverRequest(
-                    editor = editor,
-                    reference = reference,
-                    anchor = anchor,
-                    modificationStamp = editor.document.modificationStamp,
-                )
-            val requestKey = request.popupKey()
+                if (popup?.isVisible == true && popupKey != requestKey) {
+                    hidePopup()
+                }
 
-            latestHoverRequest = request
+                nativeHoverPopupSuppression.suppress(editor)
 
-            if (requestKey != activeHoverKey) {
-                activeHoverKey = requestKey
-                requests.tryEmit(request)
+                if (requestKey != activeHoverKey) {
+                    activeHoverKey = requestKey
+                    requests.tryEmit(request)
+                }
             }
         }
     }
@@ -136,10 +131,8 @@ internal class DesignTokenHoverPopupController(
 
         val request =
             withContext(Dispatchers.EDT) {
-                if (project.hasActiveCompletionLookup()) {
-                    activeHoverKey = null
-                    latestHoverRequest = null
-                    hidePopup()
+                if (project.blocksDesignTokenPopup(initialRequest.editor)) {
+                    dismissHover()
                     return@withContext null
                 }
 
@@ -163,7 +156,7 @@ internal class DesignTokenHoverPopupController(
                 if (activeHoverKey == request.popupKey()) {
                     activeHoverKey = null
                     latestHoverRequest = null
-                    if (!isPointerInsidePopup()) {
+                    if (!popupContent.containsPointer()) {
                         hidePopup()
                     }
                 }
@@ -207,10 +200,8 @@ internal class DesignTokenHoverPopupController(
                 request.modificationStamp == request.editor.document.modificationStamp
 
             if (activeHoverKey == target.key && requestStillValid) {
-                if (project.hasActiveCompletionLookup()) {
-                    activeHoverKey = null
-                    latestHoverRequest = null
-                    hidePopup()
+                if (project.blocksDesignTokenPopup(request.editor)) {
+                    dismissHover()
                 } else if (!canShowDesignTokenPopup(popup)) {
                     activeHoverKey = null
                     latestHoverRequest = null
@@ -233,7 +224,7 @@ internal class DesignTokenHoverPopupController(
         tokenName: String,
     ) {
         if (
-            !project.hasActiveCompletionLookup() &&
+            !project.blocksDesignTokenPopup(editor) &&
             activeHoverKey == key &&
             canShowDesignTokenPopup(popup)
         ) {
@@ -253,7 +244,7 @@ internal class DesignTokenHoverPopupController(
             return
         }
 
-        if (project.hasActiveCompletionLookup() || !canShowDesignTokenPopup(popup)) {
+        if (project.blocksDesignTokenPopup(editor) || !canShowDesignTokenPopup(popup)) {
             return
         }
 
@@ -277,20 +268,7 @@ internal class DesignTokenHoverPopupController(
                         }
                 },
             ).also(initializePanel)
-        val createdPopup =
-            JBPopupFactory
-                .getInstance()
-                .createComponentPopupBuilder(panel, panel)
-                .setProject(project)
-                .setRequestFocus(false)
-                .setFocusable(true)
-                .setCancelOnClickOutside(true)
-                .setCancelOnOtherWindowOpen(true)
-                .setCancelOnWindowDeactivation(true)
-                .setCancelKeyEnabled(true)
-                .setMovable(false)
-                .setResizable(false)
-                .createPopup()
+        val createdPopup = createDesignTokenPopup(project, panel)
 
         popupReference = createdPopup
         createdPopup.addListener(
@@ -332,7 +310,7 @@ internal class DesignTokenHoverPopupController(
                 withContext(Dispatchers.EDT) {
                     pendingHideJob = null
 
-                    if (!isPointerInsidePopup()) {
+                    if (!popupContent.containsPointer()) {
                         activeHoverKey = null
                         latestHoverRequest = null
                         hidePopup()
@@ -346,6 +324,17 @@ internal class DesignTokenHoverPopupController(
         pendingHideJob = null
     }
 
+    fun dismissHover(editor: Editor? = null) {
+        if (editor != null && (editor.project != project || editor.isDisposed)) {
+            return
+        }
+
+        cancelScheduledHide()
+        activeHoverKey = null
+        latestHoverRequest = null
+        hidePopup()
+    }
+
     private fun navigateToDefinition(target: DesignTokenNavigationTarget) {
         val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target.sourceFile) ?: return
 
@@ -355,22 +344,7 @@ internal class DesignTokenHoverPopupController(
             (target.line - 1).coerceAtLeast(0),
             0,
         ).navigate(true)
-        cancelScheduledHide()
-        activeHoverKey = null
-        latestHoverRequest = null
-        hidePopup()
-    }
-
-    private fun isPointerInsidePopup(): Boolean {
-        val content = popupContent?.takeIf { component -> component.isShowing }
-        val pointer = MouseInfo.getPointerInfo()?.location
-
-        return if (content == null || pointer == null) {
-            false
-        } else {
-            SwingUtilities.convertPointFromScreen(pointer, content)
-            content.contains(pointer)
-        }
+        dismissHover()
     }
 
     private fun hidePopup() {
@@ -383,9 +357,6 @@ internal class DesignTokenHoverPopupController(
         nativeHoverPopupSuppression.restore()
     }
 }
-
-private fun Project.hasActiveCompletionLookup(): Boolean =
-    LookupManager.getInstance(this).activeLookup?.isCompletion == true
 
 private fun canShowDesignTokenPopup(currentPopup: JBPopup?): Boolean =
     currentPopup?.isVisible == true || !JBPopupFactory.getInstance().isPopupActive
@@ -459,11 +430,15 @@ private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService):
     val groups = indexService.resolveToken(sourceFile, tokenName)
     val model =
         if (groups.isEmpty()) {
-            DesignTokenHoverPopupModel(
-                tokenName = tokenName,
-                description = "Nothing found",
-                sections = emptyList(),
-            )
+            val suggestions =
+                runCatching {
+                    DesignTokenNameMatcher.suggestions(
+                        tokenName,
+                        indexService.completionTokenNames(sourceFile),
+                    )
+                }.getOrDefault(emptyList())
+
+            DesignTokenHoverPopupModel.notFound(tokenName, suggestions)
         } else {
             DesignTokenHoverPopupModel.create(tokenName, groups)
         }

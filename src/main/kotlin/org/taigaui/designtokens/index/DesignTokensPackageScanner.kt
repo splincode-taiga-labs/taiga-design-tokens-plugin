@@ -23,6 +23,17 @@ class DesignTokensPackageScanner(
             scanInstalledPackages(designTokensPackage.sourcePackages)
         }
 
+    fun scanAll(designTokensPackage: DesignTokensPackage): List<DesignTokenDeclaration> =
+        if (designTokensPackage.sourcePackages.isEmpty()) {
+            sourceFileFinder
+                .find(designTokensPackage.realRoot)
+                .flatMap(sourceExtractor::extract)
+        } else {
+            designTokensPackage.sourcePackages
+                .flatMap(::scan)
+                .distinct()
+        }
+
     private fun scanInstalledPackages(sourcePackages: List<DesignTokenSourcePackage>): List<DesignTokenDeclaration> {
         val proprietary =
             sourcePackages.firstOrNull { sourcePackage ->

@@ -223,6 +223,38 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         assertEquals(2, service.cachedPackageCount)
     }
 
+    fun testCompletionNamesIncludeInstalledCoreTokensOutsideProprietaryImportGraph() {
+        val workspaceRoot = tempRoot.resolve("proprietary-workspace")
+        val sourcePath = workspaceRoot.resolve("src/app.less")
+        val scopeRoot = workspaceRoot.resolve("node_modules/@taiga-ui")
+        val coreRoot = scopeRoot.resolve("core")
+        val proprietaryRoot = scopeRoot.resolve("proprietary")
+
+        createFile(sourcePath, ".demo { font: var(--tui-font-text-xs2); }")
+        createFile(
+            coreRoot.resolve("package.json"),
+            taigaPackageJson("@taiga-ui/core", "4.21.0"),
+        )
+        createFile(
+            coreRoot.resolve("styles/theme/variables.less"),
+            ":root { $CORE_FONT_TOKEN: normal 0.6875rem/1rem sans-serif; }",
+        )
+        createFile(
+            proprietaryRoot.resolve("package.json"),
+            taigaPackageJson("@taiga-ui/proprietary", "4.21.0"),
+        )
+        createFile(
+            proprietaryRoot.resolve("styles/theme.less"),
+            ":root { --tui-proprietary-only: red; }",
+        )
+
+        val resolutionIndex = requireNotNull(service.getIndexOrThrow(sourcePath))
+        val completionNames = service.completionTokenNames(sourcePath)
+
+        assertTrue(resolutionIndex.find(CORE_FONT_TOKEN).isEmpty())
+        assertTrue(completionNames.contains(CORE_FONT_TOKEN))
+    }
+
     fun testServiceReturnsNullWhenNoInstalledPackageCanBeResolved() {
         val sourcePath = tempRoot.resolve("standalone/app.txt")
         createFile(sourcePath, "Application source")
@@ -346,6 +378,20 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
         )
     }
 
+    private fun taigaPackageJson(
+        name: String,
+        version: String,
+    ): String =
+        """
+        {
+            "name": "$name",
+            "version": "$version",
+            "exports": {
+                "./styles/*": "./styles/*"
+            }
+        }
+        """.trimIndent()
+
     private data class PackageFixture(
         val packageRoot: Path,
         val sourcePath: Path,
@@ -356,5 +402,6 @@ class DesignTokenIndexServiceTest : BasePlatformTestCase() {
 
     private companion object {
         const val TOKEN_NAME = "--tui-background-base"
+        const val CORE_FONT_TOKEN = "--tui-font-text-xs"
     }
 }

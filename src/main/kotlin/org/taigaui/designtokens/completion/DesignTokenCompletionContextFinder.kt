@@ -1,5 +1,23 @@
 package org.taigaui.designtokens.completion
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
+import com.intellij.codeInspection.LocalInspectionTool
+import com.intellij.codeInspection.LocalQuickFix
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ProblemHighlightType
+import com.intellij.codeInspection.ProblemsHolder
+import com.intellij.openapi.components.service
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiFile
+import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
+import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffset
+import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffsetFinder
+import java.nio.file.Path
+
 internal data class DesignTokenCompletionContext(
     val prefix: String,
 )
@@ -12,6 +30,94 @@ internal object DesignTokenCompletionContextFinder {
         offset
             .takeIf { it in 0..text.length }
             ?.let { validOffset -> DesignTokenCompletionContextScanner(text).find(validOffset) }
+}
+
+class UnknownDesignTokenInspection :
+    LocalInspectionTool(),
+    DumbAware {
+    override fun buildVisitor(
+        holder: ProblemsHolder,
+        isOnTheFly: Boolean,
+    ): PsiElementVisitor =
+        object : PsiElementVisitor() {
+            override fun visitFile(file: PsiFile) {
+                inspectUnknownDesignTokens(file, holder)
+            }
+        }
+}
+
+private fun inspectUnknownDesignTokens(
+    file: PsiFile,
+    holder: ProblemsHolder,
+) {
+    val sourceFile = file.inspectionSourceFile() ?: return
+    val project = file.project
+    val knownTokens =
+        project
+            .service<DesignTokenCompletionService>()
+            .namesForInspection(sourceFile) {
+                if (file.isValid) {
+                    DaemonCodeAnalyzer
+                        .getInstance(project)
+                        .restart(file, INSPECTION_RESTART_REASON)
+                }
+            }?.toSet()
+            ?: return
+
+    DesignTokenReferenceAtOffsetFinder
+        .findAll(file.text)
+        .filterNot { reference -> reference.name in knownTokens }
+        .forEach { reference ->
+            holder.registerUnknownTokenProblem(
+                file,
+                reference,
+                DesignTokenNameMatcher.suggestions(reference.name, knownTokens),
+            )
+        }
+}
+
+private fun PsiFile.inspectionSourceFile(): Path? =
+    virtualFile
+        ?.takeIf { candidate -> candidate.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+        ?.path
+        ?.let(::pathOrNull)
+
+private fun ProblemsHolder.registerUnknownTokenProblem(
+    file: PsiFile,
+    reference: DesignTokenReferenceAtOffset,
+    replacements: List<String>,
+) {
+    val range = TextRange(reference.startOffset, reference.endOffset)
+    val problemBuilder =
+        problem(file, UNKNOWN_TOKEN_MESSAGE)
+            .highlight(ProblemHighlightType.GENERIC_ERROR_OR_WARNING)
+            .range(range)
+
+    replacements.forEach { replacement ->
+        problemBuilder.fix(ReplaceUnknownDesignTokenQuickFix(replacement))
+    }
+    problemBuilder.register()
+}
+
+private class ReplaceUnknownDesignTokenQuickFix(
+    private val replacement: String,
+) : LocalQuickFix,
+    DumbAware {
+    override fun getFamilyName(): String = "Replace with $replacement"
+
+    override fun applyFix(
+        project: Project,
+        descriptor: ProblemDescriptor,
+    ) {
+        val element = descriptor.psiElement
+        val file = element.containingFile ?: return
+        val document = PsiDocumentManager.getInstance(project).getDocument(file) ?: return
+        val range = descriptor.textRangeInElement.shiftRight(element.textRange.startOffset)
+
+        if (range.endOffset <= document.textLength) {
+            document.replaceString(range.startOffset, range.endOffset, replacement)
+        }
+    }
 }
 
 private class DesignTokenCompletionContextScanner(
@@ -175,3 +281,6 @@ private fun CharSequence.startsComment(index: Int): Boolean =
 private fun Char.isQuote(): Boolean = this == '\'' || this == '"'
 
 private fun Char.isIdentifierCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_'
+
+private const val UNKNOWN_TOKEN_MESSAGE = "Unknown Taiga UI design token"
+private const val INSPECTION_RESTART_REASON = "Taiga UI design token index updated"

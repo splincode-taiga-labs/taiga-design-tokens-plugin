@@ -15,6 +15,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
+import org.taigaui.designtokens.packageinfo.DesignTokensPackage
 import org.taigaui.designtokens.packageinfo.DesignTokensPackageResolver
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
@@ -36,6 +37,13 @@ class DesignTokenIndexService(
             DesignTokenIndex.build(
                 packageRoot = designTokensPackage.realRoot,
                 declarations = packageScanner.scan(designTokensPackage),
+            )
+        }
+    private val packageNameCatalogCache =
+        DesignTokenIndexCache { designTokensPackage ->
+            DesignTokenIndex.build(
+                packageRoot = designTokensPackage.realRoot,
+                declarations = packageScanner.scanAll(designTokensPackage),
             )
         }
     private val projectStylesheetIndexProvider =
@@ -100,7 +108,7 @@ class DesignTokenIndexService(
 
     internal fun completionTokenNames(sourceFile: Path): List<String> =
         buildList {
-            getIndexOrThrow(sourceFile)?.names?.let(::addAll)
+            packageTokenNames(sourceFile).let(::addAll)
             projectStylesheetIndexProvider.getIndex(sourceFile)?.names?.let(::addAll)
         }.distinct()
             .sorted()
@@ -109,10 +117,15 @@ class DesignTokenIndexService(
         runCatching {
             val designTokensPackage = packageResolver.resolve(sourceFile)
             val packageIndexCached = designTokensPackage?.let(cache::contains) ?: true
+            val packageNameCatalogCached =
+                designTokensPackage
+                    ?.takeIf { packageSet -> packageSet.needsCompleteNameCatalog() }
+                    ?.let(packageNameCatalogCache::contains)
+                    ?: true
             val projectIndexCached =
                 projectStylesheetIndexProvider.isCached(sourceFile, designTokensPackage)
 
-            packageIndexCached && projectIndexCached
+            packageIndexCached && packageNameCatalogCached && projectIndexCached
         }.getOrDefault(false)
 
     internal fun getIndexOrThrow(sourceFile: Path): DesignTokenIndex? =
@@ -120,13 +133,32 @@ class DesignTokenIndexService(
             .resolve(sourceFile)
             ?.let(cache::getOrBuild)
 
-    internal fun invalidate(changedPaths: Collection<Path>): Int =
-        cache.invalidate(changedPaths) + projectStylesheetIndexProvider.invalidate(changedPaths)
+    internal fun invalidate(changedPaths: Collection<Path>): Int {
+        val packageInvalidated = cache.invalidate(changedPaths)
+
+        packageNameCatalogCache.invalidate(changedPaths)
+
+        return packageInvalidated + projectStylesheetIndexProvider.invalidate(changedPaths)
+    }
 
     internal fun clear() {
         cache.clear()
+        packageNameCatalogCache.clear()
         projectStylesheetIndexProvider.clear()
     }
+
+    private fun packageTokenNames(sourceFile: Path): List<String> =
+        packageResolver
+            .resolve(sourceFile)
+            ?.let { designTokensPackage ->
+                val resolutionIndex = cache.getOrBuild(designTokensPackage)
+
+                if (designTokensPackage.needsCompleteNameCatalog()) {
+                    packageNameCatalogCache.getOrBuild(designTokensPackage).names
+                } else {
+                    resolutionIndex.names
+                }
+            }.orEmpty()
 
     private fun resolutionIndex(sourceFile: Path): DesignTokenIndex? {
         val indexes =
@@ -140,8 +172,12 @@ class DesignTokenIndexService(
             ?.let { values -> DesignTokenIndex.merge(values) }
     }
 
+    private fun DesignTokensPackage.needsCompleteNameCatalog(): Boolean =
+        sourcePackages.any { sourcePackage -> sourcePackage.name == PROPRIETARY_PACKAGE }
+
     private companion object {
         val LOG = Logger.getInstance(DesignTokenIndexService::class.java)
+        const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
     }
 }
 

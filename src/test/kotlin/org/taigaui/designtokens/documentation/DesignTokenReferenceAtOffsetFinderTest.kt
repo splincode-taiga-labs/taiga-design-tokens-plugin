@@ -17,6 +17,28 @@ class DesignTokenReferenceAtOffsetFinderTest {
     }
 
     @Test
+    fun `finds all Taiga references used by a stylesheet`() {
+        val text =
+            """
+            .button {
+                color: var(--tui-text-primary);
+                background: var(--tui-background-base, var(--tui-background-neutral-1));
+                content: "var(--tui-ignored-string)";
+                /* border-color: var(--tui-ignored-comment); */
+            }
+            """.trimIndent()
+
+        assertEquals(
+            listOf(
+                "--tui-text-primary",
+                "--tui-background-base",
+                "--tui-background-neutral-1",
+            ),
+            DesignTokenReferenceAtOffsetFinder.findAll(text).map(DesignTokenReferenceAtOffset::name),
+        )
+    }
+
+    @Test
     fun `finds reference with whitespace and uppercase var function`() {
         val text = ".button { color: VAR(  $TOKEN  , red); }"
         val offset = text.indexOf(TOKEN) + 3
@@ -120,5 +142,142 @@ class DesignTokenReferenceAtOffsetFinderTest {
 
     private companion object {
         const val TOKEN = "--tui-text-primary"
+    }
+}
+
+class DesignTokenNameMatcherTest {
+    @Test
+    fun `suggests a close token typo`() {
+        assertEquals(
+            "--tui-text-primary",
+            DesignTokenNameMatcher.closest(
+                "--tui-text-primari",
+                listOf("--tui-text-primary", "--tui-text-secondary"),
+            ),
+        )
+    }
+
+    @Test
+    fun `uses typo match when there are no prefix variants`() {
+        assertEquals(
+            listOf("--tui-text-primary"),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-text-primari",
+                listOf("--tui-text-primary", "--tui-text-secondary"),
+            ),
+        )
+    }
+
+    @Test
+    fun `suggests elevation variants for incomplete elevation token`() {
+        assertEquals(
+            listOf(
+                "--tui-background-elevation-1",
+                "--tui-background-elevation-2",
+                "--tui-background-elevation-3",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-background-elevation",
+                listOf(
+                    "--tui-background-base",
+                    "--tui-background-elevation-3",
+                    "--tui-background-elevation-1",
+                    "--tui-background-elevation-2",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `suggests border variants for incomplete border token`() {
+        assertEquals(
+            listOf(
+                "--tui-border-hover",
+                "--tui-border-normal",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-border",
+                listOf(
+                    "--tui-border-normal",
+                    "--tui-text-primary",
+                    "--tui-border-hover",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `suggests variants while the last token segment is still partial`() {
+        assertEquals(
+            listOf(
+                "--tui-font-text",
+                "--tui-font-text-m",
+                "--tui-font-text-s",
+                "--tui-font-text-xs",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-font-te",
+                listOf(
+                    "--tui-font-text-xs",
+                    "--tui-font-heading",
+                    "--tui-font-text-s",
+                    "--tui-font-text",
+                    "--tui-font-text-m",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `suggests a longer token when its suffix is only partially typed`() {
+        assertEquals(
+            listOf(
+                "--tui-text-secondary",
+                "--tui-text-secondary-hover",
+            ),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-text-secon",
+                listOf(
+                    "--tui-text-primary",
+                    "--tui-text-secondary-hover",
+                    "--tui-text-secondary",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `falls back to typo correction when no token starts with the unknown name`() {
+        assertEquals(
+            listOf("--tui-font-text-xs"),
+            DesignTokenNameMatcher.suggestions(
+                "--tui-font-text-xs2",
+                listOf(
+                    "--tui-font-text-xs",
+                    "--tui-font-text-s",
+                    "--tui-font-text-m",
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `does not suggest a distant token`() {
+        assertNull(
+            DesignTokenNameMatcher.closest(
+                "--tui-completely-unknown-token",
+                listOf("--tui-text-primary", "--tui-radius-m"),
+            ),
+        )
+    }
+
+    @Test
+    fun `does not guess between equally close tokens`() {
+        assertNull(
+            DesignTokenNameMatcher.closest(
+                "--tui-color-fed",
+                listOf("--tui-color-red", "--tui-color-bed"),
+            ),
+        )
     }
 }

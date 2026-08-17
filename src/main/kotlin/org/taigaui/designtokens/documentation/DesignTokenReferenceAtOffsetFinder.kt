@@ -14,6 +14,97 @@ internal object DesignTokenReferenceAtOffsetFinder {
         offset
             .takeIf { it in 0..text.length }
             ?.let { validOffset -> DesignTokenReferenceScanner(text).find(validOffset) }
+
+    fun findAll(text: CharSequence): List<DesignTokenReferenceAtOffset> = DesignTokenReferenceScanner(text).findAll()
+}
+
+internal object DesignTokenNameMatcher {
+    fun suggestions(
+        unknown: String,
+        candidates: Collection<String>,
+    ): List<String> {
+        val prefixMatches =
+            candidates
+                .asSequence()
+                .filter { candidate -> candidate != unknown && candidate.startsWith(unknown) }
+                .distinct()
+                .sortedWith(compareBy<String>(String::length).thenBy { candidate -> candidate })
+                .take(MAX_SUGGESTIONS)
+                .toList()
+
+        return prefixMatches.takeIf { matches -> matches.isNotEmpty() }
+            ?: listOfNotNull(closest(unknown, candidates))
+    }
+
+    fun closest(
+        unknown: String,
+        candidates: Collection<String>,
+    ): String? {
+        val ranked =
+            candidates
+                .asSequence()
+                .filter { candidate -> candidate != unknown }
+                .map { candidate ->
+                    CandidateScore(
+                        name = candidate,
+                        distance = levenshteinDistance(unknown, candidate),
+                        commonPrefix = unknown.commonPrefixWith(candidate).length,
+                    )
+                }.filter { score -> score.distance <= maxDistance(unknown) }
+                .sortedWith(
+                    compareBy<CandidateScore>(CandidateScore::distance)
+                        .thenByDescending(CandidateScore::commonPrefix)
+                        .thenBy(CandidateScore::name),
+                ).toList()
+        val best = ranked.firstOrNull() ?: return null
+        val second = ranked.getOrNull(1)
+        val ambiguous =
+            second != null &&
+                second.distance == best.distance &&
+                second.commonPrefix == best.commonPrefix
+
+        return best.name.takeUnless { ambiguous }
+    }
+
+    private fun maxDistance(value: String): Int =
+        (value.length / 6)
+            .coerceIn(MIN_DISTANCE, MAX_DISTANCE)
+
+    private fun levenshteinDistance(
+        left: String,
+        right: String,
+    ): Int {
+        var previous = IntArray(right.length + 1) { index -> index }
+        var current = IntArray(right.length + 1)
+
+        left.forEachIndexed { leftIndex, leftCharacter ->
+            current[0] = leftIndex + 1
+
+            right.forEachIndexed { rightIndex, rightCharacter ->
+                val insertion = current[rightIndex] + 1
+                val deletion = previous[rightIndex + 1] + 1
+                val substitution = previous[rightIndex] + if (leftCharacter == rightCharacter) 0 else 1
+
+                current[rightIndex + 1] = minOf(insertion, deletion, substitution)
+            }
+
+            val swap = previous
+            previous = current
+            current = swap
+        }
+
+        return previous[right.length]
+    }
+
+    private data class CandidateScore(
+        val name: String,
+        val distance: Int,
+        val commonPrefix: Int,
+    )
+
+    private const val MIN_DISTANCE = 2
+    private const val MAX_DISTANCE = 4
+    private const val MAX_SUGGESTIONS = 8
 }
 
 private class DesignTokenReferenceScanner(
@@ -34,6 +125,18 @@ private class DesignTokenReferenceScanner(
 
         return result
     }
+
+    fun findAll(): List<DesignTokenReferenceAtOffset> =
+        buildList {
+            var index = 0
+
+            while (index < text.length) {
+                val step = scanAt(index)
+
+                step.reference?.let(::add)
+                index = step.nextOffset
+            }
+        }
 
     private fun scanAt(index: Int): ScanStep =
         when {
