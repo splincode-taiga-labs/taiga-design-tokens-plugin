@@ -8,23 +8,30 @@ internal object IconCompletionContextFinder {
     fun find(
         text: CharSequence,
         offset: Int,
+    ): IconCompletionContext? =
+        offset
+            .takeIf { currentOffset -> currentOffset in 0..text.length }
+            ?.let { currentOffset ->
+                findPrefixStart(text, currentOffset)
+                    ?.let { prefixStart -> createContext(text, currentOffset, prefixStart) }
+            }
+
+    private fun createContext(
+        text: CharSequence,
+        offset: Int,
+        prefixStart: Int,
     ): IconCompletionContext? {
-        if (offset !in 0..text.length) {
-            return null
-        }
-
-        val prefixStart = findPrefixStart(text, offset) ?: return null
         val quoteOffset = prefixStart - 1
-
-        if (quoteOffset < 0 || text[quoteOffset] !in QUOTES) {
-            return null
-        }
-
         val prefix = text.subSequence(prefixStart, offset).toString()
         val suffix = prefix.removePrefix(ICON_PREFIX)
+        val validContext =
+            quoteOffset >= 0 &&
+                text[quoteOffset] in QUOTES &&
+                prefix.startsWith(ICON_PREFIX) &&
+                suffix.all(Char::isIconNameCharacter)
 
         return prefix
-            .takeIf { value -> value.startsWith(ICON_PREFIX) && suffix.all(Char::isIconNameCharacter) }
+            .takeIf { validContext }
             ?.let(::IconCompletionContext)
     }
 
@@ -34,12 +41,9 @@ internal object IconCompletionContextFinder {
     ): Int? {
         val latestStart = offset - ICON_PREFIX.length
 
-        if (latestStart < 0) {
-            return null
-        }
-
         return (latestStart downTo 0)
-            .firstOrNull { start ->
+            .takeIf { latestStart >= 0 }
+            ?.firstOrNull { start ->
                 text.regionMatches(start, ICON_PREFIX) &&
                     text.subSequence(start + ICON_PREFIX.length, offset).all(Char::isIconNameCharacter)
             }
