@@ -28,9 +28,13 @@ internal class IconCompletionService(
         val normalizedScope = scopeRoot.toAbsolutePath().normalize()
         val snapshot = synchronized(lock) { snapshots[normalizedScope] }
 
+        if (snapshot != null) {
+            return snapshot
+        }
+
         scheduleWarmup(normalizedScope, onUpdated)
 
-        return snapshot
+        return null
     }
 
     internal fun loadNow(sourceFile: Path): List<String> {
