@@ -14,6 +14,24 @@ class IconCompletionContextFinderTest {
     }
 
     @Test
+    fun `finds proprietary icon prefix inside status object`() {
+        assertEquals(
+            IconCompletionContext("@tui.fancy.medium.info"),
+            context(
+                """
+                const icons = {
+                    info: '@tui.fancy.medium.info|',
+                    warning: '@tui.fancy.medium.alert',
+                    neutral: '@tui.fancy.medium.info-circle',
+                    error: '@tui.fancy.medium.alert',
+                    success: '@tui.fancy.medium.check-circle',
+                };
+                """.trimIndent(),
+            ),
+        )
+    }
+
+    @Test
     fun `finds icon prefix inside html attribute`() {
         assertEquals(
             IconCompletionContext("@tui.flags.a"),
