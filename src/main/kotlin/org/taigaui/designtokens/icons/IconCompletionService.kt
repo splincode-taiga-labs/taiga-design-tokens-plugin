@@ -23,19 +23,13 @@ internal class IconCompletionService(
     fun namesFor(
         sourceFile: Path,
         onUpdated: () -> Unit,
-    ): List<String>? {
-        val scopeRoot = loader.resolveScopeRoot(sourceFile) ?: return emptyList()
-        val normalizedScope = scopeRoot.toAbsolutePath().normalize()
-        val snapshot = synchronized(lock) { snapshots[normalizedScope] }
-
-        if (snapshot != null) {
-            return snapshot
-        }
-
-        scheduleWarmup(normalizedScope, onUpdated)
-
-        return null
-    }
+    ): List<String>? =
+        loader
+            .resolveScopeRoot(sourceFile)
+            ?.toAbsolutePath()
+            ?.normalize()
+            ?.let { scopeRoot -> namesForScope(scopeRoot, onUpdated) }
+            ?: emptyList()
 
     internal fun loadNow(sourceFile: Path): List<String> {
         val scopeRoot = loader.resolveScopeRoot(sourceFile) ?: return emptyList()
@@ -47,6 +41,19 @@ internal class IconCompletionService(
         }
 
         return names
+    }
+
+    private fun namesForScope(
+        scopeRoot: Path,
+        onUpdated: () -> Unit,
+    ): List<String>? {
+        val snapshot = synchronized(lock) { snapshots[scopeRoot] }
+
+        if (snapshot == null) {
+            scheduleWarmup(scopeRoot, onUpdated)
+        }
+
+        return snapshot
     }
 
     private fun scheduleWarmup(
