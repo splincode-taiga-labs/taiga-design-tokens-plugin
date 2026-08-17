@@ -53,11 +53,11 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
     }
 
     private fun complete(prefix: String): List<String> {
-        val sourcePath = workspaceRoot.resolve("src/icons.ts")
+        val sourcePath = workspaceRoot.resolve("src/icons.html")
         val sourceFile =
             createFile(
                 sourcePath,
-                "const icon = '$prefix';",
+                "<tui-icon icon=\"$prefix\"></tui-icon>",
             )
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
