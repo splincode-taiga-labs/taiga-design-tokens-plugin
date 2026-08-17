@@ -25,6 +25,10 @@
             language="SCSS"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
+        <completion.contributor
+            language="any"
+            implementationClass="org.taigaui.designtokens.icons.IconCompletionContributor"
+        />
         <localInspection
             shortName="UnknownTaigaUIDesignToken"
             displayName="Unknown Taiga UI design token"
@@ -35,6 +39,9 @@
         />
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
+        />
+        <typedHandler
+            implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
         />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
