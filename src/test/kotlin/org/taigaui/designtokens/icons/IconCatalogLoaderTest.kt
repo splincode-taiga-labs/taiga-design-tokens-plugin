@@ -2,7 +2,6 @@ package org.taigaui.designtokens.icons
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -109,6 +108,28 @@ class IconCatalogLoaderTest {
                 "@tui.fancy.medium.check-circle",
             ),
             names.toSet(),
+        )
+    }
+
+    @Test
+    fun `derives remote svg url from tbank icon group and name`() {
+        val entry =
+            TbankIconCatalogParser
+                .parseEntries(
+                    """
+                    {
+                      "version": "v1",
+                      "icons": {
+                        "pragmatic/small": ["chevron-down"]
+                      }
+                    }
+                    """.trimIndent(),
+                ).single()
+
+        assertEquals("@tui.pragmatic.small.chevron-down", entry.name)
+        assertEquals(
+            "$ICONS_BASE_URL/pragmatic/small/chevron-down.svg",
+            entry.svgSource.uri.toString(),
         )
     }
 
