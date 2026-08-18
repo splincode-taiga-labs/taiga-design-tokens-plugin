@@ -46,20 +46,23 @@ internal class IconCompletionService(
         return snapshot?.svgSource(iconName)
     }
 
-    internal fun loadNow(sourceFile: Path): List<String> {
-        val scopeRoot = loader.resolveScopeRoot(sourceFile) ?: return emptyList()
-        val normalizedScope = scopeRoot.toAbsolutePath().normalize()
-        val existing = synchronized(lock) { snapshots[normalizedScope] }
+    internal fun loadNow(sourceFile: Path): List<String> =
+        loader
+            .resolveScopeRoot(sourceFile)
+            ?.toAbsolutePath()
+            ?.normalize()
+            ?.let(::loadScopeNow)
+            .orEmpty()
 
-        if (existing != null) {
-            return existing.names
-        }
-
-        val catalog = loader.loadCatalog(normalizedScope)
-
-        synchronized(lock) {
-            snapshots[normalizedScope] = catalog
-        }
+    private fun loadScopeNow(scopeRoot: Path): List<String> {
+        val existing = synchronized(lock) { snapshots[scopeRoot] }
+        val catalog =
+            existing
+                ?: loader.loadCatalog(scopeRoot).also { loaded ->
+                    synchronized(lock) {
+                        snapshots[scopeRoot] = loaded
+                    }
+                }
 
         return catalog.names
     }
