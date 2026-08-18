@@ -1,6 +1,5 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
@@ -93,7 +92,7 @@ private data class IconCompletionRequest(
             }
 
         if (currentContext != null) {
-            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+            restartIconCompletionIfNeeded(project, editor, force = true)
         }
     }
 }
