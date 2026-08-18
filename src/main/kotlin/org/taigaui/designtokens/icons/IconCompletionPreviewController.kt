@@ -118,27 +118,26 @@ internal class IconCompletionPreviewController(
 
     private fun requestPreview(lookup: Lookup) {
         val request = lookup.iconPreviewRequest()
-
-        if (request == null) {
-            clearPreviewRequest()
-            return
-        }
-
         val source =
-            project
-                .service<IconCompletionService>()
-                .svgSourceFor(request.sourceFile, request.iconName)
+            request?.let { current ->
+                project
+                    .service<IconCompletionService>()
+                    .svgSourceFor(current.sourceFile, current.iconName)
+            }
 
-        if (source == null) {
-            clearPreviewRequest()
-            return
+        when {
+            request == null || source == null -> clearPreviewRequest()
+            previewKey == IconPreviewKey(lookup, request.iconName, source.uri) && previewJob?.isActive == true -> Unit
+            else -> startPreview(lookup, request, source)
         }
+    }
 
+    private fun startPreview(
+        lookup: Lookup,
+        request: IconPreviewRequest,
+        source: IconSvgSource,
+    ) {
         val key = IconPreviewKey(lookup, request.iconName, source.uri)
-
-        if (previewKey == key && previewJob?.isActive == true) {
-            return
-        }
 
         previewKey = key
         previewJob?.cancel()
@@ -165,17 +164,16 @@ internal class IconCompletionPreviewController(
     }
 
     private fun loadImage(source: IconSvgSource): Image? {
-        synchronized(imageCache) {
-            imageCache[source.uri]?.let { return it }
-        }
+        val cached = synchronized(imageCache) { imageCache[source.uri] }
 
-        val image = runCatching { SVGLoader.load(source.uri.toURL(), 1f) }.getOrNull() ?: return null
-
-        synchronized(imageCache) {
-            imageCache[source.uri] = image
-        }
-
-        return image
+        return cached
+            ?: runCatching { SVGLoader.load(source.uri.toURL(), 1f) }
+                .getOrNull()
+                ?.also { image ->
+                    synchronized(imageCache) {
+                        imageCache[source.uri] = image
+                    }
+                }
     }
 
     private fun clearPreviewRequest() {
