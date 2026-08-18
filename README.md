@@ -2,7 +2,7 @@
 
 WebStorm plugin for exploring and using Taiga UI CSS custom properties and icon names directly in the editor.
 
-The plugin reads the Taiga UI packages installed in the current project instead of shipping hardcoded catalogs. It combines installed Taiga UI declarations with reachable project styles, resolves effective platform/theme values, and exposes that model through editor completion, unknown-token inspections, and a custom Swing hover popup. It also discovers installed Taiga UI SVG icons and exposes them through native `@tui.*` completion.
+The plugin reads the Taiga UI packages installed in the current project instead of shipping hardcoded catalogs. It combines installed Taiga UI declarations with reachable project styles, resolves effective platform/theme values, and exposes that model through editor completion, unknown-token inspections, and a custom Swing hover popup. It also discovers Taiga UI SVG icons and exposes them through native `@tui.*` completion, selected-item previews, and delayed hover previews.
 
 ## Editor experience
 
@@ -33,16 +33,27 @@ const arrow = '@tui.a-arrow-down';
 const flag = '@tui.flags.ab';
 ```
 
+Static HTML and Angular template attributes use the same completion path:
+
+```html
+<button iconStart="@tui.fancy.medium.info-circle">Save</button>
+<button [iconStart]="'@tui.fancy.medium.info-circle'">Save</button>
+```
+
 Directory paths become dot-separated icon namespaces. For example, `@taiga-ui/icons/src/flags/ab.svg` becomes `@tui.flags.ab`.
 
-Public icons come from the installed `@taiga-ui/icons/src/**/*.svg` package. If `@taiga-ui/proprietary` is installed, proprietary icon discovery uses the following precedence:
+Public and proprietary icon catalogs are intentionally mutually exclusive. Without `@taiga-ui/proprietary`, completion uses only the installed `@taiga-ui/icons/src/**/*.svg` package. When `@taiga-ui/proprietary` is installed, public icon names are not contributed and proprietary discovery uses the following precedence:
 
 1. installed `@taiga-ui/tds-icons/src/**/*.svg` files;
 2. when local `tds-icons` is unavailable, the T-Bank design-token icon catalog at `https://cdn.tbank.ru/core/design-tokens/v1/web/data.json`.
 
-A nested proprietary file such as `fancy/medium/info-circle.svg` becomes `@tui.fancy.medium.info-circle`. CDN groups follow the same mapping, so an `icons` entry such as `"fancy/medium": ["air-hockey"]` becomes `@tui.fancy.medium.air-hockey`.
+A nested proprietary file such as `fancy/medium/info-circle.svg` becomes `@tui.fancy.medium.info-circle`. CDN groups follow the same mapping, so an `icons` entry such as `"fancy/medium": ["air-hockey"]` becomes `@tui.fancy.medium.air-hockey`. The same group/name pair also identifies the SVG at `https://cdn.tbank.ru/core/design-tokens/v1/web/fancy/medium/air-hockey.svg`.
 
-Filesystem scanning and the optional CDN request never run on the completion/UI path. The icon catalog is warmed in a project-service coroutine and cached by the nearest `node_modules/@taiga-ui` scope. A cold completion request contributes no custom icon items yet and reopens completion after warmup only if the caret is still inside an `@tui.*` string context.
+The native completion list has a non-focusable SVG preview beside it. Moving through `@tui.*` suggestions with the Up/Down keys immediately updates the selected icon. SVGs are rendered from vector data directly at the requested logical preview size through IntelliJ's scale context rather than loading a tiny intrinsic raster and stretching it afterwards. The preview uses a white canvas so dark and black icon artwork remains visible regardless of IDE theme.
+
+Hovering a complete `@tui.*` icon reference for two seconds shows the same SVG preview. Moving to another icon, leaving the icon, selecting text, clicking, dragging, or opening completion cancels the pending hover or closes the current popup.
+
+Filesystem scanning and the optional CDN request never run on the completion/UI path. The icon catalog is warmed in a project-service coroutine and cached by the nearest `node_modules/@taiga-ui` scope. A cold completion request contributes no custom icon items yet and reopens completion after warmup only if the caret is still inside an `@tui.*` string context. If WebStorm already has an HTML attribute-value lookup open, the plugin restarts that lookup after the icon catalog becomes available.
 
 ### Inspection
 
@@ -97,8 +108,11 @@ sequenceDiagram
     participant CompletionService as Token-name service
     participant IconService as Icon catalog service
     participant Lookup as WebStorm lookup
-    participant Preview as Completion side preview
-    participant Hover as Hover popup controller
+    participant Preview as Token completion preview
+    participant IconPreview as Icon completion preview
+    participant IconHover as Icon hover controller
+    participant IconRenderer as SVG preview renderer
+    participant Hover as Token hover controller
     participant Service as Project token service
     participant PackageCache as Installed-package cache
     participant ProjectCache as Project-styles cache
@@ -136,11 +150,11 @@ sequenceDiagram
         Service->>Values: Resolve effective contexts
         Values-->>Preview: Resolved values + colors
         Preview-->>User: Side value/color preview
-        Note over Hover,Lookup: Hover popup is closed and suppressed while lookup is active
+        Note over Hover,Lookup: Token hover is closed and suppressed while lookup is active
     end
 
     rect rgb(245, 245, 245)
-        Note over User,IconCdn: Icon completion flow
+        Note over User,IconRenderer: Icon completion flow
         User->>IconCompletion: Type '@tui.fancy.medium.'
         IconCompletion->>IconService: namesFor(sourceFile)
 
@@ -148,18 +162,38 @@ sequenceDiagram
             IconService-->>IconCompletion: @tui.* icon names
         else Cold icon catalog
             IconService-->>IconCompletion: No custom icon items yet
-            IconService->>IconPackages: Scan @taiga-ui/icons/src SVG files
-            alt Proprietary with local tds-icons
-                IconService->>IconPackages: Scan @taiga-ui/tds-icons/src SVG files
-            else Proprietary without local tds-icons
-                IconService->>IconCdn: Fetch grouped icon catalog
-                IconCdn-->>IconService: Grouped icon paths and names
+            alt Proprietary project
+                alt Local tds-icons is installed
+                    IconService->>IconPackages: Scan @taiga-ui/tds-icons/src SVG files
+                else Local tds-icons is unavailable
+                    IconService->>IconCdn: Fetch grouped icon catalog
+                    IconCdn-->>IconService: Grouped icon paths and names
+                end
+            else Public project
+                IconService->>IconPackages: Scan @taiga-ui/icons/src SVG files
             end
-            IconService-->>IconCompletion: Reopen lookup if caret still matches @tui.*
+            IconService-->>IconCompletion: Restart lookup if caret still matches @tui.*
         end
 
         IconCompletion->>Lookup: Contribute dot-path icon items
         Lookup-->>User: Native icon completion list
+        Lookup->>IconPreview: Selected @tui.* item changed
+        IconPreview->>IconService: svgSourceFor(sourceFile, selectedIcon)
+        IconService-->>IconPreview: Local file or CDN SVG source
+        IconPreview->>IconRenderer: Render SVG at logical preview size
+        IconRenderer-->>IconPreview: Scaled image
+        IconPreview-->>User: SVG preview on white canvas
+    end
+
+    rect rgb(245, 245, 245)
+        Note over User,IconRenderer: Icon hover flow
+        User->>IconHover: Hover complete @tui.* reference
+        IconHover->>IconHover: Wait two seconds while pointer stays on icon
+        IconHover->>IconService: svgSourceFor(sourceFile, iconName)
+        IconService-->>IconHover: Local file or CDN SVG source
+        IconHover->>IconRenderer: Render SVG at logical preview size
+        IconRenderer-->>IconHover: Scaled image
+        IconHover-->>User: SVG hover preview on white canvas
     end
 
     rect rgb(245, 245, 245)
@@ -180,7 +214,7 @@ sequenceDiagram
     end
 
     rect rgb(245, 245, 245)
-        Note over User,Popup: Hover flow
+        Note over User,Popup: Token hover flow
         User->>Hover: Hover var(--tui-token)
         Hover->>Service: resolveToken(sourceFile, tokenName)
         Service->>PackageCache: getOrBuild(reachable resolution index)
@@ -223,7 +257,7 @@ Architecture status:
 - implemented: project stylesheet entrypoint discovery, local import graph traversal, project override semantics, deterministic source/cascade order where it can be proven, and safe ambiguity where it cannot;
 - implemented: custom Swing hover UX with loading state, package/project grouping, `Not applied` presentation, copy/navigation actions, and non-blocking cold graph construction;
 - implemented in Stage 5: installed + project token-name completion through WebStorm's native CSS/Less/SCSS lookup, background cold-cache warmup, live selected-item value/color preview, mutual exclusion between completion and hover, and unknown-token inspection with safe closest-token replacement;
-- implemented: `@tui.*` icon completion from installed `@taiga-ui/icons`, local proprietary `@taiga-ui/tds-icons`, and the T-Bank CDN fallback when proprietary icons are not installed locally;
+- implemented: `@tui.*` icon completion with mutually exclusive public/proprietary catalogs, static HTML attribute support, local/CDN SVG source discovery, live selected-icon preview, and delayed icon hover preview;
 - remaining production work: deprecated-token replacements, optional source details/settings, accessibility validation, diagnostics, verifier matrix, signing, and Marketplace publishing.
 
 Package boundaries:
@@ -236,7 +270,7 @@ org.taigaui.designtokens
 ├── psi            IntelliJ CSS/SCSS/Less PSI adapter
 ├── project        package/project graph orchestration, caches, invalidation, and resolution entry point
 ├── completion     token completion, strict inspection names, native lookup integration, and selected-item preview
-├── icons          @tui.* completion plus local and remote icon catalog discovery
+├── icons          @tui.* completion, local/remote catalogs, SVG preview rendering, and icon hover
 └── documentation  token-reference scanning, hover controller, Swing model, and Swing popup
 ```
 
@@ -260,7 +294,7 @@ Cache monitors protect only cache bookkeeping. Expensive graph construction and 
 
 Hover resolution, cold completion warming, and selected-item preview resolution run off the UI thread. Completion keeps a token-name snapshot so normal typing can continue to show known suggestions while document edits invalidate and refresh the underlying project graph. The completion preview listens to native lookup selection changes without requesting focus, and stale preview jobs are cancelled when keyboard navigation selects another token.
 
-Icon catalog discovery also runs off the UI thread. Installed SVG trees are scanned once per nearest `node_modules/@taiga-ui` scope and cached for subsequent completion requests. The network fallback is attempted only when `@taiga-ui/proprietary` is present and a local `@taiga-ui/tds-icons/src` directory is not available.
+Icon catalog discovery and SVG loading/rendering also run off the UI thread. Installed SVG trees are scanned once per nearest `node_modules/@taiga-ui` scope and cached for subsequent completion and hover requests. The network fallback is attempted only when `@taiga-ui/proprietary` is present and a local `@taiga-ui/tds-icons/src` directory is not available. Selected-icon and hover previews share the cached catalog and render SVG sources at a logical IntelliJ scale-aware size.
 
 Unknown-token inspection shares the same background token-name warmup but uses strict freshness. If the index is cold or invalidated, the inspection pass returns without warnings, the graph is warmed in the background, and WebStorm highlighting is restarted only after a fresh installed + project token catalog is available. Completion and inspection callbacks waiting on the same warmup are preserved independently.
 
@@ -276,7 +310,7 @@ Project overrides are evaluated as an application layer before installed package
 
 ## Development status
 
-Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support, native token-name completion with live selected-token preview, unknown-token inspection with safe typo replacement, and `@tui.*` icon completion are implemented; deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
+Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support, native token-name completion with live selected-token preview, unknown-token inspection with safe typo replacement, and `@tui.*` icon completion with selected-icon and delayed hover previews are implemented; deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
 
 ## Requirements
 
