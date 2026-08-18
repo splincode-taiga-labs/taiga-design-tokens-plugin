@@ -64,7 +64,7 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
         val sourceFile =
             createFile(
                 sourcePath,
-                "<tui-icon icon=\"$prefix\"></tui-icon>",
+                "<button iconStart=\"$prefix\"></button>",
             )
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
@@ -89,7 +89,7 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
     private fun createIcon(relativePath: String) {
         createFile(
             workspaceRoot.resolve("node_modules/@taiga-ui/$relativePath"),
-            "<svg></svg>",
+            "<svg viewBox=\"0 0 24 24\"><path d=\"M4 12h16\"/></svg>",
         )
     }
 
