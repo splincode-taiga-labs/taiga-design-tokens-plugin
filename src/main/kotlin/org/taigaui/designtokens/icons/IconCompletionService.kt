@@ -49,6 +49,12 @@ internal class IconCompletionService(
     internal fun loadNow(sourceFile: Path): List<String> {
         val scopeRoot = loader.resolveScopeRoot(sourceFile) ?: return emptyList()
         val normalizedScope = scopeRoot.toAbsolutePath().normalize()
+        val existing = synchronized(lock) { snapshots[normalizedScope] }
+
+        if (existing != null) {
+            return existing.names
+        }
+
         val catalog = loader.loadCatalog(normalizedScope)
 
         synchronized(lock) {
