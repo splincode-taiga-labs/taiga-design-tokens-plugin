@@ -4,6 +4,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import org.junit.Assert.assertFalse
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -23,9 +24,10 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
         }
     }
 
-    fun testCompletesPublicIconsFromInstalledPackage() {
+    fun testCompletesOnlyPublicIconsWhenProprietaryPackageIsAbsent() {
         createIcon("icons/src/a-arrow-down.svg")
         createIcon("icons/src/flags/ab.svg")
+        createIcon("tds-icons/src/fancy/medium/info-circle.svg")
 
         val suggestions = complete("@tui.")
 
@@ -34,15 +36,18 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
             "@tui.a-arrow-down",
             "@tui.flags.ab",
         )
+        assertFalse("@tui.fancy.medium.info-circle" in suggestions)
     }
 
-    fun testCompletesInstalledProprietaryIconsWithNestedPath() {
+    fun testCompletesOnlyInstalledProprietaryIconsWhenProprietaryPackageIsPresent() {
         createPackage("proprietary")
+        createIcon("icons/src/a-arrow-down.svg")
+        createIcon("flags/ab.svg")
         createIcon("tds-icons/src/fancy/medium/info-circle.svg")
         createIcon("tds-icons/src/fancy/medium/alert.svg")
         createIcon("tds-icons/src/fancy/medium/check-circle.svg")
 
-        val suggestions = complete("@tui.fancy.medium.")
+        val suggestions = complete("@tui.")
 
         assertContainsElements(
             suggestions,
@@ -50,6 +55,8 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
             "@tui.fancy.medium.alert",
             "@tui.fancy.medium.check-circle",
         )
+        assertFalse("@tui.a-arrow-down" in suggestions)
+        assertFalse("@tui.flags.ab" in suggestions)
     }
 
     private fun complete(prefix: String): List<String> {
