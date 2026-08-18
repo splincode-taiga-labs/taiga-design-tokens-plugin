@@ -4,8 +4,8 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.JBUI
-import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
+import java.awt.Color
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.Image
@@ -20,12 +20,12 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
     private val content =
         JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            background = UIUtil.getPanelBackground()
+            background = PREVIEW_BACKGROUND
             border = JBUI.Borders.empty(PREVIEW_PADDING)
         }
 
     init {
-        background = UIUtil.getPanelBackground()
+        background = PREVIEW_BACKGROUND
         border = JBUI.Borders.customLine(JBColor.border(), 1)
         add(content, BorderLayout.CENTER)
         preferredSize = Dimension(JBUI.scale(PREVIEW_WIDTH), JBUI.scale(PREVIEW_HEIGHT))
@@ -53,8 +53,10 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
         content.add(Box.createVerticalStrut(JBUI.scale(12)))
         content.add(Box.createVerticalGlue())
         content.add(
-            JBLabel(ImageIcon(image.fitToPreview())).apply {
+            JBLabel(ImageIcon(image)).apply {
                 alignmentX = JComponent.CENTER_ALIGNMENT
+                background = PREVIEW_BACKGROUND
+                isOpaque = true
                 horizontalAlignment = SwingConstants.CENTER
                 verticalAlignment = SwingConstants.CENTER
             },
@@ -72,22 +74,12 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
 private fun createTitle(iconName: String): JComponent =
     JBLabel(iconName).apply {
         font = font.deriveFont(Font.BOLD)
+        foreground = Color.BLACK
         alignmentX = JComponent.CENTER_ALIGNMENT
         horizontalAlignment = SwingConstants.CENTER
     }
 
-private fun Image.fitToPreview(): Image {
-    val width = getWidth(null).coerceAtLeast(1)
-    val height = getHeight(null).coerceAtLeast(1)
-    val maxSize = JBUI.scale(ICON_SIZE)
-    val scale = minOf(maxSize.toDouble() / width, maxSize.toDouble() / height)
-    val targetWidth = (width * scale).toInt().coerceAtLeast(1)
-    val targetHeight = (height * scale).toInt().coerceAtLeast(1)
-
-    return getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH)
-}
-
-private const val PREVIEW_WIDTH = 220
-private const val PREVIEW_HEIGHT = 180
+private val PREVIEW_BACKGROUND = Color.WHITE
+private const val PREVIEW_WIDTH = 260
+private const val PREVIEW_HEIGHT = 220
 private const val PREVIEW_PADDING = 12
-private const val ICON_SIZE = 112
