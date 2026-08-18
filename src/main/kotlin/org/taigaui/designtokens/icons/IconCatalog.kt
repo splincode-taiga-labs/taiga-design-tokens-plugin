@@ -13,9 +13,23 @@ internal fun interface IconCatalogFetcher {
     fun fetch(): String?
 }
 
+internal sealed interface IconSvgSource {
+    val uri: URI
+
+    data class Local(
+        val path: Path,
+    ) : IconSvgSource {
+        override val uri: URI = path.toUri()
+    }
+
+    data class Remote(
+        override val uri: URI,
+    ) : IconSvgSource
+}
+
 internal data class IconCatalogEntry(
     val name: String,
-    val svgPath: Path?,
+    val svgSource: IconSvgSource,
 )
 
 internal class IconCatalog(
@@ -25,7 +39,7 @@ internal class IconCatalog(
 
     val names: List<String> = entriesByName.keys.sorted()
 
-    fun svgPath(iconName: String): Path? = entriesByName[iconName]?.svgPath
+    fun svgSource(iconName: String): IconSvgSource? = entriesByName[iconName]?.svgSource
 }
 
 internal class IconCatalogLoader(
@@ -68,9 +82,8 @@ internal class IconCatalogLoader(
         } else {
             remoteFetcher
                 .fetch()
-                ?.let(TbankIconCatalogParser::parse)
+                ?.let(TbankIconCatalogParser::parseEntries)
                 .orEmpty()
-                .map { name -> IconCatalogEntry(name, null) }
         }
     }
 
@@ -84,7 +97,7 @@ internal class IconCatalogLoader(
                 paths
                     .filter(Files::isRegularFile)
                     .filter { file -> file.fileName.toString().endsWith(SVG_EXTENSION, ignoreCase = true) }
-                    .map { file -> IconCatalogEntry(file.toIconName(root), file) }
+                    .map { file -> IconCatalogEntry(file.toIconName(root), IconSvgSource.Local(file)) }
                     .sorted(compareBy(IconCatalogEntry::name))
                     .toList()
             }
@@ -114,19 +127,29 @@ internal class IconCatalogLoader(
 }
 
 internal object TbankIconCatalogParser {
-    fun parse(content: String): List<String> {
+    fun parse(content: String): List<String> = parseEntries(content).map(IconCatalogEntry::name)
+
+    fun parseEntries(content: String): List<IconCatalogEntry> {
         val iconsBody = ICONS_OBJECT.find(content)?.groupValues?.get(1) ?: return emptyList()
 
         return ICON_GROUP
             .findAll(iconsBody)
             .flatMap { group ->
-                val path = group.groupValues[1].replace('/', '.')
+                val path = group.groupValues[1]
+                val namePath = path.replace('/', '.')
 
                 ICON_NAME
                     .findAll(group.groupValues[2])
-                    .map { match -> "$ICON_PREFIX$path.${match.groupValues[1]}" }
-            }.distinct()
-            .sorted()
+                    .map { match ->
+                        val iconName = match.groupValues[1]
+
+                        IconCatalogEntry(
+                            name = "$ICON_PREFIX$namePath.$iconName",
+                            svgSource = IconSvgSource.Remote(URI.create("$ICONS_BASE_URL/$path/$iconName.svg")),
+                        )
+                    }
+            }.distinctBy(IconCatalogEntry::name)
+            .sortedBy(IconCatalogEntry::name)
             .toList()
     }
 
@@ -168,8 +191,9 @@ private class TbankIconCatalogFetcher : IconCatalogFetcher {
         val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(3)
         val REQUEST_TIMEOUT: Duration = Duration.ofSeconds(8)
         val HTTP_SUCCESS = 200..299
-        const val ICONS_CATALOG_URL = "https://cdn.tbank.ru/core/design-tokens/v1/web/data.json"
+        const val ICONS_CATALOG_URL = "$ICONS_BASE_URL/data.json"
     }
 }
 
 internal const val ICON_PREFIX = "@tui."
+internal const val ICONS_BASE_URL = "https://cdn.tbank.ru/core/design-tokens/v1/web"
