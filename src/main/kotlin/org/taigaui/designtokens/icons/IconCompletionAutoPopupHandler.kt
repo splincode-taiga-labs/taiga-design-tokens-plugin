@@ -26,11 +26,12 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
                 null
             }
 
-        if (completionContext != null && charTyped.isIconNameCharacter()) {
+        return if (completionContext != null && charTyped.isIconNameCharacter()) {
             restartIconCompletionIfNeeded(project, editor)
+            Result.STOP
+        } else {
+            Result.CONTINUE
         }
-
-        return Result.CONTINUE
     }
 }
 
