@@ -32,7 +32,7 @@ internal class IconCompletionPreviewController(
     private val project: Project,
     private val coroutineScope: CoroutineScope,
 ) {
-    private val imageCache = mutableMapOf<URI, Image>()
+    private val imageLoader = IconPreviewImageLoader()
     private var activeLookup: Lookup? = null
     private var activeListener: LookupListener? = null
     private var previewHint: LightweightHint? = null
@@ -145,7 +145,7 @@ internal class IconCompletionPreviewController(
 
         previewJob =
             coroutineScope.launch(Dispatchers.IO + CoroutineName("Taiga UI icon completion preview")) {
-                val image = loadImage(source)
+                val image = imageLoader.load(source)
 
                 withContext(Dispatchers.EDT) {
                     if (
@@ -161,19 +161,6 @@ internal class IconCompletionPreviewController(
                     }
                 }
             }
-    }
-
-    private fun loadImage(source: IconSvgSource): Image? {
-        val cached = synchronized(imageCache) { imageCache[source.uri] }
-
-        return cached
-            ?: runCatching { SVGLoader.load(source.uri.toURL(), 1f) }
-                .getOrNull()
-                ?.also { image ->
-                    synchronized(imageCache) {
-                        imageCache[source.uri] = image
-                    }
-                }
     }
 
     private fun clearPreviewRequest() {
@@ -237,6 +224,23 @@ internal class IconCompletionPreviewController(
 
     private fun hidePreview() {
         previewHint?.takeIf { hint -> hint.isVisible }?.hide()
+    }
+}
+
+private class IconPreviewImageLoader {
+    private val cache = mutableMapOf<URI, Image>()
+
+    fun load(source: IconSvgSource): Image? {
+        val cached = synchronized(cache) { cache[source.uri] }
+
+        return cached
+            ?: runCatching { SVGLoader.load(source.uri.toURL(), 1f) }
+                .getOrNull()
+                ?.also { image ->
+                    synchronized(cache) {
+                        cache[source.uri] = image
+                    }
+                }
     }
 }
 
