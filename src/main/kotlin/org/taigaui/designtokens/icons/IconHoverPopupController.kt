@@ -146,39 +146,41 @@ internal class IconHoverPopupController(
     }
 }
 
-private fun EditorMouseEvent.toIconHoverRequest(project: Project): IconHoverRequest? {
-    val sourceFile = editor.iconSourceFile() ?: return null
-    val reference =
-        takeIf { area == EditorMouseEventArea.EDITING_AREA }
-            ?.let { IconReferenceAtOffsetFinder.find(editor.document.immutableCharSequence, offset) }
-            ?.takeIf { current -> editor.isPointerOver(current, mouseEvent.point) }
-            ?: return null
+private fun EditorMouseEvent.toIconHoverRequest(project: Project): IconHoverRequest? =
+    takeIf { area == EditorMouseEventArea.EDITING_AREA }
+        ?.takeIf { editor.canShowIconHover(project) }
+        ?.let { event ->
+            editor.iconSourceFile()?.let { sourceFile ->
+                event.iconReferenceUnderPointer()?.let { reference ->
+                    IconHoverRequest(
+                        editor = editor,
+                        sourceFile = sourceFile,
+                        reference = reference,
+                        anchor = Point(mouseEvent.point),
+                        modificationStamp = editor.document.modificationStamp,
+                    )
+                }
+            }
+        }
 
-    if (
-        editor.project != project ||
-        editor.isDisposed ||
-        editor.selectionModel.hasSelection() ||
-        LookupManager.getInstance(project).activeLookup != null
-    ) {
-        return null
-    }
-
-    return IconHoverRequest(
-        editor = editor,
-        sourceFile = sourceFile,
-        reference = reference,
-        anchor = Point(mouseEvent.point),
-        modificationStamp = editor.document.modificationStamp,
-    )
-}
+private fun EditorMouseEvent.iconReferenceUnderPointer(): IconReferenceAtOffset? =
+    IconReferenceAtOffsetFinder
+        .find(editor.document.immutableCharSequence, offset)
+        ?.takeIf { reference -> editor.isPointerOver(reference, mouseEvent.point) }
 
 private fun IconHoverRequest.isStillCurrent(project: Project): Boolean =
-    editor.project == project &&
+    editor.canShowIconHover(project) &&
+        editor.document.modificationStamp == modificationStamp
+
+private fun Editor.canShowIconHover(project: Project): Boolean =
+    this.project == project &&
         !project.isDisposed &&
-        !editor.isDisposed &&
-        !editor.selectionModel.hasSelection() &&
-        editor.document.modificationStamp == modificationStamp &&
-        LookupManager.getInstance(project).activeLookup == null
+        !hasIconHoverConflict(project)
+
+private fun Editor.hasIconHoverConflict(project: Project): Boolean =
+    isDisposed ||
+        selectionModel.hasSelection() ||
+        LookupManager.getInstance(project).activeLookup != null
 
 private fun Editor.iconSourceFile(): Path? =
     FileDocumentManager
