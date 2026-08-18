@@ -32,27 +32,26 @@ internal class IconCatalogLoader(
 
     fun load(scopeRoot: Path): List<String> {
         val normalizedScope = scopeRoot.toAbsolutePath().normalize()
-        val publicIcons = scanSvgIcons(normalizedScope.resolve(ICONS_SOURCE))
         val proprietaryRoot = normalizedScope.resolve(PROPRIETARY_PACKAGE)
 
-        if (!Files.isDirectory(proprietaryRoot)) {
-            return publicIcons
+        return if (Files.isDirectory(proprietaryRoot)) {
+            loadProprietaryIcons(normalizedScope)
+        } else {
+            scanSvgIcons(normalizedScope.resolve(ICONS_SOURCE))
         }
+    }
 
-        val tdsIconsRoot = normalizedScope.resolve(TDS_ICONS_SOURCE)
-        val proprietaryIcons =
-            if (Files.isDirectory(tdsIconsRoot)) {
-                scanSvgIcons(tdsIconsRoot)
-            } else {
-                remoteFetcher
-                    .fetch()
-                    ?.let(TbankIconCatalogParser::parse)
-                    .orEmpty()
-            }
+    private fun loadProprietaryIcons(scopeRoot: Path): List<String> {
+        val tdsIconsRoot = scopeRoot.resolve(TDS_ICONS_SOURCE)
 
-        return (publicIcons + proprietaryIcons)
-            .distinct()
-            .sorted()
+        return if (Files.isDirectory(tdsIconsRoot)) {
+            scanSvgIcons(tdsIconsRoot)
+        } else {
+            remoteFetcher
+                .fetch()
+                ?.let(TbankIconCatalogParser::parse)
+                .orEmpty()
+        }
     }
 
     private fun scanSvgIcons(root: Path): List<String> {
