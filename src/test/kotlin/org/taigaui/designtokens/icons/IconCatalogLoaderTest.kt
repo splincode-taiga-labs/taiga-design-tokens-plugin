@@ -14,24 +14,41 @@ class IconCatalogLoaderTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
-    fun `maps public svg paths to tui icon names`() {
+    fun `maps only public svg paths when proprietary package is absent`() {
         val workspace = workspace()
+        var remoteRequested = false
 
         createIcon(workspace, "icons/src/a-arrow-down.svg")
         createIcon(workspace, "icons/src/flags/ab.svg")
+        createIcon(workspace, "tds-icons/src/fancy/medium/info-circle.svg")
 
-        val names = load(workspace)
+        val names =
+            load(
+                workspace = workspace,
+                fetcher =
+                    IconCatalogFetcher {
+                        remoteRequested = true
+                        null
+                    },
+            )
 
-        assertTrue("@tui.a-arrow-down" in names)
-        assertTrue("@tui.flags.ab" in names)
+        assertFalse(remoteRequested)
+        assertEquals(
+            setOf(
+                "@tui.a-arrow-down",
+                "@tui.flags.ab",
+            ),
+            names.toSet(),
+        )
     }
 
     @Test
-    fun `prefers installed tds icons over remote proprietary catalog`() {
+    fun `uses only installed tds icons when proprietary package is present`() {
         val workspace = workspace()
         var remoteRequested = false
 
         createPackage(workspace, "proprietary")
+        createIcon(workspace, "icons/src/a-arrow-down.svg")
         createIcon(workspace, "tds-icons/src/fancy/medium/info-circle.svg")
         createIcon(workspace, "tds-icons/src/fancy/medium/alert.svg")
         createIcon(workspace, "tds-icons/src/fancy/medium/check-circle.svg")
@@ -47,16 +64,23 @@ class IconCatalogLoaderTest {
             )
 
         assertFalse(remoteRequested)
-        assertTrue("@tui.fancy.medium.info-circle" in names)
-        assertTrue("@tui.fancy.medium.alert" in names)
-        assertTrue("@tui.fancy.medium.check-circle" in names)
+        assertFalse("@tui.a-arrow-down" in names)
+        assertEquals(
+            setOf(
+                "@tui.fancy.medium.info-circle",
+                "@tui.fancy.medium.alert",
+                "@tui.fancy.medium.check-circle",
+            ),
+            names.toSet(),
+        )
     }
 
     @Test
-    fun `falls back to tbank icon catalog when proprietary package has no tds icons`() {
+    fun `falls back to only tbank icon catalog when proprietary package has no tds icons`() {
         val workspace = workspace()
 
         createPackage(workspace, "proprietary")
+        createIcon(workspace, "icons/src/a-arrow-down.svg")
 
         val names =
             load(
@@ -75,6 +99,7 @@ class IconCatalogLoaderTest {
                     },
             )
 
+        assertFalse("@tui.a-arrow-down" in names)
         assertEquals(
             setOf(
                 "@tui.emoji.bank",
