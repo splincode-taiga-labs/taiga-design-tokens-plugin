@@ -42,7 +42,7 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
     fun testCompletesOnlyInstalledProprietaryIconsWhenProprietaryPackageIsPresent() {
         createPackage("proprietary")
         createIcon("icons/src/a-arrow-down.svg")
-        createIcon("flags/ab.svg")
+        createIcon("icons/src/flags/ab.svg")
         createIcon("tds-icons/src/fancy/medium/info-circle.svg")
         createIcon("tds-icons/src/fancy/medium/alert.svg")
         createIcon("tds-icons/src/fancy/medium/check-circle.svg")
