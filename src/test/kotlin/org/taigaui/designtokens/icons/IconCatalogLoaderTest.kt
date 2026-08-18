@@ -133,6 +133,28 @@ class IconCatalogLoaderTest {
         )
     }
 
+    @Test
+    fun `trims whitespace from CDN group and icon names before building svg url`() {
+        val entry =
+            TbankIconCatalogParser
+                .parseEntries(
+                    """
+                    {
+                      "version": "v1",
+                      "icons": {
+                        " fancy/medium ": ["logo-diameter "]
+                      }
+                    }
+                    """.trimIndent(),
+                ).single()
+
+        assertEquals("@tui.fancy.medium.logo-diameter", entry.name)
+        assertEquals(
+            "$ICONS_BASE_URL/fancy/medium/logo-diameter.svg",
+            entry.svgSource.uri.toString(),
+        )
+    }
+
     private fun load(
         workspace: Path,
         fetcher: IconCatalogFetcher = IconCatalogFetcher { null },
