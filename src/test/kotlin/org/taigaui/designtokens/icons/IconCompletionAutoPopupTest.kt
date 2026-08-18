@@ -23,7 +23,7 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         }
     }
 
-    fun testOpensIconCompletionWhileTypingInAngularHtmlAttribute() {
+    fun testOpensIconCompletionAfterTuiPrefixInStaticHtmlAttribute() {
         createPackage("proprietary")
         createIcon("tds-icons/src/fancy/medium/info-circle.svg")
         createIcon("tds-icons/src/fancy/medium/alert.svg")
@@ -38,7 +38,7 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         myFixture.configureFromExistingVirtualFile(sourceFile)
         project.service<IconCompletionService>().loadNow(sourcePath)
 
-        type("@tui.fancy.")
+        type("@tui.")
 
         val suggestions = myFixture.lookupElementStrings.orEmpty()
 
