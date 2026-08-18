@@ -17,7 +17,7 @@ internal class IconCompletionService(
 ) {
     private val loader = IconCatalogLoader()
     private val lock = Any()
-    private val snapshots = mutableMapOf<Path, List<String>>()
+    private val snapshots = mutableMapOf<Path, IconCatalog>()
     private val pendingCallbacks = mutableMapOf<Path, MutableList<() -> Unit>>()
 
     fun namesFor(
@@ -31,16 +31,31 @@ internal class IconCompletionService(
             ?.let { scopeRoot -> namesForScope(scopeRoot, onUpdated) }
             ?: emptyList()
 
+    fun svgPathFor(
+        sourceFile: Path,
+        iconName: String,
+    ): Path? {
+        val scopeRoot =
+            loader
+                .resolveScopeRoot(sourceFile)
+                ?.toAbsolutePath()
+                ?.normalize()
+                ?: return null
+        val snapshot = synchronized(lock) { snapshots[scopeRoot] }
+
+        return snapshot?.svgPath(iconName)
+    }
+
     internal fun loadNow(sourceFile: Path): List<String> {
         val scopeRoot = loader.resolveScopeRoot(sourceFile) ?: return emptyList()
         val normalizedScope = scopeRoot.toAbsolutePath().normalize()
-        val names = loader.load(normalizedScope)
+        val catalog = loader.loadCatalog(normalizedScope)
 
         synchronized(lock) {
-            snapshots[normalizedScope] = names
+            snapshots[normalizedScope] = catalog
         }
 
-        return names
+        return catalog.names
     }
 
     private fun namesForScope(
@@ -53,7 +68,7 @@ internal class IconCompletionService(
             scheduleWarmup(scopeRoot, onUpdated)
         }
 
-        return snapshot
+        return snapshot?.names
     }
 
     private fun scheduleWarmup(
@@ -73,10 +88,10 @@ internal class IconCompletionService(
         }
 
         coroutineScope.launch(Dispatchers.IO + CoroutineName("Taiga UI icon completion warmup")) {
-            val names = loader.load(scopeRoot)
+            val catalog = loader.loadCatalog(scopeRoot)
             val callbacks =
                 synchronized(lock) {
-                    snapshots[scopeRoot] = names
+                    snapshots[scopeRoot] = catalog
                     pendingCallbacks.remove(scopeRoot).orEmpty()
                 }
 
