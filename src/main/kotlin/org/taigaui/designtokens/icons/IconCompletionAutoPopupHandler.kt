@@ -17,16 +17,17 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
     ): Result {
         val supportedFile = file.virtualFile?.extension?.lowercase() in ICON_SUPPORTED_EXTENSIONS
         val completionContext =
-            if (supportedFile) {
-                IconCompletionContextFinder.find(
+            if (supportedFile && charTyped.isIconNameCharacter()) {
+                IconCompletionContextFinder.findAfterTyping(
                     text = editor.document.immutableCharSequence,
                     offset = editor.caretModel.offset,
+                    charTyped = charTyped,
                 )
             } else {
                 null
             }
 
-        return if (completionContext != null && charTyped.isIconNameCharacter()) {
+        return if (completionContext != null) {
             restartIconCompletionIfNeeded(project, editor)
             Result.STOP
         } else {
