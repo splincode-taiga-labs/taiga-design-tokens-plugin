@@ -26,7 +26,7 @@ internal object IconCompletionContextFinder {
         val suffix = prefix.removePrefix(ICON_PREFIX)
         val validContext =
             quoteOffset >= 0 &&
-                text[quoteOffset] in QUOTES &&
+                text[quoteOffset] in ICON_STRING_QUOTES &&
                 prefix.startsWith(ICON_PREFIX) &&
                 suffix.all(Char::isIconNameCharacter)
 
@@ -56,8 +56,6 @@ internal object IconCompletionContextFinder {
         start >= 0 &&
             start + expected.length <= length &&
             expected.indices.all { index -> this[start + index] == expected[index] }
-
-    private val QUOTES = setOf('\'', '"', '`')
 }
 
 internal fun Char.isIconNameCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_' || this == '.'
