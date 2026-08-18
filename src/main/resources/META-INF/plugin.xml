@@ -38,16 +38,23 @@
             implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
         />
         <typedHandler
-            implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
+            implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
+            order="first"
         />
         <typedHandler
-            implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
+            implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
         />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
         />
         <editorFactoryMouseMotionListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
+        />
+        <editorFactoryMouseListener
+            implementation="org.taigaui.designtokens.icons.IconHoverPopupListener"
+        />
+        <editorFactoryMouseMotionListener
+            implementation="org.taigaui.designtokens.icons.IconHoverPopupListener"
         />
     </extensions>
 </idea-plugin>
