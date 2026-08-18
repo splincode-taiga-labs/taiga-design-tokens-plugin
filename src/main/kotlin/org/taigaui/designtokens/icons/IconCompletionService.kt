@@ -31,10 +31,10 @@ internal class IconCompletionService(
             ?.let { scopeRoot -> namesForScope(scopeRoot, onUpdated) }
             ?: emptyList()
 
-    fun svgPathFor(
+    fun svgSourceFor(
         sourceFile: Path,
         iconName: String,
-    ): Path? {
+    ): IconSvgSource? {
         val scopeRoot =
             loader
                 .resolveScopeRoot(sourceFile)
@@ -43,7 +43,7 @@ internal class IconCompletionService(
                 ?: return null
         val snapshot = synchronized(lock) { snapshots[scopeRoot] }
 
-        return snapshot?.svgPath(iconName)
+        return snapshot?.svgSource(iconName)
     }
 
     internal fun loadNow(sourceFile: Path): List<String> {
