@@ -48,5 +48,4 @@ internal fun restartIconCompletionIfNeeded(
     }
 }
 
-private fun Lookup.containsIconSuggestions(): Boolean =
-    items.any { item -> item.lookupString.startsWith(ICON_PREFIX) }
+private fun Lookup.containsIconSuggestions(): Boolean = items.any { item -> item.lookupString.startsWith(ICON_PREFIX) }
