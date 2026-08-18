@@ -80,10 +80,12 @@ internal class IconCatalogLoader(
         return if (Files.isDirectory(tdsIconsRoot)) {
             scanSvgIcons(tdsIconsRoot)
         } else {
-            remoteFetcher
-                .fetch()
-                ?.let(TbankIconCatalogParser::parseEntries)
-                .orEmpty()
+            runCatching {
+                remoteFetcher
+                    .fetch()
+                    ?.let(TbankIconCatalogParser::parseEntries)
+                    .orEmpty()
+            }.getOrElse { emptyList() }
         }
     }
 
@@ -135,23 +137,48 @@ internal object TbankIconCatalogParser {
         return ICON_GROUP
             .findAll(iconsBody)
             .flatMap { group ->
-                val path = group.groupValues[1]
-                val namePath = path.replace('/', '.')
+                val path = normalizeGroupPath(group.groupValues[1])
 
-                ICON_NAME
-                    .findAll(group.groupValues[2])
-                    .map { match ->
-                        val iconName = match.groupValues[1]
-
-                        IconCatalogEntry(
-                            name = "$ICON_PREFIX$namePath.$iconName",
-                            svgSource = IconSvgSource.Remote(URI.create("$ICONS_BASE_URL/$path/$iconName.svg")),
-                        )
-                    }
+                if (path == null) {
+                    emptySequence()
+                } else {
+                    ICON_NAME
+                        .findAll(group.groupValues[2])
+                        .mapNotNull { match -> createRemoteEntry(path, match.groupValues[1]) }
+                }
             }.distinctBy(IconCatalogEntry::name)
             .sortedBy(IconCatalogEntry::name)
             .toList()
     }
+
+    private fun createRemoteEntry(
+        path: String,
+        rawIconName: String,
+    ): IconCatalogEntry? {
+        val iconName = normalizeSegment(rawIconName) ?: return null
+        val namePath = path.replace('/', '.')
+        val uri = runCatching { URI.create("$ICONS_BASE_URL/$path/$iconName.svg") }.getOrNull()
+
+        return uri?.let { sourceUri ->
+            IconCatalogEntry(
+                name = "$ICON_PREFIX$namePath.$iconName",
+                svgSource = IconSvgSource.Remote(sourceUri),
+            )
+        }
+    }
+
+    private fun normalizeGroupPath(rawPath: String): String? {
+        val segments = rawPath.split('/').map(String::trim)
+
+        return segments
+            .takeIf { values -> values.isNotEmpty() && values.all { segment -> normalizeSegment(segment) != null } }
+            ?.joinToString("/")
+    }
+
+    private fun normalizeSegment(value: String): String? =
+        value
+            .trim()
+            .takeIf { segment -> segment.isNotEmpty() && segment.all(Char::isIconNameCharacter) }
 
     private val ICONS_OBJECT =
         Regex(
