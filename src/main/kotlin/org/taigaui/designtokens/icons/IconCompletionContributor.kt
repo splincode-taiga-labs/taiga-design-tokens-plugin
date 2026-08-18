@@ -32,6 +32,9 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
         result: CompletionResultSet,
     ) {
         val request = parameters.toIconCompletionRequest() ?: return
+
+        request.project.service<IconCompletionPreviewController>().ensureAttached()
+
         val names =
             request.project
                 .service<IconCompletionService>()
