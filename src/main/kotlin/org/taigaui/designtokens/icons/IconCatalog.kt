@@ -13,6 +13,21 @@ internal fun interface IconCatalogFetcher {
     fun fetch(): String?
 }
 
+internal data class IconCatalogEntry(
+    val name: String,
+    val svgPath: Path?,
+)
+
+internal class IconCatalog(
+    entries: List<IconCatalogEntry>,
+) {
+    private val entriesByName = entries.associateBy(IconCatalogEntry::name)
+
+    val names: List<String> = entriesByName.keys.sorted()
+
+    fun svgPath(iconName: String): Path? = entriesByName[iconName]?.svgPath
+}
+
 internal class IconCatalogLoader(
     private val remoteFetcher: IconCatalogFetcher = TbankIconCatalogFetcher(),
 ) {
@@ -30,18 +45,22 @@ internal class IconCatalogLoader(
             .firstOrNull(Files::isDirectory)
     }
 
-    fun load(scopeRoot: Path): List<String> {
+    fun load(scopeRoot: Path): List<String> = loadCatalog(scopeRoot).names
+
+    fun loadCatalog(scopeRoot: Path): IconCatalog {
         val normalizedScope = scopeRoot.toAbsolutePath().normalize()
         val proprietaryRoot = normalizedScope.resolve(PROPRIETARY_PACKAGE)
+        val entries =
+            if (Files.isDirectory(proprietaryRoot)) {
+                loadProprietaryIcons(normalizedScope)
+            } else {
+                scanSvgIcons(normalizedScope.resolve(ICONS_SOURCE))
+            }
 
-        return if (Files.isDirectory(proprietaryRoot)) {
-            loadProprietaryIcons(normalizedScope)
-        } else {
-            scanSvgIcons(normalizedScope.resolve(ICONS_SOURCE))
-        }
+        return IconCatalog(entries)
     }
 
-    private fun loadProprietaryIcons(scopeRoot: Path): List<String> {
+    private fun loadProprietaryIcons(scopeRoot: Path): List<IconCatalogEntry> {
         val tdsIconsRoot = scopeRoot.resolve(TDS_ICONS_SOURCE)
 
         return if (Files.isDirectory(tdsIconsRoot)) {
@@ -51,10 +70,11 @@ internal class IconCatalogLoader(
                 .fetch()
                 ?.let(TbankIconCatalogParser::parse)
                 .orEmpty()
+                .map { name -> IconCatalogEntry(name, null) }
         }
     }
 
-    private fun scanSvgIcons(root: Path): List<String> {
+    private fun scanSvgIcons(root: Path): List<IconCatalogEntry> {
         if (!Files.isDirectory(root)) {
             return emptyList()
         }
@@ -64,8 +84,8 @@ internal class IconCatalogLoader(
                 paths
                     .filter(Files::isRegularFile)
                     .filter { file -> file.fileName.toString().endsWith(SVG_EXTENSION, ignoreCase = true) }
-                    .map { file -> file.toIconName(root) }
-                    .sorted()
+                    .map { file -> IconCatalogEntry(file.toIconName(root), file) }
+                    .sorted(compareBy(IconCatalogEntry::name))
                     .toList()
             }
         }.getOrElse { emptyList() }
