@@ -11,6 +11,8 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopup
 import com.intellij.openapi.ui.popup.JBPopupFactory
+import com.intellij.openapi.ui.popup.JBPopupListener
+import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +64,7 @@ internal class IconHoverPopupController(
         coroutineScope.launch(CoroutineName("Taiga UI icon hover preview")) {
             delay(ICON_HOVER_DELAY)
 
-            if (!request.isStillCurrent()) {
+            if (!request.isStillCurrent(project)) {
                 clearIfCurrent(request.key)
                 return@launch
             }
@@ -80,7 +82,7 @@ internal class IconHoverPopupController(
             withContext(Dispatchers.EDT) {
                 if (image == null) {
                     clearIfCurrent(request.key)
-                } else if (request.isStillCurrent() && activeKey == request.key) {
+                } else if (request.isStillCurrent(project) && activeKey == request.key) {
                     showPopup(request, image)
                 }
             }
@@ -109,6 +111,17 @@ internal class IconHoverPopupController(
                 .setResizable(false)
                 .createPopup()
 
+        createdPopup.addListener(
+            object : JBPopupListener {
+                override fun onClosed(event: LightweightWindowEvent) {
+                    if (popup === createdPopup) {
+                        popup = null
+                        activeKey = null
+                        hoverJob = null
+                    }
+                }
+            },
+        )
         popup = createdPopup
         createdPopup.showInScreenCoordinates(
             request.editor.contentComponent,
@@ -159,12 +172,13 @@ private fun EditorMouseEvent.toIconHoverRequest(project: Project): IconHoverRequ
     )
 }
 
-private fun IconHoverRequest.isStillCurrent(): Boolean =
-    editor.project == editor.project &&
+private fun IconHoverRequest.isStillCurrent(project: Project): Boolean =
+    editor.project == project &&
+        !project.isDisposed &&
         !editor.isDisposed &&
         !editor.selectionModel.hasSelection() &&
         editor.document.modificationStamp == modificationStamp &&
-        LookupManager.getInstance(requireNotNull(editor.project)).activeLookup == null
+        LookupManager.getInstance(project).activeLookup == null
 
 private fun Editor.iconSourceFile(): Path? =
     FileDocumentManager
