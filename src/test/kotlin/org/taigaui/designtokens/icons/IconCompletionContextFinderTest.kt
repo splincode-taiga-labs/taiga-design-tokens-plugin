@@ -32,10 +32,18 @@ class IconCompletionContextFinderTest {
     }
 
     @Test
-    fun `finds icon prefix inside html attribute`() {
+    fun `finds icon prefix inside angular html attribute`() {
         assertEquals(
             IconCompletionContext("@tui.flags.a"),
-            context("<tui-icon icon='@tui.flags.a|'></tui-icon>"),
+            context("<button iconStart='@tui.flags.a|'></button>"),
+        )
+    }
+
+    @Test
+    fun `finds icon prefix inside arbitrary html attribute`() {
+        assertEquals(
+            IconCompletionContext("@tui.a-arrow"),
+            context("<div data-icon='@tui.a-arrow|'></div>"),
         )
     }
 
