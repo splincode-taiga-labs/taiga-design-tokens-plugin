@@ -233,4 +233,4 @@ private data class IconHoverKey(
     val modificationStamp: Long,
 )
 
-private val ICON_HOVER_DELAY = 2.seconds
+private val ICON_HOVER_DELAY = 1.seconds
