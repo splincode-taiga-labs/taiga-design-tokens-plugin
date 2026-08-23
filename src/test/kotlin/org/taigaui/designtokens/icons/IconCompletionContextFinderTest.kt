@@ -48,6 +48,19 @@ class IconCompletionContextFinderTest {
     }
 
     @Test
+    fun `finds partial tui prefix inside angular html attribute`() {
+        assertEquals("@", partialPrefix("<button iconStart=\"@|\"></button>"))
+        assertEquals("@t", partialPrefix("<button iconStart=\"@t|\"></button>"))
+        assertEquals("@tu", partialPrefix("<button iconStart=\"@tu|\"></button>"))
+        assertEquals("@tui", partialPrefix("<button iconStart=\"@tui|\"></button>"))
+    }
+
+    @Test
+    fun `ignores partial tui prefix outside a string`() {
+        assertNull(partialPrefix("const icon = @tui|;"))
+    }
+
+    @Test
     fun `finds initial tui prefix before typed dot`() {
         assertEquals(
             IconCompletionContext("@tui."),
@@ -78,6 +91,13 @@ class IconCompletionContextFinderTest {
         val text = value.replace("|", "")
 
         return IconCompletionContextFinder.find(text, offset)
+    }
+
+    private fun partialPrefix(value: String): String? {
+        val offset = value.indexOf('|')
+        val text = value.replace("|", "")
+
+        return IconCompletionContextFinder.findPartialPrefix(text, offset)
     }
 
     private fun contextAfterTyping(
