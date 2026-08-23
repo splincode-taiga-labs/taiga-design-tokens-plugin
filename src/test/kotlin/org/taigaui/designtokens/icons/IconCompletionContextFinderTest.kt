@@ -48,6 +48,22 @@ class IconCompletionContextFinderTest {
     }
 
     @Test
+    fun `finds initial tui prefix before typed dot`() {
+        assertEquals(
+            IconCompletionContext("@tui."),
+            contextAfterTyping("<button iconStart=\"@tui|\"></button>", '.'),
+        )
+    }
+
+    @Test
+    fun `finds continued static html prefix before typed character`() {
+        assertEquals(
+            IconCompletionContext("@tui.pr"),
+            contextAfterTyping("<button iconStart=\"@tui.p|\"></button>", 'r'),
+        )
+    }
+
+    @Test
     fun `ignores tui prefix outside a string`() {
         assertNull(context("const icon = @tui.flags.a|;"))
     }
@@ -62,5 +78,15 @@ class IconCompletionContextFinderTest {
         val text = value.replace("|", "")
 
         return IconCompletionContextFinder.find(text, offset)
+    }
+
+    private fun contextAfterTyping(
+        value: String,
+        charTyped: Char,
+    ): IconCompletionContext? {
+        val offset = value.indexOf('|')
+        val text = value.replace("|", "")
+
+        return IconCompletionContextFinder.findAfterTyping(text, offset, charTyped)
     }
 }
