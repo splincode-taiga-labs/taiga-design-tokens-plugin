@@ -48,4 +48,4 @@ private data class IconPreviewRenderKey(
     val logicalSize: Int,
 )
 
-internal const val ICON_PREVIEW_LOGICAL_SIZE = 144
+internal const val ICON_PREVIEW_LOGICAL_SIZE = 32
