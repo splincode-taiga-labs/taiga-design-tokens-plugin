@@ -3,6 +3,7 @@ package org.taigaui.designtokens.icons
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.AsyncProcessIcon
+import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Color
@@ -11,7 +12,6 @@ import java.awt.Font
 import java.awt.Image
 import javax.swing.Box
 import javax.swing.BoxLayout
-import javax.swing.ImageIcon
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
@@ -53,7 +53,7 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
         content.add(Box.createVerticalStrut(JBUI.scale(12)))
         content.add(Box.createVerticalGlue())
         content.add(
-            JBLabel(ImageIcon(image)).apply {
+            JBLabel(JBImageIcon(image)).apply {
                 alignmentX = JComponent.CENTER_ALIGNMENT
                 background = PREVIEW_BACKGROUND
                 isOpaque = true
