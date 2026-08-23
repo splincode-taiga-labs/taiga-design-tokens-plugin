@@ -16,6 +16,29 @@ internal object IconCompletionContextFinder {
                     ?.let { prefixStart -> createContext(text, currentOffset, prefixStart) }
             }
 
+    fun findPartialPrefix(
+        text: CharSequence,
+        offset: Int,
+    ): String? {
+        if (offset !in 0..text.length) {
+            return null
+        }
+
+        val maxLength = minOf(ICON_PREFIX.length - 1, offset)
+
+        return (maxLength downTo 1)
+            .asSequence()
+            .map { length ->
+                val start = offset - length
+
+                start to text.subSequence(start, offset).toString()
+            }.firstOrNull { (start, prefix) ->
+                start > 0 &&
+                    text[start - 1] in ICON_STRING_QUOTES &&
+                    ICON_PREFIX.startsWith(prefix)
+            }?.second
+    }
+
     fun findAfterTyping(
         text: CharSequence,
         offset: Int,
