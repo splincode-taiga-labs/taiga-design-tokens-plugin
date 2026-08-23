@@ -7,7 +7,6 @@ import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Color
-import java.awt.Dimension
 import java.awt.Font
 import java.awt.Image
 import javax.swing.Box
@@ -28,19 +27,17 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
         background = PREVIEW_BACKGROUND
         border = JBUI.Borders.customLine(JBColor.border(), 1)
         add(content, BorderLayout.CENTER)
-        preferredSize = Dimension(JBUI.scale(PREVIEW_WIDTH), JBUI.scale(PREVIEW_HEIGHT))
     }
 
     fun showLoading(iconName: String) {
         content.removeAll()
         content.add(createTitle(iconName))
-        content.add(Box.createVerticalGlue())
+        content.add(Box.createVerticalStrut(JBUI.scale(PREVIEW_GAP)))
         content.add(
             AsyncProcessIcon("Loading Taiga UI icon preview").apply {
                 alignmentX = JComponent.CENTER_ALIGNMENT
             },
         )
-        content.add(Box.createVerticalGlue())
         refresh()
     }
 
@@ -50,8 +47,7 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
     ) {
         content.removeAll()
         content.add(createTitle(iconName))
-        content.add(Box.createVerticalStrut(JBUI.scale(12)))
-        content.add(Box.createVerticalGlue())
+        content.add(Box.createVerticalStrut(JBUI.scale(PREVIEW_GAP)))
         content.add(
             JBLabel(JBImageIcon(image)).apply {
                 alignmentX = JComponent.CENTER_ALIGNMENT
@@ -61,7 +57,6 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
                 verticalAlignment = SwingConstants.CENTER
             },
         )
-        content.add(Box.createVerticalGlue())
         refresh()
     }
 
@@ -80,6 +75,5 @@ private fun createTitle(iconName: String): JComponent =
     }
 
 private val PREVIEW_BACKGROUND = Color.WHITE
-private const val PREVIEW_WIDTH = 260
-private const val PREVIEW_HEIGHT = 220
-private const val PREVIEW_PADDING = 12
+private const val PREVIEW_PADDING = 8
+private const val PREVIEW_GAP = 8
