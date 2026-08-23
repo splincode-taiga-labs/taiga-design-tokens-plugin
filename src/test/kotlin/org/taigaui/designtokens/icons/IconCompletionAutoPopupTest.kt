@@ -23,7 +23,7 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         }
     }
 
-    fun testOpensIconCompletionWhileTypingInAngularStaticAttribute() {
+    fun testOpensIconCompletionImmediatelyAfterTuiPrefixInAngularStaticAttribute() {
         createPackage("proprietary")
         createAngularPackage()
         createIcon("tds-icons/src/pragmatic/small/clock.svg")
@@ -39,7 +39,7 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         myFixture.configureFromExistingVirtualFile(sourceFile)
         project.service<IconCompletionService>().loadNow(sourcePath)
 
-        type("@tui.pr")
+        type("@tui.")
 
         val suggestions = myFixture.lookupElementStrings.orEmpty()
 
