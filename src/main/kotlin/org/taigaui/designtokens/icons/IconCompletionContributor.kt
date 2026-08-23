@@ -30,6 +30,16 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
         context: ProcessingContext,
         result: CompletionResultSet,
     ) {
+        val text = parameters.editor.document.immutableCharSequence
+        val offset = parameters.editor.caretModel.offset
+        val partialPrefix = IconCompletionContextFinder.findPartialPrefix(text, offset)
+
+        if (partialPrefix != null) {
+            result
+                .withPrefixMatcher(partialPrefix)
+                .restartCompletionOnPrefixChange(ICON_PREFIX)
+        }
+
         val request = parameters.toIconCompletionRequest() ?: return
 
         request.project.service<IconCompletionPreviewController>().ensureAttached()
