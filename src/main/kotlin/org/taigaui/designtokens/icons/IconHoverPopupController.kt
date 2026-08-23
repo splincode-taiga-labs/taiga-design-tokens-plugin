@@ -61,7 +61,7 @@ internal class IconHoverPopupController(
     }
 
     private fun scheduleHover(request: IconHoverRequest): Job =
-        coroutineScope.launch(CoroutineName("Taiga UI icon hover preview")) {
+        coroutineScope.launch(Dispatchers.EDT + CoroutineName("Taiga UI icon hover preview")) {
             delay(ICON_HOVER_DELAY)
 
             if (!request.isStillCurrent(project)) {
@@ -79,12 +79,10 @@ internal class IconHoverPopupController(
                         ?.let { source -> renderer.render(source, ICON_PREVIEW_LOGICAL_SIZE) }
                 }
 
-            withContext(Dispatchers.EDT) {
-                if (image == null) {
-                    clearIfCurrent(request.key)
-                } else if (request.isStillCurrent(project) && activeKey == request.key) {
-                    showPopup(request, image)
-                }
+            if (image == null) {
+                clearIfCurrent(request.key)
+            } else if (request.isStillCurrent(project) && activeKey == request.key) {
+                showPopup(request, image)
             }
         }
 
