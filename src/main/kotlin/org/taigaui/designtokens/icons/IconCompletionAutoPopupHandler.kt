@@ -9,7 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 
 class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
-    override fun charTyped(
+    override fun checkAutoPopup(
         charTyped: Char,
         project: Project,
         editor: Editor,
@@ -17,10 +17,11 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
     ): Result {
         val supportedFile = file.virtualFile?.extension?.lowercase() in ICON_SUPPORTED_EXTENSIONS
         val completionContext =
-            if (supportedFile && charTyped.isIconNameCharacter()) {
-                IconCompletionContextFinder.find(
+            if (supportedFile) {
+                IconCompletionContextFinder.findAfterTyping(
                     text = editor.document.immutableCharSequence,
                     offset = editor.caretModel.offset,
+                    charTyped = charTyped,
                 )
             } else {
                 null
