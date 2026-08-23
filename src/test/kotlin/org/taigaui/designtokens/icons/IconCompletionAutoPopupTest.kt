@@ -23,12 +23,13 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         }
     }
 
-    fun testOpensIconCompletionAfterTuiPrefixInStaticHtmlAttribute() {
+    fun testOpensIconCompletionWhileTypingInAngularStaticAttribute() {
         createPackage("proprietary")
-        createIcon("tds-icons/src/fancy/medium/info-circle.svg")
-        createIcon("tds-icons/src/fancy/medium/alert.svg")
+        createAngularPackage()
+        createIcon("tds-icons/src/pragmatic/small/clock.svg")
+        createIcon("tds-icons/src/pragmatic/small/print.svg")
 
-        val sourcePath = workspaceRoot.resolve("src/icons.html")
+        val sourcePath = workspaceRoot.resolve("src/button.component.html")
         val sourceFile =
             createFile(
                 sourcePath,
@@ -38,14 +39,14 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         myFixture.configureFromExistingVirtualFile(sourceFile)
         project.service<IconCompletionService>().loadNow(sourcePath)
 
-        type("@tui.")
+        type("@tui.pr")
 
         val suggestions = myFixture.lookupElementStrings.orEmpty()
 
         assertContainsElements(
             suggestions,
-            "@tui.fancy.medium.info-circle",
-            "@tui.fancy.medium.alert",
+            "@tui.pragmatic.small.clock",
+            "@tui.pragmatic.small.print",
         )
     }
 
@@ -53,6 +54,13 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         createFile(
             workspaceRoot.resolve("node_modules/@taiga-ui/$name/package.json"),
             "{\"name\":\"@taiga-ui/$name\"}",
+        )
+    }
+
+    private fun createAngularPackage() {
+        createFile(
+            workspaceRoot.resolve("node_modules/@angular/core/package.json"),
+            "{\"name\":\"@angular/core\",\"version\":\"22.0.0\"}",
         )
     }
 
