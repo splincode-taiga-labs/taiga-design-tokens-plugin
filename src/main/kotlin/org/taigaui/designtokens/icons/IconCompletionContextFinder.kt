@@ -16,6 +16,42 @@ internal object IconCompletionContextFinder {
                     ?.let { prefixStart -> createContext(text, currentOffset, prefixStart) }
             }
 
+    fun findAfterTyping(
+        text: CharSequence,
+        offset: Int,
+        charTyped: Char,
+    ): IconCompletionContext? {
+        if (!charTyped.isIconNameCharacter()) {
+            return null
+        }
+
+        val current = find(text, offset)
+
+        return current
+            ?.let { context -> IconCompletionContext(context.prefix + charTyped) }
+            ?: findInitialPrefixAfterTyping(text, offset, charTyped)
+    }
+
+    private fun findInitialPrefixAfterTyping(
+        text: CharSequence,
+        offset: Int,
+        charTyped: Char,
+    ): IconCompletionContext? {
+        val prefixWithoutLastCharacter = ICON_PREFIX.dropLast(1)
+        val start = offset - prefixWithoutLastCharacter.length
+        val quoteOffset = start - 1
+        val validInitialPrefix =
+            charTyped == ICON_PREFIX.last() &&
+                start >= 0 &&
+                quoteOffset >= 0 &&
+                text[quoteOffset] in ICON_STRING_QUOTES &&
+                text.regionMatches(start, prefixWithoutLastCharacter)
+
+        return ICON_PREFIX
+            .takeIf { validInitialPrefix }
+            ?.let(::IconCompletionContext)
+    }
+
     private fun createContext(
         text: CharSequence,
         offset: Int,
