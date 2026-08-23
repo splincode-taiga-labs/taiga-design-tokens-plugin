@@ -4,6 +4,7 @@ import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
@@ -42,11 +43,29 @@ internal fun restartIconCompletionIfNeeded(
     force: Boolean = false,
 ) {
     val activeLookup = LookupManager.getActiveLookup(editor)
-    val needsRestart = force || activeLookup?.containsIconSuggestions() != true
 
-    if (needsRestart) {
-        activeLookup?.hideLookup(true)
+    if (!force && activeLookup?.containsIconSuggestions() == true) {
+        return
+    }
+
+    if (activeLookup == null) {
         AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        return
+    }
+
+    activeLookup.hideLookup(true)
+
+    ApplicationManager.getApplication().invokeLater {
+        if (
+            !project.isDisposed &&
+            !editor.isDisposed &&
+            IconCompletionContextFinder.find(
+                text = editor.document.immutableCharSequence,
+                offset = editor.caretModel.offset,
+            ) != null
+        ) {
+            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        }
     }
 }
 
