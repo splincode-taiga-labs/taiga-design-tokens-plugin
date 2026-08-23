@@ -7,18 +7,15 @@ import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Color
-import java.awt.Font
+import java.awt.Dimension
+import java.awt.GridBagLayout
 import java.awt.Image
-import javax.swing.Box
-import javax.swing.BoxLayout
-import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 
 internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
     private val content =
-        JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        JPanel(GridBagLayout()).apply {
             background = PREVIEW_BACKGROUND
             border = JBUI.Borders.empty(PREVIEW_PADDING)
         }
@@ -27,30 +24,23 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
         background = PREVIEW_BACKGROUND
         border = JBUI.Borders.customLine(JBColor.border(), 1)
         add(content, BorderLayout.CENTER)
+
+        val size = JBUI.scale(ICON_PREVIEW_LOGICAL_SIZE + PREVIEW_PADDING * 2 + BORDER_WIDTH * 2)
+
+        preferredSize = Dimension(size, size)
+        minimumSize = Dimension(size, size)
     }
 
-    fun showLoading(iconName: String) {
+    fun showLoading() {
         content.removeAll()
-        content.add(createTitle(iconName))
-        content.add(Box.createVerticalStrut(JBUI.scale(PREVIEW_GAP)))
-        content.add(
-            AsyncProcessIcon("Loading Taiga UI icon preview").apply {
-                alignmentX = JComponent.CENTER_ALIGNMENT
-            },
-        )
+        content.add(AsyncProcessIcon("Loading Taiga UI icon preview"))
         refresh()
     }
 
-    fun showIcon(
-        iconName: String,
-        image: Image,
-    ) {
+    fun showIcon(image: Image) {
         content.removeAll()
-        content.add(createTitle(iconName))
-        content.add(Box.createVerticalStrut(JBUI.scale(PREVIEW_GAP)))
         content.add(
             JBLabel(JBImageIcon(image)).apply {
-                alignmentX = JComponent.CENTER_ALIGNMENT
                 background = PREVIEW_BACKGROUND
                 isOpaque = true
                 horizontalAlignment = SwingConstants.CENTER
@@ -66,14 +56,6 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
     }
 }
 
-private fun createTitle(iconName: String): JComponent =
-    JBLabel(iconName).apply {
-        font = font.deriveFont(Font.BOLD)
-        foreground = Color.BLACK
-        alignmentX = JComponent.CENTER_ALIGNMENT
-        horizontalAlignment = SwingConstants.CENTER
-    }
-
 private val PREVIEW_BACKGROUND = Color.WHITE
 private const val PREVIEW_PADDING = 8
-private const val PREVIEW_GAP = 8
+private const val BORDER_WIDTH = 1
