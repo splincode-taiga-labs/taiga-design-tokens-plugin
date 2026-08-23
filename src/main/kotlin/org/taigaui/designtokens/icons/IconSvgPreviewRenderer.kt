@@ -32,6 +32,7 @@ internal class IconSvgPreviewRenderer {
         runCatching {
             val url = source.uri.toURL()
             val scaleContext = ScaleContext.create()
+            val logicalSizeDouble = logicalSize.toDouble()
 
             url.openStream().use { stream ->
                 SVGLoader
@@ -39,9 +40,16 @@ internal class IconSvgPreviewRenderer {
                         url,
                         stream,
                         scaleContext,
-                        logicalSize.toDouble(),
-                        logicalSize.toDouble(),
-                    ).let { image -> ImageUtil.ensureHiDPI(image, scaleContext) }
+                        logicalSizeDouble,
+                        logicalSizeDouble,
+                    ).let { image ->
+                        ImageUtil.ensureHiDPI(
+                            image,
+                            scaleContext,
+                            logicalSizeDouble,
+                            logicalSizeDouble,
+                        )
+                    }
             }
         }.getOrNull()
 }
