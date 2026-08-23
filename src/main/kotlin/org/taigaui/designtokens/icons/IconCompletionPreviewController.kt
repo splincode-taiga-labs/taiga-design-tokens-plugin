@@ -140,7 +140,7 @@ internal class IconCompletionPreviewController(
 
         previewKey = key
         previewJob?.cancel()
-        showLoading(lookup, request.iconName)
+        showLoading(lookup)
 
         previewJob =
             coroutineScope.launch(Dispatchers.IO + CoroutineName("Taiga UI icon completion preview")) {
@@ -155,7 +155,7 @@ internal class IconCompletionPreviewController(
                         if (image == null) {
                             hidePreview()
                         } else {
-                            showIcon(lookup, request.iconName, image)
+                            showIcon(lookup, image)
                         }
                     }
                 }
@@ -169,24 +169,20 @@ internal class IconCompletionPreviewController(
         hidePreview()
     }
 
-    private fun showLoading(
-        lookup: Lookup,
-        iconName: String,
-    ) {
+    private fun showLoading(lookup: Lookup) {
         val panel = previewPanel ?: IconCompletionPreviewPanel().also { previewPanel = it }
 
-        panel.showLoading(iconName)
+        panel.showLoading()
         showOrMoveHint(lookup, panel.preferredSize)
     }
 
     private fun showIcon(
         lookup: Lookup,
-        iconName: String,
         image: Image,
     ) {
         val panel = previewPanel ?: IconCompletionPreviewPanel().also { previewPanel = it }
 
-        panel.showIcon(iconName, image)
+        panel.showIcon(image)
         showOrMoveHint(lookup, panel.preferredSize)
     }
 
