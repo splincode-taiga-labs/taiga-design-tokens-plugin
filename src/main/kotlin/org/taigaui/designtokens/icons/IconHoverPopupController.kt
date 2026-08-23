@@ -7,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.event.EditorMouseEventArea
+import com.intellij.openapi.editor.impl.EditorMouseHoverPopupControl
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.popup.JBPopup
@@ -36,6 +37,7 @@ internal class IconHoverPopupController(
     private var activeKey: IconHoverKey? = null
     private var hoverJob: Job? = null
     private var popup: JBPopup? = null
+    private var nativeHoverSuppressedEditor: Editor? = null
 
     fun mouseMoved(event: EditorMouseEvent) {
         val request = event.toIconHoverRequest(project)
@@ -43,11 +45,15 @@ internal class IconHoverPopupController(
 
         if (requestKey == null) {
             dismissHover(event.editor)
-        } else if (requestKey != activeKey) {
-            activeKey = requestKey
-            hoverJob?.cancel()
-            hidePopup()
-            hoverJob = scheduleHover(request)
+        } else {
+            suppressNativeHover(request.editor)
+
+            if (requestKey != activeKey) {
+                activeKey = requestKey
+                hoverJob?.cancel()
+                hidePopup()
+                hoverJob = scheduleHover(request)
+            }
         }
     }
 
@@ -57,6 +63,7 @@ internal class IconHoverPopupController(
             hoverJob?.cancel()
             hoverJob = null
             hidePopup()
+            restoreNativeHover()
         }
     }
 
@@ -116,6 +123,7 @@ internal class IconHoverPopupController(
                         popup = null
                         activeKey = null
                         hoverJob = null
+                        restoreNativeHover()
                     }
                 }
             },
@@ -133,6 +141,27 @@ internal class IconHoverPopupController(
             activeKey = null
             hoverJob = null
             hidePopup()
+            restoreNativeHover()
+        }
+    }
+
+    private fun suppressNativeHover(editor: Editor) {
+        if (nativeHoverSuppressedEditor === editor) {
+            return
+        }
+
+        restoreNativeHover()
+        EditorMouseHoverPopupControl.disablePopups(editor)
+        nativeHoverSuppressedEditor = editor
+    }
+
+    private fun restoreNativeHover() {
+        val editor = nativeHoverSuppressedEditor ?: return
+
+        nativeHoverSuppressedEditor = null
+
+        if (!editor.isDisposed) {
+            EditorMouseHoverPopupControl.enablePopups(editor)
         }
     }
 
