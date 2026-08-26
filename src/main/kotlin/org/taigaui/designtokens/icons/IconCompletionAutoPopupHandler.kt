@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.codeInsight.AutoPopupController
+import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
+import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupManager
@@ -10,7 +11,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
 
 class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
-    override fun checkAutoPopup(
+    override fun charTyped(
         charTyped: Char,
         project: Project,
         editor: Editor,
@@ -18,22 +19,20 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
     ): Result {
         val supportedFile = file.virtualFile?.extension?.lowercase() in ICON_SUPPORTED_EXTENSIONS
         val completionContext =
-            if (supportedFile) {
-                IconCompletionContextFinder.findAfterTyping(
+            if (supportedFile && charTyped.isIconNameCharacter()) {
+                IconCompletionContextFinder.find(
                     text = editor.document.immutableCharSequence,
                     offset = editor.caretModel.offset,
-                    charTyped = charTyped,
                 )
             } else {
                 null
             }
 
-        return if (completionContext != null) {
+        if (completionContext != null) {
             restartIconCompletionIfNeeded(project, editor)
-            Result.STOP
-        } else {
-            Result.CONTINUE
         }
+
+        return Result.CONTINUE
     }
 }
 
@@ -42,30 +41,36 @@ internal fun restartIconCompletionIfNeeded(
     editor: Editor,
     force: Boolean = false,
 ) {
-    val activeLookup = LookupManager.getActiveLookup(editor)
-
-    if (!force && activeLookup?.containsIconSuggestions() == true) {
+    if (!force && LookupManager.getActiveLookup(editor)?.containsIconSuggestions() == true) {
         return
     }
-
-    if (activeLookup == null) {
-        AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
-        return
-    }
-
-    activeLookup.hideLookup(true)
 
     ApplicationManager.getApplication().invokeLater {
-        if (
-            !project.isDisposed &&
-            !editor.isDisposed &&
+        if (project.isDisposed || editor.isDisposed) {
+            return@invokeLater
+        }
+
+        val completionContext =
             IconCompletionContextFinder.find(
                 text = editor.document.immutableCharSequence,
                 offset = editor.caretModel.offset,
-            ) != null
-        ) {
-            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+            )
+
+        if (completionContext == null) {
+            return@invokeLater
         }
+
+        if (!force && LookupManager.getActiveLookup(editor)?.containsIconSuggestions() == true) {
+            return@invokeLater
+        }
+
+        CodeCompletionHandlerBase
+            .createHandler(
+                CompletionType.BASIC,
+                false,
+                true,
+                false,
+            ).invokeCompletion(project, editor, 0)
     }
 }
 
