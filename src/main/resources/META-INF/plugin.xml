@@ -28,6 +28,7 @@
         <completion.contributor
             language="any"
             implementationClass="org.taigaui.designtokens.icons.IconCompletionContributor"
+            order="before xml"
         />
         <localInspection
             shortName="UnknownTaigaUIDesignToken"
