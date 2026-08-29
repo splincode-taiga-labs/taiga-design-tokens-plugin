@@ -1,6 +1,8 @@
 package org.taigaui.designtokens.units
 
+import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.editor.Editor
@@ -35,6 +37,26 @@ internal class RemHoverPopupController(
     private var hoverJob: Job? = null
     private var popup: JBPopup? = null
     private var nativeHoverSuppressedEditor: Editor? = null
+
+    init {
+        project.messageBus
+            .connect()
+            .subscribe(
+                LookupManagerListener.TOPIC,
+                object : LookupManagerListener {
+                    override fun activeLookupChanged(
+                        oldLookup: Lookup?,
+                        newLookup: Lookup?,
+                    ) {
+                        if (newLookup?.isCompletion == true) {
+                            coroutineScope.launch(Dispatchers.EDT) {
+                                dismissHover()
+                            }
+                        }
+                    }
+                },
+            )
+    }
 
     fun canHandle(event: EditorMouseEvent): Boolean = event.toRemHoverRequest(project) != null
 
