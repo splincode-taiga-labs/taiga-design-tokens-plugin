@@ -19,7 +19,7 @@ flowchart LR
     end
 
     subgraph UnitFeatures["CSS unit helpers"]
-        RemHover["rem → px hover"]
+        RemInlay["rem → px inlay hints"]
     end
 
     subgraph IconFeatures["Icon features"]
@@ -44,7 +44,7 @@ flowchart LR
     Editor --> TokenCompletion
     Editor --> TokenInspection
     Editor --> TokenHover
-    Editor --> RemHover
+    Editor --> RemInlay
     Editor --> IconCompletion
     Editor --> IconHover
 
@@ -145,13 +145,14 @@ Recursive `var(...)` references use the same context-aware candidate selection m
 
 CSS unit helpers are intentionally stateless editor features. They do not participate in token discovery, project graphs, caches, or package resolution.
 
-The `rem` hover feature:
+The `rem` inlay feature:
 
 - runs only for CSS, Less, and SCSS editor files;
-- recognizes literal `rem` dimensions under the pointer;
-- converts the literal with the fixed browser-default assumption `1rem = 16px`;
+- recognizes literal `rem` dimensions in source text;
+- converts literals with the fixed browser-default assumption `1rem = 16px`;
 - ignores matching text inside comments and strings;
-- contributes a native IntelliJ Documentation Target so WebStorm Quick Documentation shows the conversion for the `rem` value instead of creating a competing custom popup.
+- groups multiple `rem` values from the same declaration line into one hint;
+- renders through IntelliJ's declarative inlay-hints API after the declaration semicolon, without changing file contents or competing with Quick Documentation.
 
 Future local unit conversions should stay in this subsystem unless they require project-specific configuration or discovery.
 
@@ -250,7 +251,7 @@ org.taigaui.designtokens
 ├── psi            IntelliJ CSS/SCSS/Less PSI adapter
 ├── project        package/project graph orchestration, caches, invalidation, and resolution entry point
 ├── completion     token completion, strict inspection names, native lookup integration, and selected-item preview
-├── units          stateless CSS unit parsing, conversion, and native documentation presentation
+├── units          stateless CSS unit parsing, conversion, and declarative inlay presentation
 ├── icons          @tui.* completion, local/remote catalogs, SVG preview rendering, and icon hover
 └── documentation  token-reference scanning, hover controller, Swing model, and Swing popup
 ```
