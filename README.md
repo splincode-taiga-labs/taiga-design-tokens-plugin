@@ -50,13 +50,16 @@ Project overrides are shown separately from package values so it is clear which 
 
 ## CSS units
 
-### `rem` to `px` hover
+### `rem` to `px` inlay hints
 
-Hovering a `rem` value in CSS, Less, or SCSS shows its pixel equivalent using the browser default root size of `16px`.
+CSS, Less, and SCSS declarations with literal `rem` values show their pixel equivalents as unobtrusive editor hints using the browser default root size of `16px`.
 
-```text
-1.5rem = 24px
+```css
+gap: 1rem;             16px
+min-width: 21rem;      336px
 ```
+
+Multiple `rem` values on the same declaration are shown in source order.
 
 ## Icons
 
