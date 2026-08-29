@@ -43,9 +43,8 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
         val request = parameters.toIconCompletionRequest() ?: return
 
         // Once the caret is inside a confirmed @tui.* reference, this contributor
-        // owns the lookup. Stop Angular/HTML contributors immediately so they cannot
-        // keep the popup in the "calculating" state while the icon catalog is being
-        // loaded or after our icon items are already available.
+        // owns manual BASIC completion. Automatic completion uses a dedicated native
+        // lookup so it does not depend on the Angular/HTML completion lifecycle.
         result.stopHere()
 
         request.project.service<IconCompletionPreviewController>().ensureAttached()
@@ -108,7 +107,7 @@ private data class IconCompletionRequest(
             }
 
         if (currentContext != null) {
-            restartIconCompletionIfNeeded(project, editor, force = true)
+            requestIconCompletion(project, editor, sourceFile)
         }
     }
 }
