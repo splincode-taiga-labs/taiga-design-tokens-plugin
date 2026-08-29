@@ -39,7 +39,7 @@
         />
         <typedHandler
             implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
-            order="first"
+            order="first, before completionAutoPopup"
         />
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
