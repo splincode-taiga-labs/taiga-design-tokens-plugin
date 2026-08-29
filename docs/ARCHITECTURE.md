@@ -151,7 +151,7 @@ The `rem` hover feature:
 - recognizes literal `rem` dimensions under the pointer;
 - converts the literal with the fixed browser-default assumption `1rem = 16px`;
 - ignores matching text inside comments and strings;
-- shares the stylesheet hover routing with design-token hover so only one custom stylesheet hover popup is active at a time.
+- contributes a native IntelliJ Documentation Target so WebStorm Quick Documentation shows the conversion for the `rem` value instead of creating a competing custom popup.
 
 Future local unit conversions should stay in this subsystem unless they require project-specific configuration or discovery.
 
@@ -250,7 +250,7 @@ org.taigaui.designtokens
 ├── psi            IntelliJ CSS/SCSS/Less PSI adapter
 ├── project        package/project graph orchestration, caches, invalidation, and resolution entry point
 ├── completion     token completion, strict inspection names, native lookup integration, and selected-item preview
-├── units          stateless CSS unit parsing, conversion, and hover presentation
+├── units          stateless CSS unit parsing, conversion, and native documentation presentation
 ├── icons          @tui.* completion, local/remote catalogs, SVG preview rendering, and icon hover
 └── documentation  token-reference scanning, hover controller, Swing model, and Swing popup
 ```
