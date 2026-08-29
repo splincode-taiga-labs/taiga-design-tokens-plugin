@@ -2,8 +2,8 @@ package org.taigaui.designtokens.icons
 
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.testFramework.EdtTestUtil
 import com.intellij.testFramework.fixtures.CompletionAutoPopupTestCase
+import com.intellij.testFramework.runInEdtAndGet
 import org.junit.Assert.assertFalse
 import java.nio.file.Files
 import java.nio.file.Path
@@ -49,7 +49,7 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         )
         assertFalse(
             "Taiga UI icon lookup must finish calculating after icon suggestions are available",
-            EdtTestUtil.runInEdtAndGet { getLookup()?.isCalculating == true },
+            runInEdtAndGet { getLookup()?.isCalculating == true },
         )
     }
 
@@ -59,7 +59,7 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
             myTester.joinCompletion()
 
             val suggestions =
-                EdtTestUtil.runInEdtAndGet {
+                runInEdtAndGet {
                     myFixture.lookupElementStrings.orEmpty()
                 }
 
@@ -70,7 +70,7 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
             Thread.sleep(10)
         }
 
-        return EdtTestUtil.runInEdtAndGet {
+        return runInEdtAndGet {
             myFixture.lookupElementStrings.orEmpty()
         }
     }
