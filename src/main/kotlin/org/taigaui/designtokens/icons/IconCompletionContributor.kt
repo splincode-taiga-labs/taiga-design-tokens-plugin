@@ -48,7 +48,7 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
             request.project
                 .service<IconCompletionService>()
                 .namesFor(request.sourceFile, request::scheduleRefresh)
-                .orEmpty()
+                ?: return
         val matchingResult = result.withPrefixMatcher(request.prefix)
 
         names.forEach { name ->
@@ -60,6 +60,14 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
                         removeExistingIconSuffix(insertionContext)
                     },
             )
+        }
+
+        // Inside a confirmed @tui.* string the icon catalog is the complete source
+        // of suggestions. Do not continue into Angular/HTML contributors: in real
+        // WebStorm projects they can keep the lookup in the "calculating" state
+        // even after all Taiga UI icon items have already been produced.
+        if (names.isNotEmpty()) {
+            result.stopHere()
         }
     }
 }
