@@ -86,13 +86,17 @@ internal fun restartIconCompletionIfNeeded(
 
         activeLookup?.hideLookup(true)
 
+        // The icon catalog is already warmed at this point. Run a lightweight
+        // auto-popup completion instead of an explicit Ctrl+Space completion,
+        // otherwise Angular/HTML contributors can keep the lookup in the
+        // "calculating" state even though our icon items are ready.
         CodeCompletionHandlerBase
             .createHandler(
                 CompletionType.BASIC,
+                false,
                 true,
                 false,
-                false,
-            ).invokeCompletion(project, editor, 1)
+            ).invokeCompletion(project, editor, 0)
     }
 }
 
