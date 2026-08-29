@@ -29,10 +29,12 @@ internal object RemValueAtOffsetFinder {
         }
     }
 
-    fun findAll(content: CharSequence): List<RemValueAtOffset> =
-        REM_VALUE
+    fun findAll(content: CharSequence): List<RemValueAtOffset> {
+        val excludedRanges = EXCLUDED_TEXT.findAll(content).map(MatchResult::range).toList()
+
+        return REM_VALUE
             .findAll(content)
-            .filterNot { match -> content.isInsideCommentOrString(match.range.first) }
+            .filterNot { match -> excludedRanges.any { range -> match.range.first in range } }
             .map { match ->
                 RemValueAtOffset(
                     remValue = match.groupValues[1].toBigDecimal(),
@@ -41,58 +43,7 @@ internal object RemValueAtOffsetFinder {
                 )
             }
             .toList()
-}
-
-private fun CharSequence.isInsideCommentOrString(offset: Int): Boolean {
-    var index = 0
-    var quote: Char? = null
-    var inBlockComment = false
-    var inLineComment = false
-
-    while (index < offset.coerceAtMost(length)) {
-        val current = this[index]
-        val next = if (index + 1 < length) this[index + 1] else null
-
-        when {
-            inLineComment && current == '\n' -> {
-                inLineComment = false
-                index++
-            }
-
-            inLineComment -> index++
-            inBlockComment && current == '*' && next == '/' -> {
-                inBlockComment = false
-                index += 2
-            }
-
-            inBlockComment -> index++
-            quote != null && current == '\\' -> index += 2
-            quote != null && current == quote -> {
-                quote = null
-                index++
-            }
-
-            quote != null -> index++
-            current == '/' && next == '*' -> {
-                inBlockComment = true
-                index += 2
-            }
-
-            current == '/' && next == '/' -> {
-                inLineComment = true
-                index += 2
-            }
-
-            current == '\'' || current == '"' -> {
-                quote = current
-                index++
-            }
-
-            else -> index++
-        }
     }
-
-    return inBlockComment || inLineComment || quote != null
 }
 
 private fun BigDecimal.format(): String = stripTrailingZeros().toPlainString()
@@ -102,4 +53,8 @@ private val REM_VALUE =
     Regex(
         pattern = "(?<![A-Za-z0-9_-])([+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?)rem(?![A-Za-z0-9_-])",
         option = RegexOption.IGNORE_CASE,
+    )
+private val EXCLUDED_TEXT =
+    Regex(
+        pattern = "\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'|/\\*[\\s\\S]*?\\*/|//[^\\r\\n]*",
     )
