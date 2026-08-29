@@ -28,7 +28,7 @@ internal object RemValueAtOffsetFinder {
 
         return REM_VALUE
             .findAll(line)
-            .firstOrNull { match -> localOffsets.any(match.range::contains) }
+            .firstOrNull { match -> localOffsets.any { current -> current in match.range } }
             ?.takeUnless { match -> content.isInsideCommentOrString(lineStart + match.range.first) }
             ?.let { match ->
                 RemValueAtOffset(
