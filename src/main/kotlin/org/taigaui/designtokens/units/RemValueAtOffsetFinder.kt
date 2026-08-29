@@ -8,8 +8,9 @@ internal data class RemValueAtOffset(
     val endOffset: Int,
 ) {
     val pxValue: BigDecimal = remValue.multiply(ROOT_FONT_SIZE_PX)
+    val pxPresentation: String = "${pxValue.format()}px"
 
-    fun presentation(): String = "${remValue.format()}rem = ${pxValue.format()}px"
+    fun presentation(): String = "${remValue.format()}rem = $pxPresentation"
 }
 
 internal object RemValueAtOffsetFinder {
@@ -21,45 +22,25 @@ internal object RemValueAtOffsetFinder {
             return null
         }
 
-        val lineStart = content.findLineStart(offset)
-        val lineEnd = content.findLineEnd(offset)
-        val line = content.subSequence(lineStart, lineEnd).toString()
-        val localOffsets = sequenceOf(offset - lineStart, offset - lineStart - 1).filter(line.indices::contains)
+        val candidateOffsets = sequenceOf(offset, offset - 1).filter(content.indices::contains)
 
-        return REM_VALUE
-            .findAll(line)
-            .firstOrNull { match -> localOffsets.any { current -> current in match.range } }
-            ?.takeUnless { match -> content.isInsideCommentOrString(lineStart + match.range.first) }
-            ?.let { match ->
+        return findAll(content).firstOrNull { value ->
+            candidateOffsets.any { current -> current in value.startOffset until value.endOffset }
+        }
+    }
+
+    fun findAll(content: CharSequence): List<RemValueAtOffset> =
+        REM_VALUE
+            .findAll(content)
+            .filterNot { match -> content.isInsideCommentOrString(match.range.first) }
+            .map { match ->
                 RemValueAtOffset(
                     remValue = match.groupValues[1].toBigDecimal(),
-                    startOffset = lineStart + match.range.first,
-                    endOffset = lineStart + match.range.last + 1,
+                    startOffset = match.range.first,
+                    endOffset = match.range.last + 1,
                 )
             }
-    }
-}
-
-private fun CharSequence.findLineStart(offset: Int): Int {
-    val start = (offset - 1).coerceAtMost(lastIndex)
-
-    for (index in start downTo 0) {
-        if (this[index] == '\n') {
-            return index + 1
-        }
-    }
-
-    return 0
-}
-
-private fun CharSequence.findLineEnd(offset: Int): Int {
-    for (index in offset.coerceAtLeast(0).coerceAtMost(length) until length) {
-        if (this[index] == '\n') {
-            return index
-        }
-    }
-
-    return length
+            .toList()
 }
 
 private fun CharSequence.isInsideCommentOrString(offset: Int): Boolean {
