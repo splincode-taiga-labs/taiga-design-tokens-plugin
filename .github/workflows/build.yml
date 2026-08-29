@@ -40,6 +40,8 @@ jobs:
                   java-version: 21
 
             - name: Check and build plugin
+              env:
+                  JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=${{ runner.temp }}
               run: >-
                   ./gradlew
                   check
