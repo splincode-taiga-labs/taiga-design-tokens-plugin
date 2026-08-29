@@ -52,14 +52,14 @@ Project overrides are shown separately from package values so it is clear which 
 
 ### `rem` to `px` inlay hints
 
-CSS, Less, and SCSS declarations with literal `rem` values show their pixel equivalents as unobtrusive editor hints using the browser default root size of `16px`.
+CSS, Less, and SCSS declarations with literal `rem` values show their pixel equivalents as unobtrusive editor hints using the browser default root size of `16px`. The same hints are shown for CSS injected into Angular component `styles` template literals.
 
 ```css
 gap: 1rem;             16px
 min-width: 21rem;      336px
 ```
 
-Multiple `rem` values on the same declaration are shown in source order.
+Multiple `rem` values on the same declaration are shown in source order. Inlay hints are visual editor decorations and do not modify the source file.
 
 ## Icons
 
