@@ -69,172 +69,180 @@ The popup is suppressed while completion is active and while text is selected. M
 
 ## Architecture
 
-This sequence diagram is the architectural contract for the plugin. Pull requests that change the data flow or introduce a new architectural layer must update the diagram in the same change.
+The diagrams below define the architectural boundaries of the plugin. Pull requests that introduce a new subsystem, data source, or dependency between architectural layers should update the relevant diagram instead of expanding one global sequence trace.
+
+### Architecture overview
+
+The plugin has two largely independent data pipelines: design tokens and icons. Editor features consume project-level services, while scanning, graph construction, network access, and rendering stay behind those service boundaries.
+
+```mermaid
+flowchart LR
+    Editor["WebStorm editor"]
+
+    subgraph TokenFeatures["Design token features"]
+        TokenCompletion["Token completion"]
+        TokenInspection["Unknown-token inspection"]
+        TokenHover["Token hover"]
+    end
+
+    subgraph IconFeatures["Icon features"]
+        IconCompletion["Icon completion"]
+        IconHover["Icon hover"]
+    end
+
+    subgraph Services["Project services"]
+        TokenNames["Token-name service"]
+        TokenResolution["Token resolution service"]
+        IconCatalog["Icon catalog service"]
+        IconRenderer["SVG preview renderer"]
+    end
+
+    subgraph Sources["Data sources"]
+        Packages["Installed Taiga UI packages"]
+        ProjectStyles["Project CSS / Less / SCSS"]
+        LocalIcons["@taiga-ui/icons / tds-icons"]
+        IconCdn["T-Bank CDN fallback"]
+    end
+
+    Editor --> TokenCompletion
+    Editor --> TokenInspection
+    Editor --> TokenHover
+    Editor --> IconCompletion
+    Editor --> IconHover
+
+    TokenCompletion --> TokenNames
+    TokenInspection --> TokenNames
+    TokenCompletion --> TokenResolution
+    TokenHover --> TokenResolution
+
+    TokenNames --> Packages
+    TokenNames --> ProjectStyles
+    TokenResolution --> Packages
+    TokenResolution --> ProjectStyles
+
+    IconCompletion --> IconCatalog
+    IconHover --> IconCatalog
+    IconCatalog --> LocalIcons
+    IconCatalog --> IconCdn
+    IconCatalog --> IconRenderer
+```
+
+### Design token subsystem
+
+Token names and token values intentionally have different reachability rules. Completion and inspection need a broad catalog of known names, while hover and selected-item preview need the stricter reachable declaration graph to determine effective values.
+
+```mermaid
+flowchart LR
+    Editor["CSS / Less / SCSS"]
+
+    subgraph Entry["Editor layer"]
+        Completion["Completion"]
+        Inspection["Inspection"]
+        Hover["Hover / selected preview"]
+    end
+
+    Names["Token-name catalog"]
+
+    subgraph ProjectService["Project token service"]
+        PackageCache["Installed-package cache"]
+        ProjectCache["Project-styles cache"]
+        Resolver["Value resolver"]
+    end
+
+    subgraph Discovery["Discovery and indexing"]
+        PackageScanner["Installed-package scanner"]
+        ProjectScanner["Project stylesheet scanner"]
+        ImportGraph["Reachable import graph"]
+    end
+
+    Editor --> Completion
+    Editor --> Inspection
+    Editor --> Hover
+
+    Completion --> Names
+    Inspection --> Names
+    Names --> PackageCache
+    Names --> ProjectCache
+
+    Hover --> Resolver
+    Completion --> Resolver
+
+    PackageCache --> PackageScanner
+    ProjectCache --> ProjectScanner
+    ProjectScanner --> ImportGraph
+
+    PackageScanner --> Resolver
+    ImportGraph --> Resolver
+```
+
+The broad token-name catalog does not change value-resolution semantics. A token may be known to completion and inspection while still being unreachable for effective-value resolution from the current source context.
+
+### Icon subsystem
+
+Icon completion and icon hover share one catalog service and one SVG renderer. Public and proprietary catalogs remain mutually exclusive; the CDN is only a proprietary fallback when local `tds-icons` is unavailable.
+
+```mermaid
+flowchart LR
+    Editor["JS / TS / HTML / Angular"]
+    Completion["Icon completion"]
+    Hover["Icon hover"]
+    Catalog["Icon catalog service"]
+
+    Public["@taiga-ui/icons"]
+    Proprietary["@taiga-ui/tds-icons"]
+    Cdn["T-Bank CDN"]
+
+    Renderer["SVG renderer"]
+    Preview["64×64 HiDPI preview"]
+
+    Editor --> Completion
+    Editor --> Hover
+
+    Completion --> Catalog
+    Hover --> Catalog
+
+    Catalog -->|"public project"| Public
+    Catalog -->|"proprietary + local"| Proprietary
+    Catalog -->|"proprietary fallback"| Cdn
+
+    Catalog --> Renderer
+    Renderer --> Preview
+```
+
+### Background loading and caching
+
+Completion never performs expensive discovery on the UI path. Token and icon services follow the same cold-cache pattern: return an already usable snapshot when possible, warm missing data in the background, and restart the editor feature only if its context is still valid.
 
 ```mermaid
 sequenceDiagram
-    actor User as Editor user
-    participant Completion as Token completion contributor
-    participant IconCompletion as Icon completion contributor
-    participant Inspection as Unknown-token inspection
-    participant CompletionService as Token-name service
-    participant IconService as Icon catalog service
-    participant Lookup as WebStorm lookup
-    participant Preview as Token completion preview
-    participant IconPreview as Icon completion preview
-    participant IconHover as Icon hover controller
-    participant IconRenderer as SVG preview renderer
-    participant Hover as Token hover controller
-    participant Service as Project token service
-    participant PackageCache as Installed-package cache
-    participant ProjectCache as Project-styles cache
-    participant Scanner as Installed-package scanner
-    participant ProjectScanner as Project stylesheet scanner
-    participant Graph as Import graph
-    participant Index as Token index
-    participant Values as Value resolver
-    participant Popup as Swing popup
-    participant IconPackages as Installed icon packages
-    participant IconCdn as T-Bank icon catalog
-    participant VFS as VFS/document changes
+    actor User
+    participant Feature as Editor feature
+    participant Cache as Cached project service
+    participant Background as Background worker
+    participant Sources as Data sources
+    participant Lookup as WebStorm lookup / daemon
 
-    rect rgb(245, 245, 245)
-        Note over User,Preview: Token completion flow
-        User->>Completion: Type var(--tui-te|)
-        Completion->>CompletionService: namesFor(sourceFile)
+    User->>Feature: Request completion or inspection
+    Feature->>Cache: Request current snapshot
 
-        alt Fresh token-name snapshot exists
-            CompletionService-->>Completion: Known installed + project token names
-        else Snapshot is cold or invalidated
-            CompletionService-->>Completion: Last usable names or empty result
-            CompletionService->>Service: Warm token graph in background
-            Service->>PackageCache: getOrBuild(installed package graph)
-            Service->>ProjectCache: getOrBuild(project stylesheet graph)
-            PackageCache->>Scanner: Scan installed package styles
-            ProjectCache->>ProjectScanner: Discover project stylesheet entrypoints
-            ProjectScanner->>Graph: Traverse reachable local imports
-            Scanner-->>PackageCache: Installed declarations
-            Graph-->>ProjectCache: Reachable project declarations
-            Service-->>CompletionService: Fresh token-name catalog
-            CompletionService-->>Completion: Restart completion if caret still matches
-        end
-
-        Completion->>Lookup: Contribute token-name lookup items
-        Lookup-->>User: Native WebStorm completion
-        Lookup->>Preview: Selected --tui-* item changed
-        Preview->>Service: resolveToken(sourceFile, selectedName)
-        Service->>PackageCache: Read installed candidates
-        Service->>ProjectCache: Read project candidates
-        Service->>Values: Resolve effective contexts
-        Values-->>Preview: Resolved values + colors
-        Preview-->>User: Side value/color preview
-        Note over Hover,Lookup: Token hover is closed and suppressed while lookup is active
+    alt Snapshot is ready
+        Cache-->>Feature: Current data
+    else Cache is cold or invalidated
+        Cache-->>Feature: Last usable data or empty result
+        Cache->>Background: Warm in background
+        Background->>Sources: Scan / build graph / fetch if needed
+        Sources-->>Background: Fresh data
+        Background->>Cache: Publish fresh snapshot
+        Cache->>Feature: Restart if editor context still matches
     end
 
-    rect rgb(245, 245, 245)
-        Note over User,IconRenderer: Icon completion flow
-        User->>IconCompletion: Type '@tui.fancy.medium.'
-        IconCompletion->>IconService: namesFor(sourceFile)
-
-        alt Cached icon catalog is ready
-            IconService-->>IconCompletion: @tui.* icon names
-        else Cold icon catalog
-            IconService-->>IconCompletion: No custom icon items yet
-            alt Proprietary project
-                alt Local tds-icons is installed
-                    IconService->>IconPackages: Scan @taiga-ui/tds-icons/src SVG files
-                else Local tds-icons is unavailable
-                    IconService->>IconCdn: Fetch grouped icon catalog
-                    IconCdn-->>IconService: Grouped icon paths and names
-                end
-            else Public project
-                IconService->>IconPackages: Scan @taiga-ui/icons/src SVG files
-            end
-            IconService-->>IconCompletion: Restart lookup if caret still matches @tui.*
-        end
-
-        IconCompletion->>Lookup: Contribute dot-path icon items
-        Lookup-->>User: Native icon completion list
-        Lookup->>IconPreview: Selected @tui.* item changed
-        IconPreview->>IconService: svgSourceFor(sourceFile, selectedIcon)
-        IconService-->>IconPreview: Local file or CDN SVG source
-        IconPreview->>IconRenderer: Render SVG at 64x64 logical size
-        IconRenderer-->>IconPreview: HiDPI-aware image
-        IconPreview-->>User: Compact SVG preview on white canvas
-    end
-
-    rect rgb(245, 245, 245)
-        Note over User,IconRenderer: Icon hover flow
-        User->>IconHover: Hover complete @tui.* reference
-        IconHover->>IconHover: Wait one second while pointer stays on icon
-        IconHover->>IconService: svgSourceFor(sourceFile, iconName)
-        IconService-->>IconHover: Local file or CDN SVG source
-        IconHover->>IconRenderer: Render SVG at 64x64 logical size
-        IconRenderer-->>IconHover: HiDPI-aware image
-        IconHover-->>User: Compact SVG hover preview on white canvas
-    end
-
-    rect rgb(245, 245, 245)
-        Note over User,Inspection: Inspection flow
-        User->>Inspection: Daemon inspects var(--tui-token)
-        Inspection->>CompletionService: strictNamesFor(sourceFile)
-
-        alt Fresh strict snapshot exists
-            CompletionService-->>Inspection: Known token names
-            Inspection->>Inspection: Warn only if token is unknown
-        else Strict snapshot is unavailable
-            CompletionService-->>Inspection: No strict catalog yet
-            CompletionService->>Service: Warm token graph in background
-            Service-->>CompletionService: Fresh token-name catalog
-            CompletionService->>Inspection: Restart daemon highlighting
-        end
-    end
-
-    rect rgb(245, 245, 245)
-        Note over User,Popup: Token hover flow
-        User->>Hover: Hover var(--tui-token)
-        Hover->>Service: resolveToken(sourceFile, tokenName)
-        Service->>PackageCache: getOrBuild(reachable resolution index)
-        Service->>ProjectCache: getOrBuild(project overrides)
-
-        alt Cached graphs are available
-            PackageCache-->>Service: Installed candidates
-            ProjectCache-->>Service: Project candidates
-        else Graph is cold
-            Service->>PackageCache: Build outside cache monitors
-            Service->>ProjectCache: Build outside cache monitors
-            PackageCache->>Scanner: Scan installed declarations
-            ProjectCache->>ProjectScanner: Scan reachable project declarations
-            Scanner-->>PackageCache: Installed index
-            ProjectScanner-->>ProjectCache: Project index
-        end
-
-        Service->>Values: Resolve effective values and references
-        Values-->>Hover: Hover model
-        Hover->>Popup: Render Swing popup
-        Popup-->>User: Values, colors, sources, navigation
-    end
-
-    rect rgb(245, 245, 245)
-        Note over VFS,ProjectCache: Invalidation flow
-        VFS->>PackageCache: Package style changes invalidate installed cache
-        VFS->>ProjectCache: Project style changes invalidate project cache
-        VFS->>CompletionService: Invalidate token-name snapshot
-        VFS->>IconService: Installed icon changes invalidate icon catalog
-        Note over PackageCache,ProjectCache: Rebuild lazily with expensive builds outside cache monitors
-    end
+    Feature->>Lookup: Update native editor UI
+    Lookup-->>User: Suggestions or fresh highlighting
 ```
 
-Architecture status:
+Cache invalidation remains lazy. VFS and document changes invalidate the smallest relevant package/project/icon cache, while expensive rebuilds happen on the next request outside cache monitors and outside the UI thread.
 
-- implemented: installed Taiga UI package discovery and declaration scanning;
-- implemented: project stylesheet entrypoint discovery, local import graph traversal, project override semantics, deterministic source/cascade order where it can be proven, and safe ambiguity where it cannot;
-- implemented: custom Swing hover UX with loading state, package/project grouping, `Not applied` presentation, copy/navigation actions, and non-blocking cold graph construction;
-- implemented in Stage 5: installed + project token-name completion through WebStorm's native CSS/Less/SCSS lookup, background cold-cache warmup, live selected-item value/color preview, mutual exclusion between completion and hover, and unknown-token inspection with safe closest-token replacement;
-- implemented: `@tui.*` icon completion with mutually exclusive public/proprietary catalogs, static HTML attribute support, local/CDN SVG source discovery, live selected-icon preview, and delayed icon hover preview;
-- remaining production work: deprecated-token replacements, optional source details/settings, accessibility validation, diagnostics, verifier matrix, signing, and Marketplace publishing.
-
-Package boundaries:
+### Package boundaries
 
 ```text
 org.taigaui.designtokens
@@ -280,7 +288,18 @@ Recursive `var(...)` references are resolved through the same context-aware cand
 
 ## Development status
 
-Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support, native token-name completion with live selected-token preview, unknown-token inspection with safe typo replacement, and `@tui.*` icon completion with selected-icon and delayed hover previews are implemented; deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
+| Area | Status | Next |
+| --- | --- | --- |
+| Installed package discovery and token indexing | ✅ Implemented | — |
+| Project stylesheet graph and override semantics | ✅ Implemented | — |
+| Recursive token value resolution | ✅ Implemented | — |
+| Token hover and navigation | ✅ Implemented | Accessibility and optional source details |
+| Token completion and unknown-token inspection | ✅ Implemented | Deprecated-token replacements |
+| Icon completion, selected preview, and hover | ✅ Implemented | Release hardening |
+| Diagnostics and IDE compatibility | ⏳ In progress | Telemetry-free diagnostics and Plugin Verifier matrix |
+| Distribution | ⏳ Remaining | Signing and Marketplace publishing |
+
+Stages 1 through 4 are implemented. Stage 5 core editor features are implemented; the remaining work is production hardening and publishing. See [the implementation roadmap](docs/roadmap.md) for the detailed checklist.
 
 ## Requirements
 
