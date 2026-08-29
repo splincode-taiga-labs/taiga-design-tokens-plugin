@@ -44,10 +44,35 @@
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
         />
-        <platform.backend.documentation.targetProvider
-            id="TaigaUiRemDocumentationTargetProvider"
-            implementation="org.taigaui.designtokens.units.RemDocumentationTargetProvider"
-            order="first"
+        <codeInsight.declarativeInlayProvider
+            group="VALUES_GROUP"
+            bundle="messages.TaigaDesignTokensBundle"
+            implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
+            isEnabledByDefault="true"
+            language="CSS"
+            nameKey="inlay.rem.px.name"
+            descriptionKey="inlay.rem.px.description"
+            providerId="taiga.rem.px.css"
+        />
+        <codeInsight.declarativeInlayProvider
+            group="VALUES_GROUP"
+            bundle="messages.TaigaDesignTokensBundle"
+            implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
+            isEnabledByDefault="true"
+            language="LESS"
+            nameKey="inlay.rem.px.name"
+            descriptionKey="inlay.rem.px.description"
+            providerId="taiga.rem.px.less"
+        />
+        <codeInsight.declarativeInlayProvider
+            group="VALUES_GROUP"
+            bundle="messages.TaigaDesignTokensBundle"
+            implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
+            isEnabledByDefault="true"
+            language="SCSS"
+            nameKey="inlay.rem.px.name"
+            descriptionKey="inlay.rem.px.description"
+            providerId="taiga.rem.px.scss"
         />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
