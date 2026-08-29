@@ -52,27 +52,17 @@
             language="CSS"
             nameKey="inlay.rem.px.name"
             descriptionKey="inlay.rem.px.description"
-            providerId="taiga.rem.px.css"
+            providerId="taiga.rem.px.styles"
         />
         <codeInsight.declarativeInlayProvider
             group="VALUES_GROUP"
             bundle="messages.TaigaDesignTokensBundle"
             implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
             isEnabledByDefault="true"
-            language="LESS"
+            language="JavaScript"
             nameKey="inlay.rem.px.name"
             descriptionKey="inlay.rem.px.description"
-            providerId="taiga.rem.px.less"
-        />
-        <codeInsight.declarativeInlayProvider
-            group="VALUES_GROUP"
-            bundle="messages.TaigaDesignTokensBundle"
-            implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
-            isEnabledByDefault="true"
-            language="SCSS"
-            nameKey="inlay.rem.px.name"
-            descriptionKey="inlay.rem.px.description"
-            providerId="taiga.rem.px.scss"
+            providerId="taiga.rem.px.embedded.styles"
         />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
