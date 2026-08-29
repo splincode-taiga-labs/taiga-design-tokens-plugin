@@ -25,6 +25,10 @@
             language="SCSS"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
+        <completion.contributor
+            language="any"
+            implementationClass="org.taigaui.designtokens.icons.IconCompletionContributor"
+        />
         <localInspection
             shortName="UnknownTaigaUIDesignToken"
             displayName="Unknown Taiga UI design token"
@@ -34,6 +38,10 @@
             implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
         />
         <typedHandler
+            implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
+            order="first, before completionAutoPopup"
+        />
+        <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
         />
         <editorFactoryMouseListener
@@ -41,6 +49,12 @@
         />
         <editorFactoryMouseMotionListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
+        />
+        <editorFactoryMouseListener
+            implementation="org.taigaui.designtokens.icons.IconHoverPopupListener"
+        />
+        <editorFactoryMouseMotionListener
+            implementation="org.taigaui.designtokens.icons.IconHoverPopupListener"
         />
     </extensions>
 </idea-plugin>

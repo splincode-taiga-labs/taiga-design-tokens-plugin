@@ -1,68 +1,71 @@
 # Taiga UI Design Tokens Plugin
 
-WebStorm plugin for exploring and using Taiga UI CSS custom properties directly in the editor.
+WebStorm plugin for exploring and using Taiga UI CSS custom properties and icon names directly in the editor.
 
-The plugin reads the Taiga UI packages installed in the current project instead of shipping a hardcoded token catalog. It combines installed Taiga UI declarations with reachable project styles, resolves effective platform/theme values, and exposes that model through editor completion, unknown-token inspections, and a custom Swing hover popup.
+The plugin reads the Taiga UI packages installed in the current project instead of shipping hardcoded catalogs. It combines installed Taiga UI declarations with reachable project styles, resolves effective platform/theme values, and exposes that model through editor completion, unknown-token inspections, and a custom Swing hover popup. It also discovers Taiga UI SVG icons and exposes them through native `@tui.*` completion, selected-item previews, and delayed hover previews.
 
 ## Editor experience
 
-### Completion
+### Token completion
 
-Inside the first argument of CSS `var(...)`, typing a Taiga UI prefix automatically opens WebStorm's native completion lookup with tokens known to the current project:
+Inside CSS, Less, and SCSS `var(...)` expressions, typing `--tui-` opens WebStorm's native completion lookup with design-token names discovered from the current project and installed Taiga UI packages.
 
-```css
-.alert-icon {
-    color: var(--tui-text-);
-}
-```
+The completion source is shared with unknown-token inspection. Installed package tokens and reachable project stylesheet tokens are merged into one name catalog while value resolution still uses the stricter reachable declaration graph.
 
-Completion is available in CSS, Less, and SCSS. Suggestions come from the existing installed-package and project stylesheet indexes, so project-defined `--tui-*` tokens appear together with tokens from the installed Taiga UI version. The plugin inserts only the token name and does not add another `var(...)` wrapper.
-
-The token-name catalog intentionally includes declarations from all public style roots of the installed Taiga UI packages. Value resolution remains stricter: when proprietary themes are installed, only declarations reachable through the proprietary theme import graph participate in effective-value resolution. This keeps completion and typo fixes aware of valid core tokens without allowing unrelated core declarations to change hover values or override semantics.
-
-The native WebStorm lookup remains the primary completion UI. When a `--tui-*` item is selected, the plugin shows a non-focusable side preview with the effective platform/theme values and color swatches. Moving through the lookup with the Up/Down keys updates the preview for the newly selected token. The normal hover popup is suppressed while completion is open, so the two presentations never compete for the editor area.
+The native WebStorm lookup remains the primary completion UI. When a `--tui-*` item is selected, a non-focusable preview beside the lookup resolves and shows the effective token value, source grouping, and color where applicable. Moving through the list with the keyboard updates that preview without stealing focus from the editor.
 
 A cold completion request does not build the graph on the completion/UI path. The graph is warmed in a project-service coroutine; the latest token-name snapshot remains usable while an invalidated graph refreshes. If the first completion request starts a cold build, completion is reopened only when the caret is still inside a current `var(--tui-...)` context, so continuing to type does not invalidate the warmup result.
+
+### Icon completion
+
+Inside JavaScript, TypeScript, and HTML strings, typing `@tui.` opens WebStorm's native completion lookup with icon names discovered from the current project:
+
+```ts
+const arrow = '@tui.a-arrow-down';
+const flag = '@tui.flags.ab';
+```
+
+Static HTML and Angular template attributes use the same completion path:
+
+```html
+<button iconStart="@tui.fancy.medium.info-circle">Save</button>
+<button [iconStart]="'@tui.fancy.medium.info-circle'">Save</button>
+```
+
+Directory paths become dot-separated icon namespaces. For example, `@taiga-ui/icons/src/flags/ab.svg` becomes `@tui.flags.ab`.
+
+Public and proprietary icon catalogs are intentionally mutually exclusive. Without `@taiga-ui/proprietary`, completion uses only the installed `@taiga-ui/icons/src/**/*.svg` package. When `@taiga-ui/proprietary` is installed, public icon names are not contributed and proprietary discovery uses the following precedence:
+
+1. installed `@taiga-ui/tds-icons/src/**/*.svg` files;
+2. when local `tds-icons` is unavailable, the T-Bank design-token icon catalog at `https://cdn.tbank.ru/core/design-tokens/v1/web/data.json`.
+
+A nested proprietary file such as `fancy/medium/info-circle.svg` becomes `@tui.fancy.medium.info-circle`. CDN groups follow the same mapping, so an `icons` entry such as `"fancy/medium": ["air-hockey"]` becomes `@tui.fancy.medium.air-hockey`. The same group/name pair also identifies the SVG at `https://cdn.tbank.ru/core/design-tokens/v1/web/fancy/medium/air-hockey.svg`.
+
+The native completion list has a compact, fixed-size white SVG preview beside it. Moving through `@tui.*` suggestions with the Up/Down keys immediately updates the selected icon without changing the preview width. The icon name is intentionally omitted from the preview card. SVGs are rendered at 64×64 logical units and wrapped as HiDPI-aware images so Retina displays use the corresponding device-pixel resolution instead of stretching a low-resolution raster.
+
+Hovering a complete `@tui.*` icon reference for one second shows the same SVG preview. Moving to another icon, leaving the icon, selecting text, clicking, dragging, or opening completion cancels the pending hover or closes the current popup.
+
+Filesystem scanning and the optional CDN request never run on the completion/UI path. The icon catalog is warmed in a project-service coroutine and cached by the nearest `node_modules/@taiga-ui` scope. A cold completion request contributes no custom icon items yet and reopens completion after warmup only if the caret is still inside an `@tui.*` string context. If WebStorm already has an HTML attribute-value lookup open, the plugin restarts that lookup after the icon catalog becomes available.
 
 ### Inspection
 
 Unknown Taiga UI token names used as the first argument of `var(...)` are highlighted in CSS, Less, and SCSS:
 
 ```css
-.alert-icon {
-    color: var(--tui-text-primari);
+.demo {
+    color: var(--tui-text-primry);
 }
 ```
 
-The inspection validates against the same installed-package and project stylesheet token-name catalog as completion, so project-defined tokens and valid public tokens from installed Taiga UI style packages remain valid too. It ignores declarations, comments, strings, unrelated custom properties, and other `var(...)` arguments.
+Incomplete prefixes can offer several `Replace with ...` quick fixes, while close typos only offer a conservative replacement when there is a sufficiently close and unambiguous known token. Distant or ambiguous unknown names remain warning-only.
 
-When one known token is sufficiently close and unambiguous, WebStorm offers a `Replace with ...` quick fix. Incomplete prefixes can expose multiple matching replacements; distant or equally plausible matches stay as warnings without a guessed replacement.
-
-The inspection never builds a cold token graph synchronously. While the graph is cold or invalidated it reports no unknown-token problem, warms the strict token-name catalog in the background, and restarts highlighting after the fresh catalog is ready. Completion may use its last snapshot while refreshing; inspection deliberately does not use stale names.
+The inspection uses a strict token-name snapshot. A cold or invalidated catalog does not produce warnings from stale data; the catalog is warmed in the background and daemon highlighting is restarted after a fresh snapshot becomes available.
 
 ### Hover
 
-Given:
+Hovering a complete Taiga UI design-token reference resolves its effective declarations and shows a custom Swing popup. Package and project candidates are grouped separately, color values get a swatch, and each source can be navigated to from the popup.
 
-```css
-.alert-icon {
-    color: var(--tui-text-warning);
-}
-```
-
-The hover popup shows:
-
-- matching desktop, iOS, Android, light, and dark declarations;
-- project-level overrides before installed package declarations;
-- the declared value and recursively resolved result without duplicating equal values;
-- separate reference chains for distinct results;
-- color previews;
-- explicit `Not applied` rows for declarations shadowed by a more specific package/project declaration or later project cascade position;
-- actions to copy the value, navigate to the declaration, and report a bug.
-
-Equivalent values across complete platform/theme combinations are collapsed into explicit applicability labels. Incomplete combinations stay explicit, so the UI never implies that a value applies to contexts that were not resolved.
-
-Source files, line numbers, selector chains, package origins, and project cascade order remain available in the resolution model. The plugin shows all statically known candidates and does not claim to know one runtime value when DOM state, media queries, unrelated selector specificity, or runtime component load order keep the CSS result ambiguous.
+The popup is suppressed while completion is active and while text is selected. Moving directly from one token to another closes the stale popup immediately before the next delayed resolution starts.
 
 ## Architecture
 
@@ -71,203 +74,245 @@ This sequence diagram is the architectural contract for the plugin. Pull request
 ```mermaid
 sequenceDiagram
     actor User as Editor user
-    participant Completion as Completion contributor
+    participant Completion as Token completion contributor
+    participant IconCompletion as Icon completion contributor
     participant Inspection as Unknown-token inspection
     participant CompletionService as Token-name service
+    participant IconService as Icon catalog service
     participant Lookup as WebStorm lookup
-    participant Preview as Completion side preview
-    participant Hover as Hover popup controller
+    participant Preview as Token completion preview
+    participant IconPreview as Icon completion preview
+    participant IconHover as Icon hover controller
+    participant IconRenderer as SVG preview renderer
+    participant Hover as Token hover controller
     participant Service as Project token service
     participant PackageCache as Installed-package cache
     participant ProjectCache as Project-styles cache
-    participant PackageResolver as Package resolver
-    participant ProjectGraph as Project stylesheet graph
-    participant Scanner as Package scanner
-    participant Extractor as CSS/SCSS/Less PSI adapter
+    participant Scanner as Installed-package scanner
+    participant ProjectScanner as Project stylesheet scanner
+    participant Graph as Import graph
     participant Index as Token index
     participant Values as Value resolver
     participant Popup as Swing popup
+    participant IconPackages as Installed icon packages
+    participant IconCdn as T-Bank icon catalog
     participant VFS as VFS/document changes
 
     rect rgb(245, 245, 245)
-        Note over User,Preview: Completion flow
+        Note over User,Preview: Token completion flow
         User->>Completion: Type var(--tui-te|)
         Completion->>CompletionService: namesFor(sourceFile)
 
-        alt Token-name snapshot or indexes are ready
-            CompletionService-->>Completion: Installed + project token names
-            Completion->>Lookup: Contribute filtered lookup items
-        else Cold or invalidated graph
-            CompletionService-->>Completion: Latest snapshot or no custom items yet
-            CompletionService->>Service: Warm complete token-name catalog in background
-            Service->>PackageCache: Build installed name and resolution indexes
-            Service->>ProjectCache: getOrBuild(project index)
-            CompletionService-->>Completion: Reopen lookup if caret still matches var(--tui-...)
-            Completion->>Lookup: Contribute refreshed lookup items
+        alt Fresh token-name snapshot exists
+            CompletionService-->>Completion: Known installed + project token names
+        else Snapshot is cold or invalidated
+            CompletionService-->>Completion: Last usable names or empty result
+            CompletionService->>Service: Warm token graph in background
+            Service->>PackageCache: getOrBuild(installed package graph)
+            Service->>ProjectCache: getOrBuild(project stylesheet graph)
+            PackageCache->>Scanner: Scan installed package styles
+            ProjectCache->>ProjectScanner: Discover project stylesheet entrypoints
+            ProjectScanner->>Graph: Traverse reachable local imports
+            Scanner-->>PackageCache: Installed declarations
+            Graph-->>ProjectCache: Reachable project declarations
+            Service-->>CompletionService: Fresh token-name catalog
+            CompletionService-->>Completion: Restart completion if caret still matches
         end
 
-        Lookup-->>User: Native completion list
+        Completion->>Lookup: Contribute token-name lookup items
+        Lookup-->>User: Native WebStorm completion
         Lookup->>Preview: Selected --tui-* item changed
-        Preview->>Service: resolveToken(sourceFile, selectedToken)
+        Preview->>Service: resolveToken(sourceFile, selectedName)
+        Service->>PackageCache: Read installed candidates
+        Service->>ProjectCache: Read project candidates
         Service->>Values: Resolve effective contexts
         Values-->>Preview: Resolved values + colors
         Preview-->>User: Side value/color preview
-        Note over Hover,Lookup: Hover popup is closed and suppressed while lookup is active
+        Note over Hover,Lookup: Token hover is closed and suppressed while lookup is active
+    end
+
+    rect rgb(245, 245, 245)
+        Note over User,IconRenderer: Icon completion flow
+        User->>IconCompletion: Type '@tui.fancy.medium.'
+        IconCompletion->>IconService: namesFor(sourceFile)
+
+        alt Cached icon catalog is ready
+            IconService-->>IconCompletion: @tui.* icon names
+        else Cold icon catalog
+            IconService-->>IconCompletion: No custom icon items yet
+            alt Proprietary project
+                alt Local tds-icons is installed
+                    IconService->>IconPackages: Scan @taiga-ui/tds-icons/src SVG files
+                else Local tds-icons is unavailable
+                    IconService->>IconCdn: Fetch grouped icon catalog
+                    IconCdn-->>IconService: Grouped icon paths and names
+                end
+            else Public project
+                IconService->>IconPackages: Scan @taiga-ui/icons/src SVG files
+            end
+            IconService-->>IconCompletion: Restart lookup if caret still matches @tui.*
+        end
+
+        IconCompletion->>Lookup: Contribute dot-path icon items
+        Lookup-->>User: Native icon completion list
+        Lookup->>IconPreview: Selected @tui.* item changed
+        IconPreview->>IconService: svgSourceFor(sourceFile, selectedIcon)
+        IconService-->>IconPreview: Local file or CDN SVG source
+        IconPreview->>IconRenderer: Render SVG at 64x64 logical size
+        IconRenderer-->>IconPreview: HiDPI-aware image
+        IconPreview-->>User: Compact SVG preview on white canvas
+    end
+
+    rect rgb(245, 245, 245)
+        Note over User,IconRenderer: Icon hover flow
+        User->>IconHover: Hover complete @tui.* reference
+        IconHover->>IconHover: Wait one second while pointer stays on icon
+        IconHover->>IconService: svgSourceFor(sourceFile, iconName)
+        IconService-->>IconHover: Local file or CDN SVG source
+        IconHover->>IconRenderer: Render SVG at 64x64 logical size
+        IconRenderer-->>IconHover: HiDPI-aware image
+        IconHover-->>User: Compact SVG hover preview on white canvas
     end
 
     rect rgb(245, 245, 245)
         Note over User,Inspection: Inspection flow
-        Inspection->>CompletionService: namesForInspection(sourceFile)
+        User->>Inspection: Daemon inspects var(--tui-token)
+        Inspection->>CompletionService: strictNamesFor(sourceFile)
 
-        alt Fresh token-name index is ready
-            CompletionService-->>Inspection: Installed + project token names
-            Inspection->>Inspection: Compare every var(--tui-*) first argument
-            Inspection-->>User: Warning + safe closest-token quick fix
-        else Cold or invalidated graph
-            CompletionService-->>Inspection: No stale inspection catalog
-            CompletionService->>Service: Warm complete token-name catalog in background
-            Service->>PackageCache: Build installed name and resolution indexes
-            Service->>ProjectCache: getOrBuild(project index)
-            CompletionService-->>Inspection: Restart highlighting after warmup
+        alt Fresh strict snapshot exists
+            CompletionService-->>Inspection: Known token names
+            Inspection->>Inspection: Warn only if token is unknown
+        else Strict snapshot is unavailable
+            CompletionService-->>Inspection: No strict catalog yet
+            CompletionService->>Service: Warm token graph in background
+            Service-->>CompletionService: Fresh token-name catalog
+            CompletionService->>Inspection: Restart daemon highlighting
         end
     end
 
     rect rgb(245, 245, 245)
-        Note over User,Popup: Hover flow
+        Note over User,Popup: Token hover flow
         User->>Hover: Hover var(--tui-token)
         Hover->>Service: resolveToken(sourceFile, tokenName)
         Service->>PackageCache: getOrBuild(reachable resolution index)
-        Service->>ProjectCache: getOrBuild(project index)
-        PackageCache-->>Service: Installed Taiga UI variants
-        ProjectCache-->>Service: Reachable Project styles variants
-        Service->>Index: Merge package + project indexes
-        Service->>Values: Resolve concrete platform/theme contexts recursively
-        Values-->>Service: Resolved groups + reference trees + origins
-        Service-->>Hover: Context-grouped results
-        Hover->>Popup: Build presentation model
-        Popup-->>User: Values, overrides, chains, copy and navigation
+        Service->>ProjectCache: getOrBuild(project overrides)
+
+        alt Cached graphs are available
+            PackageCache-->>Service: Installed candidates
+            ProjectCache-->>Service: Project candidates
+        else Graph is cold
+            Service->>PackageCache: Build outside cache monitors
+            Service->>ProjectCache: Build outside cache monitors
+            PackageCache->>Scanner: Scan installed declarations
+            ProjectCache->>ProjectScanner: Scan reachable project declarations
+            Scanner-->>PackageCache: Installed index
+            ProjectScanner-->>ProjectCache: Project index
+        end
+
+        Service->>Values: Resolve effective values and references
+        Values-->>Hover: Hover model
+        Hover->>Popup: Render Swing popup
+        Popup-->>User: Values, colors, sources, navigation
     end
 
     rect rgb(245, 245, 245)
-        Note over PackageResolver,Index: Index construction on cache miss
-        PackageCache->>PackageResolver: Resolve installed Taiga UI style packages
-        PackageResolver-->>PackageCache: Package/style roots and versions
-        PackageCache->>Scanner: Scan public package styles
-        Scanner->>Extractor: Extract global --tui-* declarations
-        Extractor-->>Scanner: Values + selector chains + source origins
-        Scanner->>Index: Build complete name catalog and reachable resolution index
-
-        ProjectCache->>ProjectGraph: Build reachable stylesheet scope
-        ProjectGraph->>ProjectGraph: Angular/Nx entrypoints + @import/@use/@forward
-        ProjectGraph->>Extractor: Extract reachable project declarations
-        Extractor-->>ProjectGraph: Values + selector chains + source origins
-        ProjectGraph->>Index: Build project index with cascade order
+        Note over VFS,ProjectCache: Invalidation flow
+        VFS->>PackageCache: Package style changes invalidate installed cache
+        VFS->>ProjectCache: Project style changes invalidate project cache
+        VFS->>CompletionService: Invalidate token-name snapshot
+        VFS->>IconService: Installed icon changes invalidate icon catalog
+        Note over PackageCache,ProjectCache: Rebuild lazily with expensive builds outside cache monitors
     end
-
-    VFS->>PackageCache: Invalidate affected installed-package entries
-    VFS->>ProjectCache: Invalidate affected project-style entries
-    Note over PackageCache,ProjectCache: Rebuild lazily with expensive builds outside cache monitors
 ```
 
 Architecture status:
 
-- implemented: installed Taiga UI package discovery, public stylesheet discovery, PSI extraction, context classification, immutable indexing, targeted cache invalidation, and single-flight cache builds;
-- implemented: balanced `var(...)` parsing, recursive reference resolution, structured fallback/cycle results, terminal color detection, and equivalent-result grouping;
+- implemented: installed Taiga UI package discovery and declaration scanning;
 - implemented: project stylesheet entrypoint discovery, local import graph traversal, project override semantics, deterministic source/cascade order where it can be proven, and safe ambiguity where it cannot;
 - implemented: custom Swing hover UX with loading state, package/project grouping, `Not applied` presentation, copy/navigation actions, and non-blocking cold graph construction;
 - implemented in Stage 5: installed + project token-name completion through WebStorm's native CSS/Less/SCSS lookup, background cold-cache warmup, live selected-item value/color preview, mutual exclusion between completion and hover, and unknown-token inspection with safe closest-token replacement;
+- implemented: `@tui.*` icon completion with mutually exclusive public/proprietary catalogs, static HTML attribute support, local/CDN SVG source discovery, live selected-icon preview, and delayed icon hover preview;
 - remaining production work: deprecated-token replacements, optional source details/settings, accessibility validation, diagnostics, verifier matrix, signing, and Marketplace publishing.
 
 Package boundaries:
 
 ```text
 org.taigaui.designtokens
-├── packageinfo    installed-package discovery and metadata
-├── index          declarations, variants, contexts, origins, and immutable indexes
+├── index          immutable declaration/index contracts
+├── packageinfo    installed package discovery and style scanning
 ├── resolution     var() parsing, candidate selection, recursive resolution, and grouping
 ├── psi            IntelliJ CSS/SCSS/Less PSI adapter
 ├── project        package/project graph orchestration, caches, invalidation, and resolution entry point
-├── completion     completion, strict inspection token names, native lookup integration, and selected-item preview
+├── completion     token completion, strict inspection names, native lookup integration, and selected-item preview
+├── icons          @tui.* completion, local/remote catalogs, SVG preview rendering, and icon hover
 └── documentation  token-reference scanning, hover controller, Swing model, and Swing popup
 ```
 
-Dependencies point inward. `completion` and `documentation` consume the project-level token service; `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` adapts IntelliJ Platform syntax trees into index declarations.
+Dependencies point inward. `completion` and `documentation` consume the project-level token service; `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`; `resolution` depends on immutable contracts from `index`; `psi` adapts IntelliJ Platform syntax trees into index declarations. `icons` is independent of the token-resolution graph and reads only the nearest installed icon-package scope plus the optional proprietary CDN fallback.
 
 ### Installed package graph
 
-Installed style discovery starts from the Taiga UI packages reachable from the current project. The package graph understands the published `@taiga-ui/design-tokens` sources, Taiga UI style exports, and proprietary style exports instead of assuming that every token lives in one package.
+The installed-package scanner starts from the nearest `node_modules/@taiga-ui` scope for the source file. It resolves the installed Taiga UI packages and follows style imports to preserve package precedence and override behavior.
 
-The installed-package cache is keyed by normalized real package identity/version while retaining logical roots for invalidation. Multiple npm/pnpm aliases that resolve to one physical package can share immutable data. Relevant package CSS, Less, SCSS, metadata, root, symlink-target, or directory changes invalidate only affected entries.
+When `@taiga-ui/proprietary` is installed, the value-resolution graph intentionally keeps its reachability rules: declarations in unrelated Taiga UI package files do not become active merely because they exist somewhere under `node_modules`. The broader token-name catalog used by completion and inspection is separate and scans public style roots for known names without changing value-resolution semantics.
 
 ### Project stylesheet graph
 
-Project styles are a separate application layer. The graph discovers Angular/Nx global style entrypoints, conventional `styles.css`/`styles.less`/`styles.scss` entrypoints, and the currently relevant stylesheet. It recursively follows local CSS/Less `@import` plus Sass `@import`, `@use`, and `@forward` edges while leaving external URLs, Sass built-ins, `node_modules`, and installed Taiga UI packages to the package graph.
+Project stylesheet discovery starts from the current source file and configured style entrypoints, then follows local CSS/Less/SCSS imports. Reachable project declarations are indexed as an application layer over installed package declarations.
 
-Reachable project declarations receive project origin metadata and a monotonic cascade order. Project candidates are selected before installed packages, but only for the concrete platform/theme contexts they match. Source order is used only when competing project declarations have equal applicability and the same normalized selector scope; unrelated selectors remain ambiguous rather than pretending that source order alone implements the full browser cascade.
+The project cache is separate from the installed-package cache because the two layers have different invalidation rates and resolution semantics.
 
-### Threading and invalidation
+### Cache and threading
 
-Cache monitors protect only cache bookkeeping. Expensive graph construction and PSI scanning execute outside those monitors, so document/VFS invalidation cannot freeze the IDE by waiting for a long build. PSI extraction uses non-blocking/cancellable read actions and checks cancellation during traversal.
+Cache monitors protect only cache bookkeeping. Expensive graph construction and filesystem work happen outside synchronized sections.
 
 Hover resolution, cold completion warming, and selected-item preview resolution run off the UI thread. Completion keeps a token-name snapshot so normal typing can continue to show known suggestions while document edits invalidate and refresh the underlying project graph. The completion preview listens to native lookup selection changes without requesting focus, and stale preview jobs are cancelled when keyboard navigation selects another token.
+
+Icon catalog discovery and SVG loading/rendering also run off the UI thread. Installed SVG trees are scanned once per nearest `node_modules/@taiga-ui` scope and cached for subsequent completion and hover requests. The network fallback is attempted only when `@taiga-ui/proprietary` is present and a local `@taiga-ui/tds-icons/src` directory is not available. Selected-icon and hover previews share the cached catalog and render SVG sources at a fixed logical size with an explicit HiDPI wrapper so the same preview remains sharp on Retina displays.
 
 Unknown-token inspection shares the same background token-name warmup but uses strict freshness. If the index is cold or invalidated, the inspection pass returns without warnings, the graph is warmed in the background, and WebStorm highlighting is restarted only after a fresh installed + project token catalog is available. Completion and inspection callbacks waiting on the same warmup are preserved independently.
 
 ### Resolution model
 
-A `DesignTokenDeclaration` is an immutable physical source fact: its raw value, source file, line, selector chain, package/project origin, and optional project cascade order are preserved. A `DesignTokenVariant` is a logical value candidate identified by token name, context, raw value, and origins. Equivalent physical CSS/Less/SCSS copies are grouped without losing navigation sources.
+Project overrides are evaluated as an application layer before installed package candidates. The resolver keeps deterministic order only where the source graph proves it; otherwise conflicting candidates remain ambiguous instead of inventing an order.
 
-The value parser scans balanced functions and resolves multiple/nested references and fallbacks without replacing `var(...)` text inside strings or comments. Raw variants are never mutated.
-
-Resolution keeps the active lookup context separate from the declaration context. A mobile lookup may use a compatible desktop fallback while references inside that declaration continue resolving in the original mobile context. Missing, ambiguous, circular, and malformed cases stay explicit.
-
-Project overrides are evaluated as an application layer before installed package fallback. A generic project `:root` token can override all concrete package contexts; a `[tuiTheme='dark']` project declaration affects only its classified dark context; a platform + theme declaration affects only that concrete context. Non-matching project declarations are not allowed to leak back through package fallback.
+Recursive `var(...)` references are resolved through the same context-aware candidate selection model, with cycle protection and grouped source information preserved for hover rendering.
 
 ## Development status
 
-Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support, native token-name completion with live selected-token preview, and unknown-token inspection with safe typo replacement are implemented; deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
+Stages 1 through 4 are implemented. Stage 5 is in progress: project override/cascade support, native token-name completion with live selected-token preview, unknown-token inspection with safe typo replacement, and `@tui.*` icon completion with selected-icon and delayed hover previews are implemented; deprecation metadata, release hardening, and publishing remain. See [the implementation roadmap](docs/roadmap.md).
 
 ## Requirements
 
-- JDK 21
-- Node.js 22 and npm for real-package test fixtures only
-- the checked-in Gradle Wrapper
+- IntelliJ Platform / WebStorm 2025.3.6;
+- Java 21;
+- Gradle wrapper from the repository;
+- Node.js/npm only for real-package integration fixtures.
 
-The installed plugin itself does not require Node.js. npm dependencies in this repository are test fixtures only.
+## Local development
 
-## Commands
-
-Run tests without installing npm fixtures:
-
-```bash
-./gradlew test
-```
-
-Install the pinned package fixtures and run the complete quality gate:
+Install the root npm fixtures:
 
 ```bash
 npm ci
-./gradlew check
 ```
 
-`check` runs tests, ktlint formatting checks, and detekt static analysis. Apply safe formatting fixes with:
+Run checks and build the plugin:
 
 ```bash
-./gradlew ktlintFormat
+./gradlew check buildPlugin
 ```
 
-Run the sandbox IDE or build the distributable plugin:
+Run the isolated WebStorm sandbox:
 
 ```bash
 ./gradlew runIde
-./gradlew buildPlugin
 ```
 
 Open a real local project directly in the sandbox:
 
 ```bash
-./gradlew runIde \
-  -PdebugProjectPath="/absolute/path/to/project"
+./gradlew runIde -PsandboxProject=/absolute/path/to/project
 ```
 
 See [local debugging](docs/local-debugging.md) for using an installed WebStorm build, attaching a debugger on port 5005, inspecting sandbox logs, and resetting sandbox state.
