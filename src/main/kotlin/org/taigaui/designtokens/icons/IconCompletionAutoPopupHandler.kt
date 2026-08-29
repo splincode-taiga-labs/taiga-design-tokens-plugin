@@ -44,9 +44,9 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
         editor: Editor,
         file: PsiFile,
     ): Result {
-        val sourceFile = file.toSupportedSourceFile() ?: return Result.CONTINUE
+        val sourceFile = file.toSupportedSourceFile()
         val completionContext =
-            if (charTyped.isIconNameCharacter()) {
+            if (sourceFile != null && charTyped.isIconNameCharacter()) {
                 IconCompletionContextFinder.find(
                     text = editor.document.immutableCharSequence,
                     offset = editor.caretModel.offset,
@@ -55,7 +55,7 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
                 null
             }
 
-        if (completionContext == null) {
+        if (sourceFile == null || completionContext == null) {
             return Result.CONTINUE
         }
 
