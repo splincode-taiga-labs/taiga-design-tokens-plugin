@@ -4,6 +4,7 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtTestUtil
 import com.intellij.testFramework.fixtures.CompletionAutoPopupTestCase
+import org.junit.Assert.assertFalse
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -45,6 +46,10 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
             suggestions,
             "@tui.pragmatic.small.clock",
             "@tui.pragmatic.small.print",
+        )
+        assertFalse(
+            "Taiga UI icon lookup must finish calculating after icon suggestions are available",
+            EdtTestUtil.runInEdtAndGet { getLookup()?.isCalculating == true },
         )
     }
 
