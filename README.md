@@ -48,6 +48,16 @@ Token completion and value previews include reachable project CSS/Less/SCSS decl
 
 Project overrides are shown separately from package values so it is clear which value is effectively applied.
 
+## CSS units
+
+### `rem` to `px` hover
+
+Hovering a `rem` value in CSS, Less, or SCSS shows its pixel equivalent using the browser default root size of `16px`.
+
+```text
+1.5rem = 24px
+```
+
 ## Icons
 
 ### `@tui.*` completion
