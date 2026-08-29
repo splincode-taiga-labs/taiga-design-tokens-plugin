@@ -78,17 +78,21 @@ internal fun restartIconCompletionIfNeeded(
             return@invokeLater
         }
 
-        if (!force && LookupManager.getActiveLookup(editor)?.containsIconSuggestions() == true) {
+        val activeLookup = LookupManager.getActiveLookup(editor)
+
+        if (!force && activeLookup?.containsIconSuggestions() == true) {
             return@invokeLater
         }
+
+        activeLookup?.hideLookup(true)
 
         CodeCompletionHandlerBase
             .createHandler(
                 CompletionType.BASIC,
-                false,
                 true,
                 false,
-            ).invokeCompletion(project, editor, 0)
+                false,
+            ).invokeCompletion(project, editor, 1)
     }
 }
 
