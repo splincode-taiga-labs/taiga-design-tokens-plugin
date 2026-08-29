@@ -1,10 +1,12 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
-import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.lookup.LookupArranger
+import com.intellij.codeInsight.lookup.LookupEvent
+import com.intellij.codeInsight.lookup.LookupListener
 import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
@@ -38,31 +40,33 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
     }
 }
 
-private fun requestIconCompletion(
+internal fun requestIconCompletion(
     project: Project,
     editor: Editor,
     sourceFile: Path,
 ) {
-    val service = project.service<IconCompletionService>()
-    val names =
-        service.namesFor(sourceFile) {
-            restartIconCompletionIfNeeded(project, editor, force = true)
-        }
-
-    if (!names.isNullOrEmpty()) {
-        restartIconCompletionIfNeeded(project, editor)
-    }
-}
-
-internal fun restartIconCompletionIfNeeded(
-    project: Project,
-    editor: Editor,
-    force: Boolean = false,
-) {
-    if (!force && LookupManager.getActiveLookup(editor)?.containsIconSuggestions() == true) {
+    if (LookupManager.getActiveLookup(editor)?.containsIconSuggestions() == true) {
         return
     }
 
+    val service = project.service<IconCompletionService>()
+    val names =
+        service.namesFor(sourceFile) {
+            requestIconCompletion(project, editor, sourceFile)
+        }
+
+    if (names.isNullOrEmpty()) {
+        return
+    }
+
+    showIconLookup(project, editor, names)
+}
+
+private fun showIconLookup(
+    project: Project,
+    editor: Editor,
+    names: List<String>,
+) {
     ApplicationManager.getApplication().invokeLater {
         if (project.isDisposed || editor.isDisposed) {
             return@invokeLater
@@ -72,32 +76,75 @@ internal fun restartIconCompletionIfNeeded(
             IconCompletionContextFinder.find(
                 text = editor.document.immutableCharSequence,
                 offset = editor.caretModel.offset,
-            )
-
-        if (completionContext == null) {
-            return@invokeLater
-        }
-
+            ) ?: return@invokeLater
         val activeLookup = LookupManager.getActiveLookup(editor)
 
-        if (!force && activeLookup?.containsIconSuggestions() == true) {
+        if (activeLookup?.containsIconSuggestions() == true) {
             return@invokeLater
         }
 
         activeLookup?.hideLookup(true)
 
-        // The catalog is already warmed before we get here. Invoke regular BASIC
-        // completion (the same path as Ctrl+Space), while IconCompletionContributor
-        // stops the contributor chain after adding @tui.* items. This avoids both
-        // auto-popup suppression in Angular templates and the endless HTML/Angular
-        // "calculating" spinner.
-        CodeCompletionHandlerBase
-            .createHandler(
-                CompletionType.BASIC,
-                true,
-                false,
-                false,
-            ).invokeCompletion(project, editor, 1)
+        val items =
+            names
+                .asSequence()
+                .filter { name -> name.startsWith(completionContext.prefix) }
+                .map { name ->
+                    LookupElementBuilder
+                        .create(name)
+                        .withTypeText(COMPLETION_TYPE_TEXT, true)
+                }.toList()
+
+        if (items.isEmpty()) {
+            return@invokeLater
+        }
+
+        val arranger =
+            object : LookupArranger.DefaultArranger() {
+                override fun isCompletion(): Boolean = true
+            }
+        val lookup =
+            LookupManager
+                .getInstance(project)
+                .showLookup(
+                    editor,
+                    items.toTypedArray(),
+                    completionContext.prefix,
+                    arranger,
+                ) ?: return@invokeLater
+
+        lookup.addLookupListener(
+            object : LookupListener {
+                override fun itemSelected(event: LookupEvent) {
+                    if (event.item?.lookupString?.startsWith(ICON_PREFIX) == true) {
+                        removeExistingIconSuffix(editor)
+                    }
+                }
+            },
+        )
+
+        project.service<IconCompletionPreviewController>().ensureAttached()
+    }
+}
+
+private fun removeExistingIconSuffix(editor: Editor) {
+    if (editor.isDisposed) {
+        return
+    }
+
+    ApplicationManager.getApplication().runWriteAction {
+        val document = editor.document
+        val text = document.charsSequence
+        val start = editor.caretModel.offset
+        var end = start
+
+        while (end < text.length && text[end].isIconNameCharacter()) {
+            end++
+        }
+
+        if (end > start) {
+            document.deleteString(start, end)
+        }
     }
 }
 
@@ -108,3 +155,5 @@ private fun PsiFile.toSupportedSourceFile(): Path? =
         ?.let { path -> runCatching { Path.of(path) }.getOrNull() }
 
 private fun Lookup.containsIconSuggestions(): Boolean = items.any { item -> item.lookupString.startsWith(ICON_PREFIX) }
+
+private const val COMPLETION_TYPE_TEXT = "Taiga UI icon"
