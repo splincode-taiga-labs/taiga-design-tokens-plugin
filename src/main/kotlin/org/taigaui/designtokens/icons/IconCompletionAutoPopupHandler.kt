@@ -6,9 +6,11 @@ import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
+import java.nio.file.Path
 
 class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
     override fun charTyped(
@@ -17,9 +19,9 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
         editor: Editor,
         file: PsiFile,
     ): Result {
-        val supportedFile = file.virtualFile?.extension?.lowercase() in ICON_SUPPORTED_EXTENSIONS
+        val sourceFile = file.toSupportedSourceFile() ?: return Result.CONTINUE
         val completionContext =
-            if (supportedFile && charTyped.isIconNameCharacter()) {
+            if (charTyped.isIconNameCharacter()) {
                 IconCompletionContextFinder.find(
                     text = editor.document.immutableCharSequence,
                     offset = editor.caretModel.offset,
@@ -29,10 +31,26 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
             }
 
         if (completionContext != null) {
-            restartIconCompletionIfNeeded(project, editor)
+            requestIconCompletion(project, editor, sourceFile)
         }
 
         return Result.CONTINUE
+    }
+}
+
+private fun requestIconCompletion(
+    project: Project,
+    editor: Editor,
+    sourceFile: Path,
+) {
+    val service = project.service<IconCompletionService>()
+    val names =
+        service.namesFor(sourceFile) {
+            restartIconCompletionIfNeeded(project, editor, force = true)
+        }
+
+    if (!names.isNullOrEmpty()) {
+        restartIconCompletionIfNeeded(project, editor)
     }
 }
 
@@ -73,5 +91,11 @@ internal fun restartIconCompletionIfNeeded(
             ).invokeCompletion(project, editor, 0)
     }
 }
+
+private fun PsiFile.toSupportedSourceFile(): Path? =
+    virtualFile
+        ?.takeIf { file -> file.extension?.lowercase() in ICON_SUPPORTED_EXTENSIONS }
+        ?.path
+        ?.let { path -> runCatching { Path.of(path) }.getOrNull() }
 
 private fun Lookup.containsIconSuggestions(): Boolean = items.any { item -> item.lookupString.startsWith(ICON_PREFIX) }
