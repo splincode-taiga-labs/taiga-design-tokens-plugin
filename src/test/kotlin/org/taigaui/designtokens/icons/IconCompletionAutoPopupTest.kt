@@ -1,8 +1,8 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.openapi.components.service
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.testFramework.EdtTestUtil
 import com.intellij.testFramework.fixtures.CompletionAutoPopupTestCase
 import java.nio.file.Files
 import java.nio.file.Path
@@ -23,31 +23,51 @@ class IconCompletionAutoPopupTest : CompletionAutoPopupTestCase() {
         }
     }
 
-    fun testOpensIconCompletionImmediatelyAfterTuiPrefixInAngularStaticAttribute() {
+    fun testOpensIconCompletionAfterColdCatalogWarmupInAngularStaticAttribute() {
         createPackage("proprietary")
         createAngularPackage()
         createIcon("tds-icons/src/pragmatic/small/clock.svg")
         createIcon("tds-icons/src/pragmatic/small/print.svg")
 
-        val sourcePath = workspaceRoot.resolve("src/button.component.html")
         val sourceFile =
             createFile(
-                sourcePath,
+                workspaceRoot.resolve("src/button.component.html"),
                 "<button iconStart=\"<caret>\"></button>",
             )
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
-        project.service<IconCompletionService>().loadNow(sourcePath)
 
         type("@tui.")
 
-        val suggestions = myFixture.lookupElementStrings.orEmpty()
+        val suggestions = waitForSuggestions()
 
         assertContainsElements(
             suggestions,
             "@tui.pragmatic.small.clock",
             "@tui.pragmatic.small.print",
         )
+    }
+
+    private fun waitForSuggestions(): List<String> {
+        repeat(200) {
+            myTester.joinAutopopup()
+            myTester.joinCompletion()
+
+            val suggestions =
+                EdtTestUtil.runInEdtAndGet {
+                    myFixture.lookupElementStrings.orEmpty()
+                }
+
+            if (suggestions.isNotEmpty()) {
+                return suggestions
+            }
+
+            Thread.sleep(10)
+        }
+
+        return EdtTestUtil.runInEdtAndGet {
+            myFixture.lookupElementStrings.orEmpty()
+        }
     }
 
     private fun createPackage(name: String) {
