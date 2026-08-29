@@ -1,6 +1,5 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupArranger
@@ -16,6 +15,29 @@ import com.intellij.psi.PsiFile
 import java.nio.file.Path
 
 class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
+    override fun checkAutoPopup(
+        charTyped: Char,
+        project: Project,
+        editor: Editor,
+        file: PsiFile,
+    ): Result {
+        if (file.toSupportedSourceFile() == null || !charTyped.isIconNameCharacter()) {
+            return Result.CONTINUE
+        }
+
+        val completionContext =
+            IconCompletionContextFinder.findAfterTyping(
+                text = editor.document.immutableCharSequence,
+                offset = editor.caretModel.offset,
+                charTyped = charTyped,
+            )
+
+        // Prevent the generic HTML/Angular completion from being scheduled for
+        // @tui.*. The dedicated icon lookup is opened from charTyped after the
+        // character is actually present in the document.
+        return if (completionContext == null) Result.CONTINUE else Result.STOP
+    }
+
     override fun charTyped(
         charTyped: Char,
         project: Project,
@@ -37,10 +59,6 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
             return Result.CONTINUE
         }
 
-        // Generic HTML/Angular auto-popup is scheduled before the character is
-        // inserted. Cancel it after @tui.* is confirmed so it cannot replace the
-        // dedicated icon lookup with an empty/calculating completion session.
-        AutoPopupController.getInstance(project).cancelAllRequests()
         requestIconCompletion(project, editor, sourceFile)
 
         // The character is already in the document. Stop the remaining post-typing
@@ -92,7 +110,6 @@ private fun showIconLookup(
             return@invokeLater
         }
 
-        AutoPopupController.getInstance(project).cancelAllRequests()
         activeLookup?.hideLookup(true)
 
         val items =
