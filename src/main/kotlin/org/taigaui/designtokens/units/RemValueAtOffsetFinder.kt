@@ -24,11 +24,11 @@ internal object RemValueAtOffsetFinder {
         val lineStart = content.findLineStart(offset)
         val lineEnd = content.findLineEnd(offset)
         val line = content.subSequence(lineStart, lineEnd).toString()
-        val localOffset = offset - lineStart
+        val localOffsets = sequenceOf(offset - lineStart, offset - lineStart - 1).filter(line.indices::contains)
 
         return REM_VALUE
             .findAll(line)
-            .firstOrNull { match -> localOffset in match.range.first..(match.range.last + 1) }
+            .firstOrNull { match -> localOffsets.any(match.range::contains) }
             ?.takeUnless { match -> content.isInsideCommentOrString(lineStart + match.range.first) }
             ?.let { match ->
                 RemValueAtOffset(
@@ -65,19 +65,26 @@ private fun CharSequence.findLineEnd(offset: Int): Int {
 private fun CharSequence.isInsideCommentOrString(offset: Int): Boolean {
     var index = 0
     var quote: Char? = null
-    var inComment = false
+    var inBlockComment = false
+    var inLineComment = false
 
     while (index < offset.coerceAtMost(length)) {
         val current = this[index]
-        val next = this.getOrNull(index + 1)
+        val next = if (index + 1 < length) this[index + 1] else null
 
         when {
-            inComment && current == '*' && next == '/' -> {
-                inComment = false
+            inLineComment && current == '\n' -> {
+                inLineComment = false
+                index++
+            }
+
+            inLineComment -> index++
+            inBlockComment && current == '*' && next == '/' -> {
+                inBlockComment = false
                 index += 2
             }
 
-            inComment -> index++
+            inBlockComment -> index++
             quote != null && current == '\\' -> index += 2
             quote != null && current == quote -> {
                 quote = null
@@ -86,7 +93,12 @@ private fun CharSequence.isInsideCommentOrString(offset: Int): Boolean {
 
             quote != null -> index++
             current == '/' && next == '*' -> {
-                inComment = true
+                inBlockComment = true
+                index += 2
+            }
+
+            current == '/' && next == '/' -> {
+                inLineComment = true
                 index += 2
             }
 
@@ -99,7 +111,7 @@ private fun CharSequence.isInsideCommentOrString(offset: Int): Boolean {
         }
     }
 
-    return inComment || quote != null
+    return inBlockComment || inLineComment || quote != null
 }
 
 private fun BigDecimal.format(): String = stripTrailingZeros().toPlainString()
