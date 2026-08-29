@@ -42,6 +42,12 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
 
         val request = parameters.toIconCompletionRequest() ?: return
 
+        // Once the caret is inside a confirmed @tui.* reference, this contributor
+        // owns the lookup. Stop Angular/HTML contributors immediately so they cannot
+        // keep the popup in the "calculating" state while the icon catalog is being
+        // loaded or after our icon items are already available.
+        result.stopHere()
+
         request.project.service<IconCompletionPreviewController>().ensureAttached()
 
         val names =
@@ -60,14 +66,6 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
                         removeExistingIconSuffix(insertionContext)
                     },
             )
-        }
-
-        // Inside a confirmed @tui.* string the icon catalog is the complete source
-        // of suggestions. Do not continue into Angular/HTML contributors: in real
-        // WebStorm projects they can keep the lookup in the "calculating" state
-        // even after all Taiga UI icon items have already been produced.
-        if (names.isNotEmpty()) {
-            result.stopHere()
         }
     }
 }
