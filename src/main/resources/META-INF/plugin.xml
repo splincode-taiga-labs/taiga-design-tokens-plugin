@@ -44,6 +44,11 @@
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
         />
+        <platform.backend.documentation.targetProvider
+            id="TaigaUiRemDocumentationTargetProvider"
+            implementation="org.taigaui.designtokens.units.RemDocumentationTargetProvider"
+            order="first"
+        />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
         />
