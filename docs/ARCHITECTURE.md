@@ -6,7 +6,7 @@ Keep `README.md` focused on product capabilities. Changes that introduce a new s
 
 ## Architecture overview
 
-The plugin has two largely independent data pipelines: design tokens and icons. Editor features consume project-level services, while scanning, graph construction, network access, caching, and rendering stay behind those service boundaries.
+The plugin has two largely independent project-data pipelines for design tokens and icons, plus lightweight editor-only helpers for CSS units. Editor features consume project-level services only when they need discovery or cached project data; stateless transformations stay at the editor layer.
 
 ```mermaid
 flowchart LR
@@ -16,6 +16,10 @@ flowchart LR
         TokenCompletion["Token completion"]
         TokenInspection["Unknown-token inspection"]
         TokenHover["Token hover"]
+    end
+
+    subgraph UnitFeatures["CSS unit helpers"]
+        RemHover["rem → px hover"]
     end
 
     subgraph IconFeatures["Icon features"]
@@ -40,6 +44,7 @@ flowchart LR
     Editor --> TokenCompletion
     Editor --> TokenInspection
     Editor --> TokenHover
+    Editor --> RemHover
     Editor --> IconCompletion
     Editor --> IconHover
 
@@ -136,6 +141,20 @@ The resolver keeps deterministic order only where the source graph proves it. Co
 
 Recursive `var(...)` references use the same context-aware candidate selection model, with cycle protection and grouped source information preserved for editor presentation.
 
+## CSS unit helpers
+
+CSS unit helpers are intentionally stateless editor features. They do not participate in token discovery, project graphs, caches, or package resolution.
+
+The `rem` hover feature:
+
+- runs only for CSS, Less, and SCSS editor files;
+- recognizes literal `rem` dimensions under the pointer;
+- converts the literal with the fixed browser-default assumption `1rem = 16px`;
+- ignores matching text inside comments and strings;
+- shares the stylesheet hover routing with design-token hover so only one custom stylesheet hover popup is active at a time.
+
+Future local unit conversions should stay in this subsystem unless they require project-specific configuration or discovery.
+
 ## Icon subsystem
 
 Icon completion and icon hover share one catalog service and one SVG renderer.
@@ -231,6 +250,7 @@ org.taigaui.designtokens
 ├── psi            IntelliJ CSS/SCSS/Less PSI adapter
 ├── project        package/project graph orchestration, caches, invalidation, and resolution entry point
 ├── completion     token completion, strict inspection names, native lookup integration, and selected-item preview
+├── units          stateless CSS unit parsing, conversion, and hover presentation
 ├── icons          @tui.* completion, local/remote catalogs, SVG preview rendering, and icon hover
 └── documentation  token-reference scanning, hover controller, Swing model, and Swing popup
 ```
@@ -241,6 +261,7 @@ Dependencies point inward:
 - `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`;
 - `resolution` depends on immutable contracts from `index`;
 - `psi` adapts IntelliJ Platform syntax trees into index declarations;
+- `units` stays independent from project-data services and contains only local editor transformations;
 - `icons` does not depend on the token-resolution graph.
 
 ## Architectural rules
@@ -250,6 +271,7 @@ When extending the plugin:
 - keep token and icon domain models separate;
 - prefer immutable indexes/snapshots at service boundaries;
 - keep IntelliJ UI integration at the outer layer;
+- keep stateless local editor transformations out of project-data services;
 - keep expensive work off EDT;
 - preserve the distinction between broad token-name discovery and strict effective-value resolution;
 - prefer precise invalidation over global refreshes;
