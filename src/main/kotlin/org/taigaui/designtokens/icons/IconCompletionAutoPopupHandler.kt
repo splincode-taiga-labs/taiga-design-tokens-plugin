@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.icons
 
+import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupArranger
@@ -32,11 +33,19 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
                 null
             }
 
-        if (completionContext != null) {
-            requestIconCompletion(project, editor, sourceFile)
+        if (completionContext == null) {
+            return Result.CONTINUE
         }
 
-        return Result.CONTINUE
+        // Generic HTML/Angular auto-popup is scheduled before the character is
+        // inserted. Cancel it after @tui.* is confirmed so it cannot replace the
+        // dedicated icon lookup with an empty/calculating completion session.
+        AutoPopupController.getInstance(project).cancelAllRequests()
+        requestIconCompletion(project, editor, sourceFile)
+
+        // The character is already in the document. Stop the remaining post-typing
+        // delegates only for a confirmed Taiga UI icon reference.
+        return Result.STOP
     }
 }
 
@@ -83,6 +92,7 @@ private fun showIconLookup(
             return@invokeLater
         }
 
+        AutoPopupController.getInstance(project).cancelAllRequests()
         activeLookup?.hideLookup(true)
 
         val items =
