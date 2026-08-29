@@ -43,12 +43,14 @@ class RemValueAtOffsetFinderTest {
             .button::before {
                 content: "1rem";
                 /* padding: 2rem; */
+                // margin: 2.5rem;
                 margin: 3rem;
             }
             """.trimIndent()
 
         assertNull(RemValueAtOffsetFinder.find(text, text.indexOf("1rem") + 1))
         assertNull(RemValueAtOffsetFinder.find(text, text.indexOf("2rem") + 1))
+        assertNull(RemValueAtOffsetFinder.find(text, text.indexOf("2.5rem") + 1))
         assertEquals(
             "3rem = 48px",
             RemValueAtOffsetFinder.find(text, text.indexOf("3rem") + 1)?.presentation(),
