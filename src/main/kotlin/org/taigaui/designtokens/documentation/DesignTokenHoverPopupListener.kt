@@ -22,13 +22,13 @@ internal class DesignTokenHoverPopupListener :
         val editor = event.editor
         val project = editor.project ?: return
         val remController = project.service<RemHoverPopupController>()
+        val tokenController = project.service<DesignTokenHoverPopupController>()
 
         if (LookupManager.getInstance(project).activeLookup != null) {
             remController.dismissHover(editor)
+            tokenController.dismissHover(editor)
             return
         }
-
-        val tokenController = project.service<DesignTokenHoverPopupController>()
 
         if (remController.canHandle(event)) {
             tokenController.dismissHover(editor)
