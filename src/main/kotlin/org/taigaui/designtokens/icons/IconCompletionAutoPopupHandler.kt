@@ -86,17 +86,18 @@ internal fun restartIconCompletionIfNeeded(
 
         activeLookup?.hideLookup(true)
 
-        // The icon catalog is already warmed at this point. Run a lightweight
-        // auto-popup completion instead of an explicit Ctrl+Space completion,
-        // otherwise Angular/HTML contributors can keep the lookup in the
-        // "calculating" state even though our icon items are ready.
+        // The catalog is already warmed before we get here. Invoke regular BASIC
+        // completion (the same path as Ctrl+Space), while IconCompletionContributor
+        // stops the contributor chain after adding @tui.* items. This avoids both
+        // auto-popup suppression in Angular templates and the endless HTML/Angular
+        // "calculating" spinner.
         CodeCompletionHandlerBase
             .createHandler(
                 CompletionType.BASIC,
-                false,
                 true,
                 false,
-            ).invokeCompletion(project, editor, 0)
+                false,
+            ).invokeCompletion(project, editor, 1)
     }
 }
 
