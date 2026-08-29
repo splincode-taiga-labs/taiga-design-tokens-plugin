@@ -5,30 +5,44 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.event.EditorMouseListener
 import com.intellij.openapi.editor.event.EditorMouseMotionListener
+import org.taigaui.designtokens.units.RemHoverPopupController
 
 internal class DesignTokenHoverPopupListener :
     EditorMouseListener,
     EditorMouseMotionListener {
     override fun mousePressed(event: EditorMouseEvent) {
-        event.dismissDesignTokenHoverPopup()
+        event.dismissStylesheetHoverPopups()
     }
 
     override fun mouseDragged(event: EditorMouseEvent) {
-        event.dismissDesignTokenHoverPopup()
+        event.dismissStylesheetHoverPopups()
     }
 
     override fun mouseMoved(event: EditorMouseEvent) {
         val editor = event.editor
         val project = editor.project ?: return
+        val remController = project.service<RemHoverPopupController>()
 
-        if (LookupManager.getInstance(project).activeLookup == null) {
-            project.service<DesignTokenHoverPopupController>().mouseMoved(event)
+        if (LookupManager.getInstance(project).activeLookup != null) {
+            remController.dismissHover(editor)
+            return
+        }
+
+        val tokenController = project.service<DesignTokenHoverPopupController>()
+
+        if (remController.canHandle(event)) {
+            tokenController.dismissHover(editor)
+            remController.mouseMoved(event)
+        } else {
+            remController.dismissHover(editor)
+            tokenController.mouseMoved(event)
         }
     }
 }
 
-private fun EditorMouseEvent.dismissDesignTokenHoverPopup() {
+private fun EditorMouseEvent.dismissStylesheetHoverPopups() {
     val project = editor.project ?: return
 
     project.service<DesignTokenHoverPopupController>().dismissHover(editor)
+    project.service<RemHoverPopupController>().dismissHover(editor)
 }
