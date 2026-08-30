@@ -13,6 +13,8 @@ import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
+import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
+import org.taigaui.designtokens.diagnostics.PerformanceMetric
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
 import org.taigaui.designtokens.packageinfo.DesignTokensPackage
@@ -34,16 +36,26 @@ class DesignTokenIndexService(
         )
     private val cache =
         DesignTokenIndexCache { designTokensPackage ->
+            val declarations =
+                PerformanceDiagnostics.measure(PerformanceMetric.PACKAGE_SCAN) {
+                    packageScanner.scan(designTokensPackage)
+                }
+
             DesignTokenIndex.build(
                 packageRoot = designTokensPackage.realRoot,
-                declarations = packageScanner.scan(designTokensPackage),
+                declarations = declarations,
             )
         }
     private val packageNameCatalogCache =
         DesignTokenIndexCache { designTokensPackage ->
+            val declarations =
+                PerformanceDiagnostics.measure(PerformanceMetric.PACKAGE_SCAN) {
+                    packageScanner.scanAll(designTokensPackage)
+                }
+
             DesignTokenIndex.build(
                 packageRoot = designTokensPackage.realRoot,
-                declarations = packageScanner.scanAll(designTokensPackage),
+                declarations = declarations,
             )
         }
     private val projectStylesheetIndexProvider =
@@ -103,8 +115,11 @@ class DesignTokenIndexService(
         tokenName: String,
     ): List<DesignTokenResolutionGroup> =
         resolutionIndex(sourceFile)
-            ?.let { index -> DesignTokenValueResolver(index).resolveGrouped(tokenName) }
-            .orEmpty()
+            ?.let { index ->
+                PerformanceDiagnostics.measure(PerformanceMetric.VALUE_RESOLUTION) {
+                    DesignTokenValueResolver(index).resolveGrouped(tokenName)
+                }
+            }.orEmpty()
 
     internal fun completionTokenNames(sourceFile: Path): List<String> =
         buildList {
@@ -169,7 +184,11 @@ class DesignTokenIndexService(
 
         return indexes
             .takeIf { values -> values.isNotEmpty() }
-            ?.let { values -> DesignTokenIndex.merge(values) }
+            ?.let { values ->
+                PerformanceDiagnostics.measure(PerformanceMetric.INDEX_COMPOSITION) {
+                    DesignTokenIndex.merge(values)
+                }
+            }
     }
 
     private fun DesignTokensPackage.needsCompleteNameCatalog(): Boolean =
