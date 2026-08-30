@@ -44,6 +44,36 @@
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
         />
+        <codeInsight.declarativeInlayProvider
+            group="VALUES_GROUP"
+            bundle="messages.TaigaDesignTokensBundle"
+            implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
+            isEnabledByDefault="true"
+            language="CSS"
+            nameKey="inlay.rem.px.name"
+            descriptionKey="inlay.rem.px.description"
+            providerId="taiga.rem.px.styles"
+        />
+        <codeInsight.declarativeInlayProvider
+            group="VALUES_GROUP"
+            bundle="messages.TaigaDesignTokensBundle"
+            implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
+            isEnabledByDefault="true"
+            language="HTML"
+            nameKey="inlay.rem.px.name"
+            descriptionKey="inlay.rem.px.description"
+            providerId="taiga.rem.px.templates"
+        />
+        <codeInsight.declarativeInlayProvider
+            group="VALUES_GROUP"
+            bundle="messages.TaigaDesignTokensBundle"
+            implementationClass="org.taigaui.designtokens.units.RemInlayHintsProvider"
+            isEnabledByDefault="true"
+            language="JavaScript"
+            nameKey="inlay.rem.px.name"
+            descriptionKey="inlay.rem.px.description"
+            providerId="taiga.rem.px.embedded.styles"
+        />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"
         />
