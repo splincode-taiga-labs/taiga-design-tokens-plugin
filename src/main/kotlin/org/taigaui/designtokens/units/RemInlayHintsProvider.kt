@@ -20,10 +20,10 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
         file: PsiFile,
         editor: Editor,
     ): InlayHintsCollector =
-        if (file.language.isStylesheetLanguage()) {
-            StylesheetCollector(file)
-        } else {
-            InjectedStylesheetCollector(file)
+        when {
+            file.language.isStylesheetLanguage() -> StylesheetCollector(file)
+            file.language.isHtmlLanguage() -> HtmlTemplateCollector(file)
+            else -> InjectedContentCollector(file)
         }
 
     private class StylesheetCollector(
@@ -34,7 +34,7 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
             sink: InlayTreeSink,
         ) {
             if (element === file) {
-                addHints(
+                addStylesheetHints(
                     content = file.text,
                     sink = sink,
                     mapOffset = { it },
@@ -43,7 +43,24 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
         }
     }
 
-    private class InjectedStylesheetCollector(
+    private class HtmlTemplateCollector(
+        private val file: PsiFile,
+    ) : SharedBypassCollector {
+        override fun collectFromElement(
+            element: PsiElement,
+            sink: InlayTreeSink,
+        ) {
+            if (element === file) {
+                addAngularTemplateHints(
+                    content = file.text,
+                    sink = sink,
+                    mapOffset = { it },
+                )
+            }
+        }
+    }
+
+    private class InjectedContentCollector(
         file: PsiFile,
     ) : SharedBypassCollector {
         private val injectionManager = InjectedLanguageManager.getInstance(file.project)
@@ -55,15 +72,21 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
             val host = element as? PsiLanguageInjectionHost ?: return
 
             injectionManager.enumerate(host) { injectedFile, _ ->
-                if (!injectedFile.language.isStylesheetLanguage()) {
-                    return@enumerate
-                }
+                when {
+                    injectedFile.language.isStylesheetLanguage() ->
+                        addStylesheetHints(
+                            content = injectedFile.text,
+                            sink = sink,
+                            mapOffset = { offset -> injectionManager.injectedToHost(injectedFile, offset) },
+                        )
 
-                addHints(
-                    content = injectedFile.text,
-                    sink = sink,
-                    mapOffset = { offset -> injectionManager.injectedToHost(injectedFile, offset) },
-                )
+                    injectedFile.language.isHtmlLanguage() ->
+                        addAngularTemplateHints(
+                            content = injectedFile.text,
+                            sink = sink,
+                            mapOffset = { offset -> injectionManager.injectedToHost(injectedFile, offset) },
+                        )
+                }
             }
         }
     }
@@ -91,12 +114,28 @@ internal object RemInlayHintCollector {
             }
 }
 
-private fun addHints(
+private fun addStylesheetHints(
     content: CharSequence,
     sink: InlayTreeSink,
     mapOffset: (Int) -> Int,
 ) {
-    RemInlayHintCollector.collect(content).forEach { hint ->
+    addHints(RemInlayHintCollector.collect(content), sink, mapOffset)
+}
+
+private fun addAngularTemplateHints(
+    content: CharSequence,
+    sink: InlayTreeSink,
+    mapOffset: (Int) -> Int,
+) {
+    addHints(AngularRemStyleBindingHintCollector.collect(content), sink, mapOffset)
+}
+
+private fun addHints(
+    hints: List<RemInlayHint>,
+    sink: InlayTreeSink,
+    mapOffset: (Int) -> Int,
+) {
+    hints.forEach { hint ->
         sink.addPresentation(
             position = InlineInlayPosition(mapOffset(hint.offset), true),
             hintFormat = REM_HINT_FORMAT,
@@ -110,6 +149,10 @@ private fun addHints(
 private fun Language.isStylesheetLanguage(): Boolean =
     generateSequence(this) { language -> language.baseLanguage }
         .any { language -> language.id in STYLESHEET_LANGUAGE_IDS }
+
+private fun Language.isHtmlLanguage(): Boolean =
+    generateSequence(this) { language -> language.baseLanguage }
+        .any { language -> language.id in HTML_LANGUAGE_IDS }
 
 private fun CharSequence.lineStart(offset: Int): Int {
     for (index in (offset - 1).coerceAtMost(lastIndex) downTo 0) {
@@ -135,6 +178,7 @@ private fun CharSequence.hintOffset(values: List<RemValueAtOffset>): Int {
 }
 
 private val STYLESHEET_LANGUAGE_IDS = setOf("CSS", "LESS", "SCSS")
+private val HTML_LANGUAGE_IDS = setOf("HTML", "Angular2HTML")
 private val REM_HINT_FORMAT =
     HintFormat.default
         .withColorKind(HintColorKind.TextWithoutBackground)
