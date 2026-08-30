@@ -43,14 +43,18 @@ internal object RemValueAtOffsetFinder {
             REM_VALUE.findAll(content).filterNot { match ->
                 excludedRanges.any { range -> match.range.first in range }
             }
+        val values = mutableListOf<RemValueAtOffset>()
 
-        return matches.map { match ->
-            RemValueAtOffset(
-                remValue = match.groupValues[1].toBigDecimal(),
-                startOffset = match.range.first,
-                endOffset = match.range.last + 1,
-            )
-        }.toList()
+        matches.forEach { match ->
+            values +=
+                RemValueAtOffset(
+                    remValue = match.groupValues[1].toBigDecimal(),
+                    startOffset = match.range.first,
+                    endOffset = match.range.last + 1,
+                )
+        }
+
+        return values
     }
 }
 
