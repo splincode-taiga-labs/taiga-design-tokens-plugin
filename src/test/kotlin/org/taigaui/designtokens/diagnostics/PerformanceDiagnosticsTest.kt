@@ -20,7 +20,7 @@ class PerformanceDiagnosticsTest {
             Unit
         }
 
-        assertEquals(0, PerformanceDiagnostics.snapshot().getValue(PerformanceMetric.PACKAGE_SCAN).count)
+        assertEquals(0L, PerformanceDiagnostics.snapshot().getValue(PerformanceMetric.PACKAGE_SCAN).count)
     }
 
     @Test
@@ -35,7 +35,7 @@ class PerformanceDiagnosticsTest {
 
         val measurement = PerformanceDiagnostics.snapshot().getValue(PerformanceMetric.PACKAGE_SCAN)
 
-        assertEquals(2, measurement.count)
+        assertEquals(2L, measurement.count)
         assertTrue(measurement.totalNanos >= measurement.maxNanos)
         assertTrue(measurement.maxNanos >= 0)
     }
