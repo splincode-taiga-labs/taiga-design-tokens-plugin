@@ -59,7 +59,14 @@ gap: 1rem;             16px
 min-width: 21rem;      336px
 ```
 
-Multiple `rem` values on the same declaration are shown in source order. Inlay hints are visual editor decorations and do not modify the source file.
+Angular template style bindings with numeric `rem` literals show the same conversion next to the binding value:
+
+```html
+<tui-icon [style.font-size.rem]="1" />          <!-- editor hint: 16px -->
+<tui-icon [style.border-width.rem]="0.25" />   <!-- editor hint: 4px -->
+```
+
+Dynamic expressions such as `[style.width.rem]="size"` are not evaluated. Multiple `rem` values on the same stylesheet declaration are shown in source order. Inlay hints are visual editor decorations and do not modify the source file.
 
 ## Icons
 
