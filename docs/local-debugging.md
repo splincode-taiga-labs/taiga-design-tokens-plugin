@@ -92,6 +92,29 @@ tail -f build/idea-sandbox/*/log/idea.log
 
 `DesignTokenIndexService` writes package-index build failures to this log.
 
+## Collect performance diagnostics
+
+Performance diagnostics are disabled by default and never send data outside the IDE process. Enable them for a sandbox run with a JVM system property:
+
+```bash
+JAVA_TOOL_OPTIONS="-Dtaiga.design.tokens.performanceDiagnostics=true" \
+./gradlew runIde \
+  -PdebugProjectPath="/absolute/path/to/your/project"
+```
+
+The plugin writes one `Taiga UI performance` log entry for each measured operation. Current metrics cover:
+
+```text
+package-scan
+project-graph-build
+psi-extraction
+index-composition
+value-resolution
+icon-catalog-load
+```
+
+Use the same user action before and after an optimization and compare operation counts and durations in `idea.log`. The representative Angular/Nx test fixture contains 40 imported stylesheets so future invalidation and declaration-cache changes can be compared against a stable workload.
+
 ## Reset the sandbox
 
 When cached IDE state or an old plugin installation interferes with reproduction, stop the sandbox and remove its generated state:

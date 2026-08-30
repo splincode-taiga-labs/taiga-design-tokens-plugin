@@ -2,6 +2,8 @@ package org.taigaui.designtokens.project
 
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.LocalFileSystem
+import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
+import org.taigaui.designtokens.diagnostics.PerformanceMetric
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenSourceExtractor
 import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
@@ -64,7 +66,10 @@ internal class ProjectStylesheetIndexProvider(
     }
 
     private fun buildIndex(request: ProjectStylesheetIndexRequest): DesignTokenIndex {
-        val scope = graph.buildScope(request)
+        val scope =
+            PerformanceDiagnostics.measure(PerformanceMetric.PROJECT_GRAPH_BUILD) {
+                graph.buildScope(request)
+            }
         val declarations =
             scope.sourceFiles
                 .flatMap { sourceFile ->

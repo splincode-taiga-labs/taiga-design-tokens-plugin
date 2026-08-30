@@ -8,6 +8,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
+import org.taigaui.designtokens.diagnostics.PerformanceMetric
 import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
@@ -58,7 +60,7 @@ internal class IconCompletionService(
         val existing = synchronized(lock) { snapshots[scopeRoot] }
         val catalog =
             existing
-                ?: loader.loadCatalog(scopeRoot).also { loaded ->
+                ?: loadCatalog(scopeRoot).also { loaded ->
                     synchronized(lock) {
                         snapshots[scopeRoot] = loaded
                     }
@@ -97,7 +99,7 @@ internal class IconCompletionService(
         }
 
         coroutineScope.launch(Dispatchers.IO + CoroutineName("Taiga UI icon completion warmup")) {
-            val catalog = loader.loadCatalog(scopeRoot)
+            val catalog = loadCatalog(scopeRoot)
             val callbacks =
                 synchronized(lock) {
                     snapshots[scopeRoot] = catalog
@@ -111,4 +113,9 @@ internal class IconCompletionService(
             }
         }
     }
+
+    private fun loadCatalog(scopeRoot: Path): IconCatalog =
+        PerformanceDiagnostics.measure(PerformanceMetric.ICON_CATALOG_LOAD) {
+            loader.loadCatalog(scopeRoot)
+        }
 }
