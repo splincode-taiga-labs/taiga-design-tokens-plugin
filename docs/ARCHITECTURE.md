@@ -243,10 +243,19 @@ sequenceDiagram
 - Rebuilds are lazy after invalidation.
 - Concurrent cache misses for the same logical source should be coalesced rather than performing duplicate work.
 
+### Performance diagnostics
+
+Performance diagnostics are an opt-in, telemetry-free cross-cutting helper. They are disabled by default and do not change cache, resolution, or icon-source behavior.
+
+When the `taiga.design.tokens.performanceDiagnostics` JVM system property is enabled, the plugin records call counts and elapsed time for package scanning, project graph building, PSI extraction, index composition, value resolution, and icon catalog loading. Measurements stay in process and are also written to the IDE log for before/after comparisons.
+
+The diagnostics package contains no token or icon domain state. Token, PSI, project, and icon code may report measurements to it without introducing dependencies between the token and icon subsystems.
+
 ## Package boundaries
 
 ```text
 org.taigaui.designtokens
+├── diagnostics    opt-in telemetry-free performance measurements shared by independent subsystems
 ├── index          immutable declaration/index contracts
 ├── packageinfo    installed package discovery and style scanning
 ├── resolution     var() parsing, candidate selection, recursive resolution, and grouping
@@ -265,7 +274,8 @@ Dependencies point inward:
 - `resolution` depends on immutable contracts from `index`;
 - `psi` adapts IntelliJ Platform syntax trees into index declarations;
 - `units` stays independent from project-data services and contains only local editor transformations;
-- `icons` does not depend on the token-resolution graph.
+- `icons` does not depend on the token-resolution graph;
+- `diagnostics` contains no domain state and can be used by independent subsystems without coupling them together.
 
 ## Architectural rules
 
