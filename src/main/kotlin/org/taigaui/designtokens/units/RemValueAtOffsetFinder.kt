@@ -7,10 +7,19 @@ internal data class RemValueAtOffset(
     val startOffset: Int,
     val endOffset: Int,
 ) {
-    val pxValue: BigDecimal = remValue.multiply(ROOT_FONT_SIZE_PX)
-    val pxPresentation: String = "${pxValue.format()}px"
+    val pxValue: BigDecimal = RemUnitConverter.toPixels(remValue)
+    val pxPresentation: String = RemUnitConverter.pxPresentation(remValue)
 
-    fun presentation(): String = "${remValue.format()}rem = $pxPresentation"
+    fun presentation(): String = RemUnitConverter.presentation(remValue)
+}
+
+internal object RemUnitConverter {
+    fun toPixels(remValue: BigDecimal): BigDecimal = remValue.multiply(ROOT_FONT_SIZE_PX)
+
+    fun pxPresentation(remValue: BigDecimal): String = "${toPixels(remValue).format()}px"
+
+    fun presentation(remValue: BigDecimal): String =
+        "${remValue.format()}rem = ${pxPresentation(remValue)}"
 }
 
 internal object RemValueAtOffsetFinder {
