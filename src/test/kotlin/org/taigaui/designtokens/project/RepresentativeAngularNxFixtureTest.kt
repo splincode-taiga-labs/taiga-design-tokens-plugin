@@ -21,7 +21,10 @@ class RepresentativeAngularNxFixtureTest {
                 )
 
             assertEquals(fixture.projectRoot.normalized(), scope.projectRoot)
-            assertEquals(fixture.reachableStylesheets.map(Path::normalized).toSet(), scope.sourceFiles.toSet())
+            assertEquals(
+                fixture.reachableStylesheets.map { path -> path.normalized() }.toSet(),
+                scope.sourceFiles.toSet(),
+            )
             assertFalse(scope.sourceFiles.contains(fixture.unrelatedStylesheet.normalized()))
         }
 
