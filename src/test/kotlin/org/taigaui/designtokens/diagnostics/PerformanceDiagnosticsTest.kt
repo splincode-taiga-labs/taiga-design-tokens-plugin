@@ -1,0 +1,42 @@
+package org.taigaui.designtokens.diagnostics
+
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PerformanceDiagnosticsTest {
+    @After
+    fun tearDown() {
+        PerformanceDiagnostics.reset()
+        PerformanceDiagnostics.setEnabledForTests(null)
+    }
+
+    @Test
+    fun `does not record measurements when diagnostics are disabled`() {
+        PerformanceDiagnostics.setEnabledForTests(false)
+
+        PerformanceDiagnostics.measure(PerformanceMetric.PACKAGE_SCAN) {
+            Unit
+        }
+
+        assertEquals(0, PerformanceDiagnostics.snapshot().getValue(PerformanceMetric.PACKAGE_SCAN).count)
+    }
+
+    @Test
+    fun `records count total and maximum duration when diagnostics are enabled`() {
+        PerformanceDiagnostics.setEnabledForTests(true)
+
+        repeat(2) {
+            PerformanceDiagnostics.measure(PerformanceMetric.PACKAGE_SCAN) {
+                Unit
+            }
+        }
+
+        val measurement = PerformanceDiagnostics.snapshot().getValue(PerformanceMetric.PACKAGE_SCAN)
+
+        assertEquals(2, measurement.count)
+        assertTrue(measurement.totalNanos >= measurement.maxNanos)
+        assertTrue(measurement.maxNanos >= 0)
+    }
+}
