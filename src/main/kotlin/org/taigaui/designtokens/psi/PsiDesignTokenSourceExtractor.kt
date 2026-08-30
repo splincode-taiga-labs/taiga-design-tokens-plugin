@@ -11,6 +11,8 @@ import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.css.CssDeclaration
 import com.intellij.psi.css.CssRuleset
+import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
+import org.taigaui.designtokens.diagnostics.PerformanceMetric
 import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.index.DesignTokenSourceExtractor
 import org.taigaui.designtokens.index.DesignTokenSourceFormat
@@ -19,7 +21,12 @@ import java.nio.file.Path
 class PsiDesignTokenSourceExtractor(
     private val project: Project,
 ) : DesignTokenSourceExtractor {
-    override fun extract(sourceFile: Path): List<DesignTokenDeclaration> {
+    override fun extract(sourceFile: Path): List<DesignTokenDeclaration> =
+        PerformanceDiagnostics.measure(PerformanceMetric.PSI_EXTRACTION) {
+            extractMeasured(sourceFile)
+        }
+
+    private fun extractMeasured(sourceFile: Path): List<DesignTokenDeclaration> {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val localFileSystem = LocalFileSystem.getInstance()
         val virtualFile =
