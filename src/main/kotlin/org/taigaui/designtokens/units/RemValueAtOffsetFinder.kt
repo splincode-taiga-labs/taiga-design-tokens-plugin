@@ -18,8 +18,7 @@ internal object RemUnitConverter {
 
     fun pxPresentation(remValue: BigDecimal): String = "${toPixels(remValue).format()}px"
 
-    fun presentation(remValue: BigDecimal): String =
-        "${remValue.format()}rem = ${pxPresentation(remValue)}"
+    fun presentation(remValue: BigDecimal): String = "${remValue.format()}rem = ${pxPresentation(remValue)}"
 }
 
 internal object RemValueAtOffsetFinder {
@@ -40,18 +39,18 @@ internal object RemValueAtOffsetFinder {
 
     fun findAll(content: CharSequence): List<RemValueAtOffset> {
         val excludedRanges = EXCLUDED_TEXT.findAll(content).map(MatchResult::range).toList()
-
-        return REM_VALUE
-            .findAll(content)
-            .filterNot { match -> excludedRanges.any { range -> match.range.first in range } }
-            .map { match ->
-                RemValueAtOffset(
-                    remValue = match.groupValues[1].toBigDecimal(),
-                    startOffset = match.range.first,
-                    endOffset = match.range.last + 1,
-                )
+        val matches =
+            REM_VALUE.findAll(content).filterNot { match ->
+                excludedRanges.any { range -> match.range.first in range }
             }
-            .toList()
+
+        return matches.map { match ->
+            RemValueAtOffset(
+                remValue = match.groupValues[1].toBigDecimal(),
+                startOffset = match.range.first,
+                endOffset = match.range.last + 1,
+            )
+        }.toList()
     }
 }
 
