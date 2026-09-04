@@ -65,7 +65,7 @@ internal class ProjectStylesheetIndexProvider(
         )
     }
 
-    private fun buildIndex(request: ProjectStylesheetIndexRequest): DesignTokenIndex {
+    private fun buildIndex(request: ProjectStylesheetIndexRequest): ProjectStylesheetIndexBuildResult {
         val scope =
             PerformanceDiagnostics.measure(PerformanceMetric.PROJECT_GRAPH_BUILD) {
                 graph.buildScope(request)
@@ -83,10 +83,15 @@ internal class ProjectStylesheetIndexProvider(
                         cascadeOrder = cascadeOrder,
                     )
                 }
+        val index =
+            DesignTokenIndex.build(
+                packageRoot = scope.projectRoot,
+                declarations = declarations,
+            )
 
-        return DesignTokenIndex.build(
-            packageRoot = scope.projectRoot,
-            declarations = declarations,
+        return ProjectStylesheetIndexBuildResult(
+            index = index,
+            dependencies = scope.sourceFiles.toSet(),
         )
     }
 
