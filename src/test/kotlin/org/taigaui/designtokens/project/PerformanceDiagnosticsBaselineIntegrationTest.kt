@@ -44,6 +44,27 @@ class PerformanceDiagnosticsBaselineIntegrationTest : BasePlatformTestCase() {
         assertEquals(2L, snapshot.getValue(PerformanceMetric.VALUE_RESOLUTION).count)
     }
 
+    fun testUnrelatedStylesheetChangeDoesNotRebuildRepresentativeProjectIndex() {
+        val fixture = RepresentativeAngularNxFixture.create(tempRoot.resolve("workspace"))
+
+        assertTrue(service.resolveToken(fixture.sourceFile, TOKEN_NAME).isNotEmpty())
+        assertEquals(0, service.invalidate(listOf(fixture.unrelatedStylesheet)))
+        assertTrue(service.resolveToken(fixture.sourceFile, TOKEN_NAME).isNotEmpty())
+
+        PerformanceDiagnostics.snapshot().let { snapshot ->
+            assertEquals(1L, snapshot.getValue(PerformanceMetric.PROJECT_GRAPH_BUILD).count)
+            assertEquals(42L, snapshot.getValue(PerformanceMetric.PSI_EXTRACTION).count)
+        }
+
+        assertEquals(1, service.invalidate(listOf(fixture.reachableStylesheets.last())))
+        assertTrue(service.resolveToken(fixture.sourceFile, TOKEN_NAME).isNotEmpty())
+
+        PerformanceDiagnostics.snapshot().let { snapshot ->
+            assertEquals(2L, snapshot.getValue(PerformanceMetric.PROJECT_GRAPH_BUILD).count)
+            assertEquals(84L, snapshot.getValue(PerformanceMetric.PSI_EXTRACTION).count)
+        }
+    }
+
     private companion object {
         const val TOKEN_NAME = "--tui-token-39"
     }
