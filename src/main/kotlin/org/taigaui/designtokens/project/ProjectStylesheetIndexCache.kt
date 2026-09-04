@@ -5,15 +5,29 @@ import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 
+internal data class ProjectStylesheetIndexBuildResult(
+    val index: DesignTokenIndex,
+    val dependencies: Set<Path>,
+) {
+    fun normalized(): ProjectStylesheetIndexBuildResult =
+        copy(
+            dependencies =
+                dependencies
+                    .map(Path::toAbsolutePath)
+                    .map(Path::normalize)
+                    .toSet(),
+        )
+}
+
 internal fun interface ProjectStylesheetIndexBuilder {
-    fun build(request: ProjectStylesheetIndexRequest): DesignTokenIndex
+    fun build(request: ProjectStylesheetIndexRequest): ProjectStylesheetIndexBuildResult
 }
 
 internal class ProjectStylesheetIndexCache(
     private val indexBuilder: ProjectStylesheetIndexBuilder,
 ) {
     private val lock = Any()
-    private val entries = linkedMapOf<ProjectStylesheetIndexRequest, DesignTokenIndex>()
+    private val entries = linkedMapOf<ProjectStylesheetIndexRequest, ProjectStylesheetIndexBuildResult>()
     private val pendingBuilds = linkedMapOf<ProjectStylesheetIndexRequest, PendingBuild>()
 
     val size: Int
@@ -28,8 +42,8 @@ internal class ProjectStylesheetIndexCache(
         val normalizedRequest = request.normalized()
         val access =
             synchronized(lock) {
-                entries[normalizedRequest]?.let { index ->
-                    return index
+                entries[normalizedRequest]?.let { entry ->
+                    return entry.index
                 }
 
                 pendingBuilds[normalizedRequest]
@@ -55,11 +69,20 @@ internal class ProjectStylesheetIndexCache(
                     .distinct()
             val sizeBefore = entries.size
 
-            entries.keys.removeIf { request ->
-                normalizedPaths.any { changedPath -> request.isAffectedBy(changedPath) }
+            entries.entries.removeIf { (request, entry) ->
+                normalizedPaths.any { changedPath -> entry.isAffectedBy(request, changedPath) }
             }
-            pendingBuilds.keys.removeIf { request ->
-                normalizedPaths.any { changedPath -> request.isAffectedBy(changedPath) }
+
+            pendingBuilds.entries.removeIf { (request, pendingBuild) ->
+                val broadInvalidation =
+                    normalizedPaths.any { changedPath -> request.isBroadlyAffectedBy(changedPath) }
+
+                if (broadInvalidation) {
+                    true
+                } else {
+                    pendingBuild.recordChanges(normalizedPaths)
+                    false
+                }
             }
 
             sizeBefore - entries.size
@@ -76,26 +99,33 @@ internal class ProjectStylesheetIndexCache(
         request: ProjectStylesheetIndexRequest,
         pendingBuild: PendingBuild,
     ): DesignTokenIndex =
-        runCatching { indexBuilder.build(request) }
+        runCatching { indexBuilder.build(request).normalized() }
             .fold(
-                onSuccess = { index -> publishSuccess(request, pendingBuild, index) },
+                onSuccess = { result -> publishSuccess(request, pendingBuild, result) },
                 onFailure = { error -> publishFailure(request, pendingBuild, error) },
             )
 
     private fun publishSuccess(
         request: ProjectStylesheetIndexRequest,
         pendingBuild: PendingBuild,
-        index: DesignTokenIndex,
+        result: ProjectStylesheetIndexBuildResult,
     ): DesignTokenIndex {
         synchronized(lock) {
             if (pendingBuilds[request] === pendingBuild) {
                 pendingBuilds.remove(request)
-                entries[request] = index
+
+                if (
+                    !pendingBuild.wasInvalidated { changedPath ->
+                        result.isAffectedBy(request, changedPath)
+                    }
+                ) {
+                    entries[request] = result
+                }
             }
         }
-        pendingBuild.complete(index)
+        pendingBuild.complete(result.index)
 
-        return index
+        return result.index
     }
 
     private fun publishFailure(
@@ -113,7 +143,16 @@ internal class ProjectStylesheetIndexCache(
         throw error
     }
 
-    private fun ProjectStylesheetIndexRequest.isAffectedBy(changedPath: Path): Boolean {
+    private fun ProjectStylesheetIndexBuildResult.isAffectedBy(
+        request: ProjectStylesheetIndexRequest,
+        changedPath: Path,
+    ): Boolean =
+        request.isBroadlyAffectedBy(changedPath) ||
+            dependencies.any { dependency ->
+                dependency == changedPath || dependency.startsWith(changedPath)
+            }
+
+    private fun ProjectStylesheetIndexRequest.isBroadlyAffectedBy(changedPath: Path): Boolean {
         val nodeModulesRoot = workspaceRoot.resolve(NODE_MODULES).toAbsolutePath().normalize()
 
         if (changedPath.startsWith(nodeModulesRoot)) {
@@ -121,26 +160,31 @@ internal class ProjectStylesheetIndexCache(
         }
 
         val workspaceChanged = changedPath == workspaceRoot || workspaceRoot.startsWith(changedPath)
-        val relevantProjectFileChanged =
-            changedPath.startsWith(workspaceRoot) && changedPath.isRelevantProjectPath()
+        val structuralInputChanged =
+            changedPath.startsWith(workspaceRoot) && changedPath.isStructuralProjectPath()
 
-        return workspaceChanged || relevantProjectFileChanged
+        return workspaceChanged || structuralInputChanged
     }
 
-    private fun Path.isRelevantProjectPath(): Boolean {
+    private fun Path.isStructuralProjectPath(): Boolean {
         val fileName = fileName?.toString()?.lowercase() ?: return true
-        val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
 
         return fileName == ANGULAR_JSON ||
             fileName == NX_JSON ||
             fileName == PROJECT_JSON ||
             fileName == PACKAGE_JSON ||
-            extension in STYLESHEET_EXTENSIONS ||
             '.' !in fileName
     }
 
     private class PendingBuild {
         private val future = CompletableFuture<DesignTokenIndex>()
+        private val changedPaths = linkedSetOf<Path>()
+
+        fun recordChanges(paths: Collection<Path>) {
+            changedPaths.addAll(paths)
+        }
+
+        fun wasInvalidated(isAffected: (Path) -> Boolean): Boolean = changedPaths.any(isAffected)
 
         fun complete(index: DesignTokenIndex) {
             future.complete(index)
@@ -169,6 +213,5 @@ internal class ProjectStylesheetIndexCache(
         const val PROJECT_JSON = "project.json"
         const val PACKAGE_JSON = "package.json"
         const val NODE_MODULES = "node_modules"
-        val STYLESHEET_EXTENSIONS = setOf("css", "less", "scss")
     }
 }
