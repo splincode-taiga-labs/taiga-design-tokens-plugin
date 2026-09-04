@@ -114,7 +114,11 @@ internal class ProjectStylesheetIndexCache(
             if (pendingBuilds[request] === pendingBuild) {
                 pendingBuilds.remove(request)
 
-                if (!pendingBuild.wasInvalidated(result, request)) {
+                if (
+                    !pendingBuild.wasInvalidated { changedPath ->
+                        result.isAffectedBy(request, changedPath)
+                    }
+                ) {
                     entries[request] = result
                 }
             }
@@ -180,10 +184,7 @@ internal class ProjectStylesheetIndexCache(
             changedPaths.addAll(paths)
         }
 
-        fun wasInvalidated(
-            result: ProjectStylesheetIndexBuildResult,
-            request: ProjectStylesheetIndexRequest,
-        ): Boolean = changedPaths.any { changedPath -> result.isAffectedBy(request, changedPath) }
+        fun wasInvalidated(isAffected: (Path) -> Boolean): Boolean = changedPaths.any(isAffected)
 
         fun complete(index: DesignTokenIndex) {
             future.complete(index)
