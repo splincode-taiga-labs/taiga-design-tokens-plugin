@@ -13,42 +13,62 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class ProjectStylesheetIndexCacheTest {
     @Test
-    fun `invalidates project entries for stylesheet changes but ignores node modules`() {
+    fun `invalidates only project entries that depend on changed stylesheet`() {
         val workspaceRoot = Path.of("build/fixtures/project-cache").toAbsolutePath().normalize()
-        val request =
-            ProjectStylesheetIndexRequest(
-                sourceFile = workspaceRoot.resolve("src/component.scss"),
-                workspaceRoot = workspaceRoot,
-            )
+        val firstRequest = request(workspaceRoot, "apps/first/src/component.scss")
+        val secondRequest = request(workspaceRoot, "apps/second/src/component.scss")
+        val firstTheme = workspaceRoot.resolve("apps/first/src/theme.scss")
+        val secondTheme = workspaceRoot.resolve("apps/second/src/theme.scss")
         val cache =
             ProjectStylesheetIndexCache { cacheRequest ->
-                DesignTokenIndex.build(cacheRequest.workspaceRoot, emptyList())
+                val dependency = if (cacheRequest == firstRequest) firstTheme else secondTheme
+
+                buildResult(cacheRequest, setOf(dependency))
             }
 
-        assertFalse(cache.contains(request))
+        cache.getOrBuild(firstRequest)
+        cache.getOrBuild(secondRequest)
 
-        cache.getOrBuild(request)
+        assertEquals(0, cache.invalidate(listOf(workspaceRoot.resolve("apps/other/src/theme.scss"))))
+        assertTrue(cache.contains(firstRequest))
+        assertTrue(cache.contains(secondRequest))
 
-        assertTrue(cache.contains(request))
+        assertEquals(1, cache.invalidate(listOf(firstTheme)))
+        assertFalse(cache.contains(firstRequest))
+        assertTrue(cache.contains(secondRequest))
+
         assertEquals(
             0,
             cache.invalidate(
                 listOf(workspaceRoot.resolve("node_modules/@taiga-ui/core/styles/variables.less")),
             ),
         )
-        assertTrue(cache.contains(request))
-        assertEquals(1, cache.invalidate(listOf(workspaceRoot.resolve("src/theme.scss"))))
-        assertFalse(cache.contains(request))
+        assertTrue(cache.contains(secondRequest))
     }
 
     @Test
-    fun `invalidation does not wait for an in flight project index build`() {
+    fun `structural project changes keep broad invalidation`() {
+        val workspaceRoot = Path.of("build/fixtures/project-cache-structural").toAbsolutePath().normalize()
+        val firstRequest = request(workspaceRoot, "apps/first/src/component.scss")
+        val secondRequest = request(workspaceRoot, "apps/second/src/component.scss")
+        val cache =
+            ProjectStylesheetIndexCache { cacheRequest ->
+                buildResult(cacheRequest, setOf(cacheRequest.sourceFile))
+            }
+
+        cache.getOrBuild(firstRequest)
+        cache.getOrBuild(secondRequest)
+
+        assertEquals(2, cache.invalidate(listOf(workspaceRoot.resolve("apps/first/project.json"))))
+        assertFalse(cache.contains(firstRequest))
+        assertFalse(cache.contains(secondRequest))
+    }
+
+    @Test
+    fun `related invalidation during build prevents stale project index publication`() {
         val workspaceRoot = Path.of("build/fixtures/project-cache-concurrency").toAbsolutePath().normalize()
-        val request =
-            ProjectStylesheetIndexRequest(
-                sourceFile = workspaceRoot.resolve("src/component.scss"),
-                workspaceRoot = workspaceRoot,
-            )
+        val request = request(workspaceRoot, "src/component.scss")
+        val theme = workspaceRoot.resolve("src/theme.scss")
         val buildStarted = CountDownLatch(1)
         val releaseBuild = CountDownLatch(1)
         val builds = AtomicInteger()
@@ -57,24 +77,15 @@ class ProjectStylesheetIndexCacheTest {
                 builds.incrementAndGet()
                 buildStarted.countDown()
                 releaseBuild.await(10, TimeUnit.SECONDS)
-                DesignTokenIndex.build(cacheRequest.workspaceRoot, emptyList())
+                buildResult(cacheRequest, setOf(theme))
             }
         val executor = Executors.newFixedThreadPool(2)
 
         try {
-            val buildFuture =
-                executor.submit<DesignTokenIndex> {
-                    cache.getOrBuild(request)
-                }
+            val buildFuture = executor.submit<DesignTokenIndex> { cache.getOrBuild(request) }
 
             assertTrue(buildStarted.await(10, TimeUnit.SECONDS))
-
-            val invalidationFuture =
-                executor.submit<Int> {
-                    cache.invalidate(listOf(workspaceRoot.resolve("src/theme.scss")))
-                }
-
-            assertEquals(0, invalidationFuture.get(5, TimeUnit.SECONDS))
+            assertEquals(0, cache.invalidate(listOf(theme)))
 
             releaseBuild.countDown()
             buildFuture.get(10, TimeUnit.SECONDS)
@@ -90,4 +101,57 @@ class ProjectStylesheetIndexCacheTest {
             executor.shutdownNow()
         }
     }
+
+    @Test
+    fun `unrelated invalidation during build keeps completed project index`() {
+        val workspaceRoot = Path.of("build/fixtures/project-cache-unrelated-concurrency").toAbsolutePath().normalize()
+        val request = request(workspaceRoot, "apps/first/src/component.scss")
+        val theme = workspaceRoot.resolve("apps/first/src/theme.scss")
+        val unrelatedTheme = workspaceRoot.resolve("apps/second/src/theme.scss")
+        val buildStarted = CountDownLatch(1)
+        val releaseBuild = CountDownLatch(1)
+        val builds = AtomicInteger()
+        val cache =
+            ProjectStylesheetIndexCache { cacheRequest ->
+                builds.incrementAndGet()
+                buildStarted.countDown()
+                releaseBuild.await(10, TimeUnit.SECONDS)
+                buildResult(cacheRequest, setOf(theme))
+            }
+        val executor = Executors.newSingleThreadExecutor()
+
+        try {
+            val buildFuture = executor.submit<DesignTokenIndex> { cache.getOrBuild(request) }
+
+            assertTrue(buildStarted.await(10, TimeUnit.SECONDS))
+            assertEquals(0, cache.invalidate(listOf(unrelatedTheme)))
+
+            releaseBuild.countDown()
+            buildFuture.get(10, TimeUnit.SECONDS)
+
+            assertEquals(1, builds.get())
+            assertTrue(cache.contains(request))
+        } finally {
+            releaseBuild.countDown()
+            executor.shutdownNow()
+        }
+    }
+
+    private fun request(
+        workspaceRoot: Path,
+        sourceFile: String,
+    ): ProjectStylesheetIndexRequest =
+        ProjectStylesheetIndexRequest(
+            sourceFile = workspaceRoot.resolve(sourceFile),
+            workspaceRoot = workspaceRoot,
+        ).normalized()
+
+    private fun buildResult(
+        request: ProjectStylesheetIndexRequest,
+        dependencies: Set<Path>,
+    ): ProjectStylesheetIndexBuildResult =
+        ProjectStylesheetIndexBuildResult(
+            index = DesignTokenIndex.build(request.workspaceRoot, emptyList()),
+            dependencies = dependencies,
+        )
 }
