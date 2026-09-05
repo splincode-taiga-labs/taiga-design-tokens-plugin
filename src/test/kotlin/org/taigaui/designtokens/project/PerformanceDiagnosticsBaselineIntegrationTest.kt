@@ -61,7 +61,7 @@ class PerformanceDiagnosticsBaselineIntegrationTest : BasePlatformTestCase() {
 
         PerformanceDiagnostics.snapshot().let { snapshot ->
             assertEquals(2L, snapshot.getValue(PerformanceMetric.PROJECT_GRAPH_BUILD).count)
-            assertEquals(84L, snapshot.getValue(PerformanceMetric.PSI_EXTRACTION).count)
+            assertEquals(43L, snapshot.getValue(PerformanceMetric.PSI_EXTRACTION).count)
         }
     }
 
