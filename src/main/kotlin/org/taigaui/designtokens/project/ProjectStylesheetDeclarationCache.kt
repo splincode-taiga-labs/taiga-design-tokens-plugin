@@ -17,39 +17,13 @@ internal class ProjectStylesheetDeclarationCache(
 
     fun extract(sourceFile: Path): List<DesignTokenDeclaration> {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+        var declarations: List<DesignTokenDeclaration>? = null
 
-        while (true) {
-            val stampBefore = modificationStampProvider.get(normalizedSourceFile)
-                ?: return sourceExtractor.extract(normalizedSourceFile)
-
-            synchronized(lock) {
-                entries[normalizedSourceFile]
-                    ?.takeIf { entry -> entry.modificationStamp == stampBefore }
-                    ?.let { entry -> return entry.declarations }
-            }
-
-            val declarations = sourceExtractor.extract(normalizedSourceFile)
-            val stampAfter = modificationStampProvider.get(normalizedSourceFile)
-                ?: return declarations
-
-            if (stampBefore != stampAfter) {
-                continue
-            }
-
-            synchronized(lock) {
-                entries[normalizedSourceFile]
-                    ?.takeIf { entry -> entry.modificationStamp == stampAfter }
-                    ?.let { entry -> return entry.declarations }
-
-                entries[normalizedSourceFile] =
-                    Entry(
-                        modificationStamp = stampAfter,
-                        declarations = declarations,
-                    )
-            }
-
-            return declarations
+        while (declarations == null) {
+            declarations = extractStable(normalizedSourceFile)
         }
+
+        return declarations
     }
 
     fun invalidate(changedPaths: Collection<Path>) {
@@ -73,6 +47,62 @@ internal class ProjectStylesheetDeclarationCache(
             entries.clear()
         }
     }
+
+    private fun extractStable(sourceFile: Path): List<DesignTokenDeclaration>? {
+        val stampBefore = modificationStampProvider.get(sourceFile)
+        val cachedDeclarations =
+            stampBefore?.let { modificationStamp ->
+                cachedDeclarations(sourceFile, modificationStamp)
+            }
+
+        return when {
+            stampBefore == null -> sourceExtractor.extract(sourceFile)
+            cachedDeclarations != null -> cachedDeclarations
+            else -> extractAndPublishIfStable(sourceFile, stampBefore)
+        }
+    }
+
+    private fun extractAndPublishIfStable(
+        sourceFile: Path,
+        stampBefore: Long,
+    ): List<DesignTokenDeclaration>? {
+        val declarations = sourceExtractor.extract(sourceFile)
+        val stampAfter = modificationStampProvider.get(sourceFile)
+
+        return when {
+            stampAfter == null -> declarations
+            stampBefore != stampAfter -> null
+            else -> publish(sourceFile, stampAfter, declarations)
+        }
+    }
+
+    private fun cachedDeclarations(
+        sourceFile: Path,
+        modificationStamp: Long,
+    ): List<DesignTokenDeclaration>? =
+        synchronized(lock) {
+            entries[sourceFile]
+                ?.takeIf { entry -> entry.modificationStamp == modificationStamp }
+                ?.declarations
+        }
+
+    private fun publish(
+        sourceFile: Path,
+        modificationStamp: Long,
+        declarations: List<DesignTokenDeclaration>,
+    ): List<DesignTokenDeclaration> =
+        synchronized(lock) {
+            entries[sourceFile]
+                ?.takeIf { entry -> entry.modificationStamp == modificationStamp }
+                ?.declarations
+                ?: declarations.also { cachedDeclarations ->
+                    entries[sourceFile] =
+                        Entry(
+                            modificationStamp = modificationStamp,
+                            declarations = cachedDeclarations,
+                        )
+                }
+        }
 
     private data class Entry(
         val modificationStamp: Long,
