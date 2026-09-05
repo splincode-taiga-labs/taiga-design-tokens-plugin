@@ -46,7 +46,8 @@ class ProjectStylesheetDeclarationCacheTest {
     @Test
     fun `retries extraction when modification stamp changes during extraction`() {
         val sourceFile =
-            Path.of("build/fixtures/project-declaration-cache-race/theme.css")
+            Path
+                .of("build/fixtures/project-declaration-cache-race/theme.css")
                 .toAbsolutePath()
                 .normalize()
         var stamp = 1L
