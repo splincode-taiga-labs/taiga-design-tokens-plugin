@@ -14,9 +14,13 @@ import java.nio.file.Path
 
 internal class ProjectStylesheetIndexProvider(
     private val packageResolver: DesignTokensPackageResolver,
-    private val sourceExtractor: DesignTokenSourceExtractor,
+    sourceExtractor: DesignTokenSourceExtractor,
 ) {
     private val graph = DesignTokenProjectStylesheetGraph(::readProjectText)
+    private val declarationCache =
+        ProjectStylesheetDeclarationCache(sourceExtractor) { sourceFile ->
+            modificationStamp(sourceFile)
+        }
     private val cache =
         ProjectStylesheetIndexCache { request ->
             buildIndex(request)
@@ -37,10 +41,15 @@ internal class ProjectStylesheetIndexProvider(
         request(sourceFile)
             ?.let(cache::getOrBuild)
 
-    fun invalidate(changedPaths: Collection<Path>): Int = cache.invalidate(changedPaths)
+    fun invalidate(changedPaths: Collection<Path>): Int {
+        declarationCache.invalidate(changedPaths)
+
+        return cache.invalidate(changedPaths)
+    }
 
     fun clear() {
         cache.clear()
+        declarationCache.clear()
     }
 
     private fun request(
@@ -73,7 +82,7 @@ internal class ProjectStylesheetIndexProvider(
         val declarations =
             scope.sourceFiles
                 .flatMap { sourceFile ->
-                    sourceExtractor
+                    declarationCache
                         .extract(sourceFile)
                         .sortedBy { declaration -> declaration.line }
                 }.mapIndexed { cascadeOrder, declaration ->
@@ -93,6 +102,21 @@ internal class ProjectStylesheetIndexProvider(
             index = index,
             dependencies = scope.sourceFiles.toSet(),
         )
+    }
+
+    private fun modificationStamp(path: Path): Long? {
+        val normalizedPath = path.toAbsolutePath().normalize()
+        val localFileSystem = LocalFileSystem.getInstance()
+        val virtualFile =
+            localFileSystem.findFileByNioFile(normalizedPath)
+                ?: localFileSystem.refreshAndFindFileByNioFile(normalizedPath)
+                ?: return null
+
+        return FileDocumentManager
+            .getInstance()
+            .getCachedDocument(virtualFile)
+            ?.modificationStamp
+            ?: virtualFile.modificationStamp
     }
 
     private fun readProjectText(path: Path): String? {
