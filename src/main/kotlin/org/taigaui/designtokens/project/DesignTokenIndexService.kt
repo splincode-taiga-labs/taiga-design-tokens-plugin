@@ -21,7 +21,6 @@ import org.taigaui.designtokens.packageinfo.DesignTokensPackage
 import org.taigaui.designtokens.packageinfo.DesignTokensPackageResolver
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
-import org.taigaui.designtokens.resolution.DesignTokenValueResolver
 import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
@@ -63,12 +62,16 @@ class DesignTokenIndexService(
             packageResolver = packageResolver,
             sourceExtractor = sourceExtractor,
         )
+    private val resolutionSnapshotCache = DesignTokenResolutionSnapshotCache()
 
     internal val cachedPackageCount: Int
         get() = cache.size
 
     internal val cachedProjectIndexCount: Int
         get() = projectStylesheetIndexProvider.size
+
+    internal val cachedResolutionSnapshotCount: Int
+        get() = resolutionSnapshotCache.size
 
     init {
         project.messageBus
@@ -114,19 +117,19 @@ class DesignTokenIndexService(
         sourceFile: Path,
         tokenName: String,
     ): List<DesignTokenResolutionGroup> =
-        resolutionIndex(sourceFile)
-            ?.let { index ->
+        resolutionSnapshot(sourceFile)
+            .resolver
+            ?.let { resolver ->
                 PerformanceDiagnostics.measure(PerformanceMetric.VALUE_RESOLUTION) {
-                    DesignTokenValueResolver(index).resolveGrouped(tokenName)
+                    resolver.resolveGrouped(tokenName)
                 }
             }.orEmpty()
 
     internal fun completionTokenNames(sourceFile: Path): List<String> =
-        buildList {
-            packageTokenNames(sourceFile).let(::addAll)
-            projectStylesheetIndexProvider.getIndex(sourceFile)?.names?.let(::addAll)
-        }.distinct()
-            .sorted()
+        resolutionSnapshot(
+            sourceFile = sourceFile,
+            requireCompleteNameCatalog = true,
+        ).tokenNames
 
     internal fun isIndexCached(sourceFile: Path): Boolean =
         runCatching {
@@ -160,35 +163,35 @@ class DesignTokenIndexService(
         cache.clear()
         packageNameCatalogCache.clear()
         projectStylesheetIndexProvider.clear()
+        resolutionSnapshotCache.clear()
     }
 
-    private fun packageTokenNames(sourceFile: Path): List<String> =
-        packageResolver
-            .resolve(sourceFile)
-            ?.let { designTokensPackage ->
-                val resolutionIndex = cache.getOrBuild(designTokensPackage)
-
-                if (designTokensPackage.needsCompleteNameCatalog()) {
-                    packageNameCatalogCache.getOrBuild(designTokensPackage).names
-                } else {
-                    resolutionIndex.names
-                }
-            }.orEmpty()
-
-    private fun resolutionIndex(sourceFile: Path): DesignTokenIndex? {
-        val indexes =
-            buildList {
-                getIndex(sourceFile)?.let(::add)
-                projectStylesheetIndexProvider.getIndex(sourceFile)?.let(::add)
+    private fun resolutionSnapshot(
+        sourceFile: Path,
+        requireCompleteNameCatalog: Boolean = false,
+    ): DesignTokenResolutionSnapshot {
+        val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+        val installedIndex = getIndex(normalizedSourceFile)
+        val nameCatalogIndex =
+            if (requireCompleteNameCatalog) {
+                packageResolver
+                    .resolve(normalizedSourceFile)
+                    ?.takeIf { packageSet -> packageSet.needsCompleteNameCatalog() }
+                    ?.let(packageNameCatalogCache::getOrBuild)
+            } else {
+                null
             }
+        val projectIndex = projectStylesheetIndexProvider.getIndex(normalizedSourceFile)
 
-        return indexes
-            .takeIf { values -> values.isNotEmpty() }
-            ?.let { values ->
-                PerformanceDiagnostics.measure(PerformanceMetric.INDEX_COMPOSITION) {
-                    DesignTokenIndex.merge(values)
-                }
-            }
+        return resolutionSnapshotCache.getOrBuild(
+            sourceFile = normalizedSourceFile,
+            inputs =
+                DesignTokenResolutionSnapshotInputs(
+                    installedIndex = installedIndex,
+                    projectIndex = projectIndex,
+                    nameCatalogIndex = nameCatalogIndex,
+                ),
+        )
     }
 
     private fun DesignTokensPackage.needsCompleteNameCatalog(): Boolean =
