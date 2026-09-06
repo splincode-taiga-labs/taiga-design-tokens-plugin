@@ -30,17 +30,21 @@ class PerformanceDiagnosticsBaselineIntegrationTest : BasePlatformTestCase() {
         }
     }
 
-    fun testRepresentativeFixtureCapturesColdAndHotResolutionBaseline() {
+    fun testRepresentativeFixtureReusesHotResolutionSnapshot() {
         val fixture = RepresentativeAngularNxFixture.create(tempRoot.resolve("workspace"))
 
         assertTrue(service.resolveToken(fixture.sourceFile, TOKEN_NAME).isNotEmpty())
+        val firstNames = service.completionTokenNames(fixture.sourceFile)
         assertTrue(service.resolveToken(fixture.sourceFile, TOKEN_NAME).isNotEmpty())
+        val secondNames = service.completionTokenNames(fixture.sourceFile)
+
+        assertSame(firstNames, secondNames)
 
         val snapshot = PerformanceDiagnostics.snapshot()
 
         assertEquals(1L, snapshot.getValue(PerformanceMetric.PROJECT_GRAPH_BUILD).count)
         assertEquals(42L, snapshot.getValue(PerformanceMetric.PSI_EXTRACTION).count)
-        assertEquals(2L, snapshot.getValue(PerformanceMetric.INDEX_COMPOSITION).count)
+        assertEquals(1L, snapshot.getValue(PerformanceMetric.INDEX_COMPOSITION).count)
         assertEquals(2L, snapshot.getValue(PerformanceMetric.VALUE_RESOLUTION).count)
     }
 
@@ -54,6 +58,7 @@ class PerformanceDiagnosticsBaselineIntegrationTest : BasePlatformTestCase() {
         PerformanceDiagnostics.snapshot().let { snapshot ->
             assertEquals(1L, snapshot.getValue(PerformanceMetric.PROJECT_GRAPH_BUILD).count)
             assertEquals(42L, snapshot.getValue(PerformanceMetric.PSI_EXTRACTION).count)
+            assertEquals(1L, snapshot.getValue(PerformanceMetric.INDEX_COMPOSITION).count)
         }
 
         assertEquals(1, service.invalidate(listOf(fixture.reachableStylesheets.last())))
@@ -62,6 +67,7 @@ class PerformanceDiagnosticsBaselineIntegrationTest : BasePlatformTestCase() {
         PerformanceDiagnostics.snapshot().let { snapshot ->
             assertEquals(2L, snapshot.getValue(PerformanceMetric.PROJECT_GRAPH_BUILD).count)
             assertEquals(43L, snapshot.getValue(PerformanceMetric.PSI_EXTRACTION).count)
+            assertEquals(2L, snapshot.getValue(PerformanceMetric.INDEX_COMPOSITION).count)
         }
     }
 
