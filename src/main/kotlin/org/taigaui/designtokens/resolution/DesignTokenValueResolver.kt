@@ -80,11 +80,17 @@ class DesignTokenValueResolver internal constructor(
     ): DesignTokenValueResolution {
         val cycleStart = stack.indexOf(frame)
 
-        if (cycleStart >= 0) {
-            return circularResolution(frame, stack, cycleStart)
+        return if (cycleStart >= 0) {
+            circularResolution(frame, stack, cycleStart)
+        } else {
+            resolutionResults[frame] ?: resolveAndMemoize(frame, stack)
         }
+    }
 
-        resolutionResults[frame]?.let { cached -> return cached }
+    private fun resolveAndMemoize(
+        frame: ResolutionFrame,
+        stack: MutableList<ResolutionFrame>,
+    ): DesignTokenValueResolution {
         stack.add(frame)
 
         val result =
@@ -94,11 +100,11 @@ class DesignTokenValueResolver internal constructor(
                 stack.removeAt(stack.lastIndex)
             }
 
-        if (result.containsCircularReference()) {
-            return result
+        return if (result.containsCircularReference()) {
+            result
+        } else {
+            resolutionResults.putIfAbsent(frame, result) ?: result
         }
-
-        return resolutionResults.putIfAbsent(frame, result) ?: result
     }
 
     private fun resolveUncachedVariant(
