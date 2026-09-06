@@ -95,7 +95,30 @@ class DesignTokenValueResolver internal constructor(
 
         val result =
             try {
-                resolveUncachedVariant(frame, stack)
+                when (
+                    val parsed =
+                        parsedValues.computeIfAbsent(
+                            frame.variant.rawValue,
+                            valueParser::parse,
+                        )
+                ) {
+                    is DesignTokenValueParseResult.Parsed ->
+                        resolveParsedValue(
+                            value = parsed.value,
+                            owner = frame,
+                            stack = stack,
+                        )
+
+                    is DesignTokenValueParseResult.Invalid ->
+                        DesignTokenValueResolution.Unresolved(
+                            rawValue = frame.variant.rawValue,
+                            reason =
+                                DesignTokenUnresolvedReason.InvalidExpression(
+                                    offset = parsed.offset,
+                                    message = parsed.message,
+                                ),
+                        )
+                }
             } finally {
                 stack.removeAt(stack.lastIndex)
             }
@@ -106,35 +129,6 @@ class DesignTokenValueResolver internal constructor(
             resolutionResults.putIfAbsent(frame, result) ?: result
         }
     }
-
-    private fun resolveUncachedVariant(
-        frame: ResolutionFrame,
-        stack: MutableList<ResolutionFrame>,
-    ): DesignTokenValueResolution =
-        when (
-            val parsed =
-                parsedValues.computeIfAbsent(
-                    frame.variant.rawValue,
-                    valueParser::parse,
-                )
-        ) {
-            is DesignTokenValueParseResult.Parsed ->
-                resolveParsedValue(
-                    value = parsed.value,
-                    owner = frame,
-                    stack = stack,
-                )
-
-            is DesignTokenValueParseResult.Invalid ->
-                DesignTokenValueResolution.Unresolved(
-                    rawValue = frame.variant.rawValue,
-                    reason =
-                        DesignTokenUnresolvedReason.InvalidExpression(
-                            offset = parsed.offset,
-                            message = parsed.message,
-                        ),
-                )
-        }
 
     private fun resolveParsedValue(
         value: ParsedDesignTokenValue,
