@@ -111,7 +111,13 @@ class DesignTokenValueResolver internal constructor(
         frame: ResolutionFrame,
         stack: MutableList<ResolutionFrame>,
     ): DesignTokenValueResolution =
-        when (val parsed = parse(frame.variant.rawValue)) {
+        when (
+            val parsed =
+                parsedValues.computeIfAbsent(
+                    frame.variant.rawValue,
+                    valueParser::parse,
+                )
+        ) {
             is DesignTokenValueParseResult.Parsed ->
                 resolveParsedValue(
                     value = parsed.value,
@@ -129,9 +135,6 @@ class DesignTokenValueResolver internal constructor(
                         ),
                 )
         }
-
-    private fun parse(value: String): DesignTokenValueParseResult =
-        parsedValues.computeIfAbsent(value, valueParser::parse)
 
     private fun resolveParsedValue(
         value: ParsedDesignTokenValue,
