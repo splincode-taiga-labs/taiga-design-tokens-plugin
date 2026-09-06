@@ -6,6 +6,7 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.index.DesignTokenIndex
+import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 import java.nio.file.Path
 
 class DesignTokenResolutionSnapshotCacheTest {
@@ -92,6 +93,47 @@ class DesignTokenResolutionSnapshotCacheTest {
             catalogChanged.tokenNames,
         )
         assertEquals(1, cache.size)
+    }
+
+    @Test
+    fun `drops resolver memoization when snapshot input is replaced`() {
+        val sourceFile = Path.of("build/fixtures/token-snapshot/src/app.css").toAbsolutePath().normalize()
+        val firstIndex = index("--tui-token", "red")
+        val secondIndex = index("--tui-token", "blue")
+        val cache = DesignTokenResolutionSnapshotCache()
+        val first =
+            cache.getOrBuild(
+                sourceFile,
+                DesignTokenResolutionSnapshotInputs(
+                    installedIndex = firstIndex,
+                    nameCatalogIndex = firstIndex,
+                ),
+            )
+        val firstResolver = requireNotNull(first.resolver)
+        val firstVariant = requireNotNull(first.mergedIndex).find("--tui-token").single()
+
+        firstResolver.resolve(firstVariant)
+
+        assertEquals(1, firstResolver.parsedValueCacheSize)
+        assertEquals(1, firstResolver.resolutionCacheSize)
+
+        val replaced =
+            cache.getOrBuild(
+                sourceFile,
+                DesignTokenResolutionSnapshotInputs(
+                    installedIndex = secondIndex,
+                    nameCatalogIndex = secondIndex,
+                ),
+            )
+        val replacedResolver = requireNotNull(replaced.resolver)
+        val replacedVariant = requireNotNull(replaced.mergedIndex).find("--tui-token").single()
+        val replacedResult = replacedResolver.resolve(replacedVariant).result as DesignTokenValueResolution.Resolved
+
+        assertNotSame(first, replaced)
+        assertNotSame(firstResolver, replacedResolver)
+        assertEquals("blue", replacedResult.value)
+        assertEquals(1, replacedResolver.parsedValueCacheSize)
+        assertEquals(1, replacedResolver.resolutionCacheSize)
     }
 
     private fun index(
