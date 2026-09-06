@@ -9,7 +9,7 @@ import java.nio.file.Path
 internal data class DesignTokenResolutionSnapshotInputs(
     val installedIndex: DesignTokenIndex?,
     val projectIndex: DesignTokenIndex?,
-    val nameCatalogIndex: DesignTokenIndex?,
+    val nameCatalogIndex: DesignTokenIndex? = null,
 )
 
 internal class DesignTokenResolutionSnapshot private constructor(
@@ -20,17 +20,22 @@ internal class DesignTokenResolutionSnapshot private constructor(
     val tokenNames: List<String>,
     val resolver: DesignTokenValueResolver?,
 ) {
-    fun matches(inputs: DesignTokenResolutionSnapshotInputs): Boolean =
-        installedIndex === inputs.installedIndex &&
+    fun matches(inputs: DesignTokenResolutionSnapshotInputs): Boolean {
+        val nameCatalogMatches =
+            inputs.nameCatalogIndex == null || nameCatalogIndex === inputs.nameCatalogIndex
+
+        return installedIndex === inputs.installedIndex &&
             projectIndex === inputs.projectIndex &&
-            nameCatalogIndex === inputs.nameCatalogIndex
+            nameCatalogMatches
+    }
 
     companion object {
         fun build(inputs: DesignTokenResolutionSnapshotInputs): DesignTokenResolutionSnapshot {
             val indexes = listOfNotNull(inputs.installedIndex, inputs.projectIndex)
+            val effectiveNameCatalogIndex = inputs.nameCatalogIndex ?: inputs.installedIndex
             val mergedIndex =
                 indexes
-                    .takeIf(List<DesignTokenIndex>::isNotEmpty)
+                    .takeIf { values -> values.isNotEmpty() }
                     ?.let { values ->
                         PerformanceDiagnostics.measure(PerformanceMetric.INDEX_COMPOSITION) {
                             DesignTokenIndex.merge(values)
@@ -38,7 +43,7 @@ internal class DesignTokenResolutionSnapshot private constructor(
                     }
             val tokenNames =
                 buildList {
-                    inputs.nameCatalogIndex?.names?.let(::addAll)
+                    effectiveNameCatalogIndex?.names?.let(::addAll)
                     inputs.projectIndex?.names?.let(::addAll)
                 }.distinct()
                     .sorted()
@@ -46,7 +51,7 @@ internal class DesignTokenResolutionSnapshot private constructor(
             return DesignTokenResolutionSnapshot(
                 installedIndex = inputs.installedIndex,
                 projectIndex = inputs.projectIndex,
-                nameCatalogIndex = inputs.nameCatalogIndex,
+                nameCatalogIndex = effectiveNameCatalogIndex,
                 mergedIndex = mergedIndex,
                 tokenNames = tokenNames,
                 resolver = mergedIndex?.let(::DesignTokenValueResolver),
