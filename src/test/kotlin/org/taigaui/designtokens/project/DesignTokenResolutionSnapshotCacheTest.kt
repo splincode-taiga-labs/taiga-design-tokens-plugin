@@ -74,9 +74,18 @@ class DesignTokenResolutionSnapshotCacheTest {
                     nameCatalogIndex = completeNameCatalog,
                 ),
             )
+        val resolutionOnly =
+            cache.getOrBuild(
+                sourceFile,
+                DesignTokenResolutionSnapshotInputs(
+                    installedIndex = installedIndex,
+                    projectIndex = secondProjectIndex,
+                ),
+            )
 
         assertNotSame(first, projectChanged)
         assertNotSame(projectChanged, catalogChanged)
+        assertSame(catalogChanged, resolutionOnly)
         assertSame(secondProjectIndex, catalogChanged.projectIndex)
         assertEquals(
             listOf("--tui-catalog-only", "--tui-installed", "--tui-project"),
