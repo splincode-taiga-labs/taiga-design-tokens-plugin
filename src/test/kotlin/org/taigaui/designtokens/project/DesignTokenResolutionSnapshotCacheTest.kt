@@ -127,10 +127,15 @@ class DesignTokenResolutionSnapshotCacheTest {
             )
         val replacedResolver = requireNotNull(replaced.resolver)
         val replacedVariant = requireNotNull(replaced.mergedIndex).find("--tui-token").single()
-        val replacedResult = replacedResolver.resolve(replacedVariant).result as DesignTokenValueResolution.Resolved
 
         assertNotSame(first, replaced)
         assertNotSame(firstResolver, replacedResolver)
+        assertEquals(0, replacedResolver.parsedValueCacheSize)
+        assertEquals(0, replacedResolver.resolutionCacheSize)
+
+        val replacedResult =
+            replacedResolver.resolve(replacedVariant).result as DesignTokenValueResolution.Resolved
+
         assertEquals("blue", replacedResult.value)
         assertEquals(1, replacedResolver.parsedValueCacheSize)
         assertEquals(1, replacedResolver.resolutionCacheSize)
