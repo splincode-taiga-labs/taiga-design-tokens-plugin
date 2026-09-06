@@ -5,12 +5,32 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokenPlatform
 import org.taigaui.designtokens.index.DesignTokenTheme
 import org.taigaui.designtokens.index.DesignTokenVariant
+import java.util.concurrent.ConcurrentHashMap
 
-class DesignTokenValueResolver(
+internal fun interface DesignTokenValueParserAdapter {
+    fun parse(value: String): DesignTokenValueParseResult
+}
+
+class DesignTokenValueResolver internal constructor(
     index: DesignTokenIndex,
+    private val valueParser: DesignTokenValueParserAdapter,
 ) {
+    constructor(index: DesignTokenIndex) :
+        this(
+            index = index,
+            valueParser = DesignTokenValueParserAdapter(DesignTokenValueParser::parse),
+        )
+
     private val candidateSelector = DesignTokenCandidateSelector(index)
     private val variantsByName = index
+    private val parsedValues = ConcurrentHashMap<String, DesignTokenValueParseResult>()
+    private val resolutionResults = ConcurrentHashMap<ResolutionFrame, DesignTokenValueResolution>()
+
+    internal val parsedValueCacheSize: Int
+        get() = parsedValues.size
+
+    internal val resolutionCacheSize: Int
+        get() = resolutionResults.size
 
     fun resolve(variant: DesignTokenVariant): DesignTokenVariantResolution = resolve(variant, variant.context)
 
@@ -64,31 +84,48 @@ class DesignTokenValueResolver(
             return circularResolution(frame, stack, cycleStart)
         }
 
+        resolutionResults[frame]?.let { cached -> return cached }
         stack.add(frame)
 
-        return try {
-            when (val parsed = DesignTokenValueParser.parse(frame.variant.rawValue)) {
-                is DesignTokenValueParseResult.Parsed ->
-                    resolveParsedValue(
-                        value = parsed.value,
-                        owner = frame,
-                        stack = stack,
-                    )
-
-                is DesignTokenValueParseResult.Invalid ->
-                    DesignTokenValueResolution.Unresolved(
-                        rawValue = frame.variant.rawValue,
-                        reason =
-                            DesignTokenUnresolvedReason.InvalidExpression(
-                                offset = parsed.offset,
-                                message = parsed.message,
-                            ),
-                    )
+        val result =
+            try {
+                resolveUncachedVariant(frame, stack)
+            } finally {
+                stack.removeAt(stack.lastIndex)
             }
-        } finally {
-            stack.removeAt(stack.lastIndex)
+
+        if (result.containsCircularReference()) {
+            return result
         }
+
+        return resolutionResults.putIfAbsent(frame, result) ?: result
     }
+
+    private fun resolveUncachedVariant(
+        frame: ResolutionFrame,
+        stack: MutableList<ResolutionFrame>,
+    ): DesignTokenValueResolution =
+        when (val parsed = parse(frame.variant.rawValue)) {
+            is DesignTokenValueParseResult.Parsed ->
+                resolveParsedValue(
+                    value = parsed.value,
+                    owner = frame,
+                    stack = stack,
+                )
+
+            is DesignTokenValueParseResult.Invalid ->
+                DesignTokenValueResolution.Unresolved(
+                    rawValue = frame.variant.rawValue,
+                    reason =
+                        DesignTokenUnresolvedReason.InvalidExpression(
+                            offset = parsed.offset,
+                            message = parsed.message,
+                        ),
+                )
+        }
+
+    private fun parse(value: String): DesignTokenValueParseResult =
+        parsedValues.computeIfAbsent(value, valueParser::parse)
 
     private fun resolveParsedValue(
         value: ParsedDesignTokenValue,
@@ -217,6 +254,14 @@ class DesignTokenValueResolver(
             )
     }
 }
+
+private fun DesignTokenValueResolution.containsCircularReference(): Boolean =
+    (this is DesignTokenValueResolution.Unresolved && reason is DesignTokenUnresolvedReason.CircularReference) ||
+        references.any(DesignTokenReferenceResolution::containsCircularReference)
+
+private fun DesignTokenReferenceResolution.containsCircularReference(): Boolean =
+    primaryResult.containsCircularReference() ||
+        fallbackResult?.containsCircularReference() == true
 
 private fun DesignTokenVariant.requestedContexts(): List<DesignTokenContext> {
     val platforms =
