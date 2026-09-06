@@ -106,6 +106,7 @@ class DesignTokenResolutionSnapshotCacheTest {
                 sourceFile,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = firstIndex,
+                    projectIndex = null,
                     nameCatalogIndex = firstIndex,
                 ),
             )
@@ -122,6 +123,7 @@ class DesignTokenResolutionSnapshotCacheTest {
                 sourceFile,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = secondIndex,
+                    projectIndex = null,
                     nameCatalogIndex = secondIndex,
                 ),
             )
