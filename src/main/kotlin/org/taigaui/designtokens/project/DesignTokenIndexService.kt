@@ -172,14 +172,15 @@ class DesignTokenIndexService(
     ): DesignTokenResolutionSnapshot {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val installedIndex = getIndex(normalizedSourceFile)
-        val designTokensPackage = packageResolver.resolve(normalizedSourceFile)
         val nameCatalogIndex =
-            designTokensPackage
-                ?.takeIf { packageSet -> packageSet.needsCompleteNameCatalog() }
-                ?.takeIf { packageSet ->
-                    requireCompleteNameCatalog || packageNameCatalogCache.contains(packageSet)
-                }?.let(packageNameCatalogCache::getOrBuild)
-                ?: installedIndex
+            if (requireCompleteNameCatalog) {
+                packageResolver
+                    .resolve(normalizedSourceFile)
+                    ?.takeIf { packageSet -> packageSet.needsCompleteNameCatalog() }
+                    ?.let(packageNameCatalogCache::getOrBuild)
+            } else {
+                null
+            }
         val projectIndex = projectStylesheetIndexProvider.getIndex(normalizedSourceFile)
 
         return resolutionSnapshotCache.getOrBuild(
