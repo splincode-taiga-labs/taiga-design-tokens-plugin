@@ -117,18 +117,19 @@ internal object IconCatalogInvalidation {
 
         val packageName = relative.getName(0).toString()
         val fileName = changed.fileName?.toString()?.lowercase()
+        val sourceTreeChanged = relative.nameCount > 1 && relative.getName(1).toString() == SRC_DIRECTORY
 
         return when (packageName) {
             ICONS_PACKAGE,
             TDS_ICONS_PACKAGE,
-            -> relative.nameCount == 1 || fileName == PACKAGE_JSON || relative.startsWith(SRC_DIRECTORY)
+            -> relative.nameCount == 1 || fileName == PACKAGE_JSON || sourceTreeChanged
 
             PROPRIETARY_PACKAGE -> relative.nameCount == 1 || fileName == PACKAGE_JSON
             else -> false
         }
     }
 
-    private val SRC_DIRECTORY = Path.of("src")
+    private const val SRC_DIRECTORY = "src"
     private const val ICONS_PACKAGE = "icons"
     private const val TDS_ICONS_PACKAGE = "tds-icons"
     private const val PROPRIETARY_PACKAGE = "proprietary"
