@@ -131,17 +131,28 @@ class DesignTokenIndexService(
             requireCompleteNameCatalog = true,
         ).tokenNames
 
+    internal fun contextKey(sourceFile: Path): TokenContextKey {
+        val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+        val designTokensPackage = packageResolver.resolve(normalizedSourceFile)
+        val projectRequest =
+            projectStylesheetIndexProvider.request(normalizedSourceFile, designTokensPackage)
+
+        return tokenContextKey(designTokensPackage, projectRequest)
+    }
+
     internal fun isIndexCached(sourceFile: Path): Boolean =
         runCatching {
-            val designTokensPackage = packageResolver.resolve(sourceFile)
+            val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+            val designTokensPackage = packageResolver.resolve(normalizedSourceFile)
+            val projectRequest =
+                projectStylesheetIndexProvider.request(normalizedSourceFile, designTokensPackage)
             val packageIndexCached = designTokensPackage?.let(cache::contains) ?: true
             val packageNameCatalogCached =
                 designTokensPackage
                     ?.takeIf { packageSet -> packageSet.needsCompleteNameCatalog() }
                     ?.let(packageNameCatalogCache::contains)
                     ?: true
-            val projectIndexCached =
-                projectStylesheetIndexProvider.isCached(sourceFile, designTokensPackage)
+            val projectIndexCached = projectStylesheetIndexProvider.isCached(projectRequest)
 
             packageIndexCached && packageNameCatalogCached && projectIndexCached
         }.getOrDefault(false)
@@ -171,20 +182,22 @@ class DesignTokenIndexService(
         requireCompleteNameCatalog: Boolean = false,
     ): DesignTokenResolutionSnapshot {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+        val designTokensPackage = packageResolver.resolve(normalizedSourceFile)
+        val projectRequest =
+            projectStylesheetIndexProvider.request(normalizedSourceFile, designTokensPackage)
         val installedIndex = getIndex(normalizedSourceFile)
         val nameCatalogIndex =
             if (requireCompleteNameCatalog) {
-                packageResolver
-                    .resolve(normalizedSourceFile)
+                designTokensPackage
                     ?.takeIf { packageSet -> packageSet.needsCompleteNameCatalog() }
                     ?.let(packageNameCatalogCache::getOrBuild)
             } else {
                 null
             }
-        val projectIndex = projectStylesheetIndexProvider.getIndex(normalizedSourceFile)
+        val projectIndex = projectStylesheetIndexProvider.getIndex(projectRequest)
 
         return resolutionSnapshotCache.getOrBuild(
-            sourceFile = normalizedSourceFile,
+            contextKey = tokenContextKey(designTokensPackage, projectRequest),
             inputs =
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = installedIndex,
@@ -231,5 +244,16 @@ internal object VfsEventPaths {
         }
     }
 }
+
+private fun tokenContextKey(
+    designTokensPackage: DesignTokensPackage?,
+    projectRequest: ProjectStylesheetIndexRequest?,
+): TokenContextKey =
+    TokenContextKey(
+        workspaceRoot = projectRequest?.workspaceRoot,
+        projectRoot = projectRequest?.projectRoot,
+        packageRoot = designTokensPackage?.realRoot,
+        projectEntryFiles = projectRequest?.entryFiles.orEmpty(),
+    ).normalized()
 
 private fun String.toPathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull()
