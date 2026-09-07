@@ -53,7 +53,7 @@ class ProjectStylesheetIndexCacheTest {
         val secondRequest = request(workspaceRoot, "apps/second/src/component.scss")
         val cache =
             ProjectStylesheetIndexCache { cacheRequest ->
-                buildResult(cacheRequest, setOf(cacheRequest.sourceFile))
+                buildResult(cacheRequest, cacheRequest.entryFiles.toSet())
             }
 
         cache.getOrBuild(firstRequest)
@@ -140,11 +140,15 @@ class ProjectStylesheetIndexCacheTest {
     private fun request(
         workspaceRoot: Path,
         sourceFile: String,
-    ): ProjectStylesheetIndexRequest =
-        ProjectStylesheetIndexRequest(
-            sourceFile = workspaceRoot.resolve(sourceFile),
+    ): ProjectStylesheetIndexRequest {
+        val entryFile = workspaceRoot.resolve(sourceFile)
+
+        return ProjectStylesheetIndexRequest(
             workspaceRoot = workspaceRoot,
+            projectRoot = entryFile.parent ?: workspaceRoot,
+            entryFiles = listOf(entryFile),
         ).normalized()
+    }
 
     private fun buildResult(
         request: ProjectStylesheetIndexRequest,
