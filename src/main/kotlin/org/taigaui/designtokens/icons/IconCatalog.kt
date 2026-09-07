@@ -56,8 +56,13 @@ internal data class IconCatalogLoadResult(
 )
 
 internal class IconCatalogLoader(
-    private val remoteFetcher: IconCatalogFetcher = TbankIconCatalogFetcher(),
+    sources: List<IconCatalogSource>,
 ) {
+    private val sources = sources.toList()
+
+    constructor(remoteFetcher: IconCatalogFetcher = TbankIconCatalogFetcher()) :
+        this(defaultIconCatalogSources(remoteFetcher))
+
     fun resolveScopeRoot(sourceFile: Path): Path? {
         val normalizedSource = sourceFile.toAbsolutePath().normalize()
         val startDirectory =
@@ -77,80 +82,21 @@ internal class IconCatalogLoader(
     fun loadCatalog(scopeRoot: Path): IconCatalog = loadCatalogWithPolicy(scopeRoot).catalog
 
     fun loadCatalogWithPolicy(scopeRoot: Path): IconCatalogLoadResult {
-        val normalizedScope = scopeRoot.toAbsolutePath().normalize()
-        val proprietaryRoot = normalizedScope.resolve(PROPRIETARY_PACKAGE)
+        val context = IconCatalogContext.from(scopeRoot)
 
-        return if (Files.isDirectory(proprietaryRoot)) {
-            loadProprietaryCatalog(normalizedScope)
-        } else {
-            IconCatalogLoadResult(
-                catalog = IconCatalog(scanSvgIcons(normalizedScope.resolve(ICONS_SOURCE))),
-                cachePolicy = IconCatalogCachePolicy.LOCAL,
-            )
-        }
-    }
-
-    private fun loadProprietaryCatalog(scopeRoot: Path): IconCatalogLoadResult {
-        val tdsIconsRoot = scopeRoot.resolve(TDS_ICONS_SOURCE)
-
-        if (Files.isDirectory(tdsIconsRoot)) {
-            return IconCatalogLoadResult(
-                catalog = IconCatalog(scanSvgIcons(tdsIconsRoot)),
-                cachePolicy = IconCatalogCachePolicy.LOCAL,
-            )
-        }
-
-        val remoteContent = runCatching(remoteFetcher::fetch).getOrNull()
-        val entries = remoteContent?.let(TbankIconCatalogParser::parseEntries).orEmpty()
-        val cachePolicy =
-            if (remoteContent != null && entries.isNotEmpty()) {
-                IconCatalogCachePolicy.REMOTE_SUCCESS
-            } else {
-                IconCatalogCachePolicy.REMOTE_RETRY
-            }
-
-        return IconCatalogLoadResult(
-            catalog = IconCatalog(entries),
-            cachePolicy = cachePolicy,
-        )
-    }
-
-    private fun scanSvgIcons(root: Path): List<IconCatalogEntry> {
-        if (!Files.isDirectory(root)) {
-            return emptyList()
-        }
-
-        return runCatching {
-            Files.walk(root).use { paths ->
-                paths
-                    .filter(Files::isRegularFile)
-                    .filter { file -> file.fileName.toString().endsWith(SVG_EXTENSION, ignoreCase = true) }
-                    .map { file -> IconCatalogEntry(file.toIconName(root), IconSvgSource.Local(file)) }
-                    .sorted(compareBy(IconCatalogEntry::name))
-                    .toList()
-            }
-        }.getOrElse { emptyList() }
-    }
-
-    private fun Path.toIconName(root: Path): String {
-        val relative = root.relativize(this)
-        val segments =
-            (0 until relative.nameCount)
-                .map { index -> relative.getName(index).toString() }
-                .toMutableList()
-        val lastIndex = segments.lastIndex
-
-        segments[lastIndex] = segments[lastIndex].removeSuffix(SVG_EXTENSION)
-
-        return ICON_PREFIX + segments.joinToString(".")
+        return sources
+            .firstOrNull { source -> source.supports(context) }
+            ?.load(context)
+            ?: EMPTY_CATALOG
     }
 
     private companion object {
         val TAIGA_UI_SCOPE = Path.of("node_modules", "@taiga-ui")
-        val ICONS_SOURCE = Path.of("icons", "src")
-        val TDS_ICONS_SOURCE = Path.of("tds-icons", "src")
-        const val PROPRIETARY_PACKAGE = "proprietary"
-        const val SVG_EXTENSION = ".svg"
+        val EMPTY_CATALOG =
+            IconCatalogLoadResult(
+                catalog = IconCatalog(emptyList()),
+                cachePolicy = IconCatalogCachePolicy.LOCAL,
+            )
     }
 }
 
