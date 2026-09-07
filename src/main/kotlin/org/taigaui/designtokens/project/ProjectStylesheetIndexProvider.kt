@@ -29,16 +29,13 @@ internal class ProjectStylesheetIndexProvider(
     val size: Int
         get() = cache.size
 
-    fun isCached(
-        sourceFile: Path,
-        designTokensPackage: DesignTokensPackage?,
-    ): Boolean =
-        request(sourceFile, designTokensPackage)
+    fun isCached(request: ProjectStylesheetIndexRequest?): Boolean =
+        request
             ?.let(cache::contains)
             ?: true
 
-    fun getIndex(sourceFile: Path): DesignTokenIndex? =
-        request(sourceFile)
+    fun getIndex(request: ProjectStylesheetIndexRequest?): DesignTokenIndex? =
+        request
             ?.let(cache::getOrBuild)
 
     fun invalidate(changedPaths: Collection<Path>): Int {
@@ -52,7 +49,7 @@ internal class ProjectStylesheetIndexProvider(
         declarationCache.clear()
     }
 
-    private fun request(
+    fun request(
         sourceFile: Path,
         designTokensPackage: DesignTokensPackage? = packageResolver.resolve(sourceFile),
     ): ProjectStylesheetIndexRequest? {

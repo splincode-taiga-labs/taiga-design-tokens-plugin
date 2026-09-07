@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
+import org.taigaui.designtokens.project.TokenContextKey
 import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
@@ -18,9 +19,9 @@ internal class DesignTokenCompletionService(
     private val coroutineScope: CoroutineScope,
 ) {
     private val lock = Any()
-    private val snapshots = mutableMapOf<Path, List<String>>()
-    private val pendingWarmups = mutableSetOf<Path>()
-    private val pendingCallbacks = mutableMapOf<Path, MutableList<PendingCallback>>()
+    private val snapshots = mutableMapOf<TokenContextKey, List<String>>()
+    private val pendingWarmups = mutableSetOf<TokenContextKey>()
+    private val pendingCallbacks = mutableMapOf<TokenContextKey, MutableList<PendingCallback>>()
 
     fun namesFor(
         sourceFile: Path,
@@ -52,15 +53,17 @@ internal class DesignTokenCompletionService(
     ): List<String>? {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val indexService = project.service<DesignTokenIndexService>()
-        val snapshot = synchronized(lock) { snapshots[normalizedSourceFile] }
+        val contextKey = indexService.contextKey(normalizedSourceFile)
+        val snapshot = synchronized(lock) { snapshots[contextKey] }
 
         if (indexService.isIndexCached(normalizedSourceFile)) {
             return indexService
                 .completionTokenNames(normalizedSourceFile)
-                .also { names -> storeSnapshot(normalizedSourceFile, names) }
+                .also { names -> storeSnapshot(contextKey, names) }
         }
 
         scheduleWarmup(
+            contextKey = contextKey,
             sourceFile = normalizedSourceFile,
             callback = PendingCallback(onUpdated, notifyWhenUnchanged),
         )
@@ -69,15 +72,16 @@ internal class DesignTokenCompletionService(
     }
 
     private fun scheduleWarmup(
+        contextKey: TokenContextKey,
         sourceFile: Path,
         callback: PendingCallback,
     ) {
         val shouldStart =
             synchronized(lock) {
                 pendingCallbacks
-                    .getOrPut(sourceFile, ::mutableListOf)
+                    .getOrPut(contextKey, ::mutableListOf)
                     .add(callback)
-                pendingWarmups.add(sourceFile)
+                pendingWarmups.add(contextKey)
             }
 
         if (!shouldStart) {
@@ -90,13 +94,13 @@ internal class DesignTokenCompletionService(
             try {
                 val names = project.service<DesignTokenIndexService>().completionTokenNames(sourceFile)
 
-                publishWarmup(sourceFile, names)
+                publishWarmup(contextKey, names)
                 completed = true
             } finally {
                 if (!completed) {
                     synchronized(lock) {
-                        pendingWarmups.remove(sourceFile)
-                        pendingCallbacks.remove(sourceFile)
+                        pendingWarmups.remove(contextKey)
+                        pendingCallbacks.remove(contextKey)
                     }
                 }
             }
@@ -104,16 +108,16 @@ internal class DesignTokenCompletionService(
     }
 
     private suspend fun publishWarmup(
-        sourceFile: Path,
+        contextKey: TokenContextKey,
         names: List<String>,
     ) {
         val callbacks =
             synchronized(lock) {
-                val previous = snapshots.put(sourceFile, names)
+                val previous = snapshots.put(contextKey, names)
                 val namesChanged = previous != names
-                val pending = pendingCallbacks.remove(sourceFile).orEmpty()
+                val pending = pendingCallbacks.remove(contextKey).orEmpty()
 
-                pendingWarmups.remove(sourceFile)
+                pendingWarmups.remove(contextKey)
                 pending
                     .filter { callback -> namesChanged || callback.notifyWhenUnchanged }
                     .map(PendingCallback::callback)
@@ -129,11 +133,11 @@ internal class DesignTokenCompletionService(
     }
 
     private fun storeSnapshot(
-        sourceFile: Path,
+        contextKey: TokenContextKey,
         names: List<String>,
     ) {
         synchronized(lock) {
-            snapshots[sourceFile] = names
+            snapshots[contextKey] = names
         }
     }
 

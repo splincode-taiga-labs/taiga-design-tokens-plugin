@@ -4,13 +4,19 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 internal data class ProjectStylesheetIndexRequest(
-    val sourceFile: Path,
     val workspaceRoot: Path,
+    val projectRoot: Path,
+    val entryFiles: List<Path>,
 ) {
     fun normalized(): ProjectStylesheetIndexRequest =
         copy(
-            sourceFile = sourceFile.toAbsolutePath().normalize(),
             workspaceRoot = workspaceRoot.toAbsolutePath().normalize(),
+            projectRoot = projectRoot.toAbsolutePath().normalize(),
+            entryFiles =
+                entryFiles
+                    .map(Path::toAbsolutePath)
+                    .map(Path::normalize)
+                    .distinct(),
         )
 }
 
@@ -33,31 +39,32 @@ internal class DesignTokenProjectStylesheetGraph(
     ): ProjectStylesheetIndexRequest {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val workspaceRoot = findWorkspaceRoot(normalizedSourceFile, workspaceRootHint)
+        val projectRoot = findProjectRoot(normalizedSourceFile, workspaceRoot)
+        val entryFiles =
+            entrypointResolver.find(
+                sourceFile = normalizedSourceFile,
+                projectRoot = projectRoot,
+                workspaceRoot = workspaceRoot,
+            )
 
         return ProjectStylesheetIndexRequest(
-            sourceFile = normalizedSourceFile,
             workspaceRoot = workspaceRoot,
-        )
+            projectRoot = projectRoot,
+            entryFiles = entryFiles,
+        ).normalized()
     }
 
     fun buildScope(request: ProjectStylesheetIndexRequest): ProjectStylesheetScope {
         val normalizedRequest = request.normalized()
-        val projectRoot = findProjectRoot(normalizedRequest.sourceFile, normalizedRequest.workspaceRoot)
-        val entryFiles =
-            entrypointResolver.find(
-                sourceFile = normalizedRequest.sourceFile,
-                projectRoot = projectRoot,
-                workspaceRoot = normalizedRequest.workspaceRoot,
-            )
         val reachableFiles =
             findReachableFiles(
-                entryFiles = entryFiles,
-                projectRoot = projectRoot,
+                entryFiles = normalizedRequest.entryFiles,
+                projectRoot = normalizedRequest.projectRoot,
                 workspaceRoot = normalizedRequest.workspaceRoot,
             )
 
         return ProjectStylesheetScope(
-            projectRoot = projectRoot,
+            projectRoot = normalizedRequest.projectRoot,
             sourceFiles = reachableFiles,
         )
     }
