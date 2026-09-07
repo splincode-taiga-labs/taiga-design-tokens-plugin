@@ -94,37 +94,37 @@ internal object IconCatalogInvalidation {
     ): Boolean {
         val scope = scopeRoot.normalized()
         val changed = changedPath.normalized()
-
-        if (scope == changed || scope.startsWith(changed)) {
-            return true
-        }
-
         val projectRoot = scope.parent?.parent
+        val projectPackageChanged =
+            projectRoot != null && changed == projectRoot.resolve(PACKAGE_JSON).normalized()
 
-        if (projectRoot != null && changed == projectRoot.resolve(PACKAGE_JSON).normalized()) {
-            return true
+        return when {
+            scope == changed || scope.startsWith(changed) -> true
+            projectPackageChanged -> true
+            !changed.startsWith(scope) -> false
+            else -> isAffectedWithinScope(scope.relativize(changed), changed)
         }
+    }
 
-        if (!changed.startsWith(scope)) {
-            return false
-        }
-
-        val relative = scope.relativize(changed)
-
-        if (relative.nameCount == 0) {
-            return true
-        }
-
+    private fun isAffectedWithinScope(
+        relative: Path,
+        changedPath: Path,
+    ): Boolean {
         val packageName = relative.getName(0).toString()
-        val fileName = changed.fileName?.toString()?.lowercase()
-        val sourceTreeChanged = relative.nameCount > 1 && relative.getName(1).toString() == SRC_DIRECTORY
+        val fileName = changedPath.fileName?.toString()?.lowercase()
+        val packageRootChanged = relative.nameCount == 1
+        val packageManifestChanged = fileName == PACKAGE_JSON
+        val iconSourceChanged =
+            relative.nameCount > 1 &&
+                relative.getName(1).toString() == SRC_DIRECTORY &&
+                (fileName?.endsWith(SVG_EXTENSION) == true || '.' !in (fileName ?: ""))
 
         return when (packageName) {
             ICONS_PACKAGE,
             TDS_ICONS_PACKAGE,
-            -> relative.nameCount == 1 || fileName == PACKAGE_JSON || sourceTreeChanged
+            -> packageRootChanged || packageManifestChanged || iconSourceChanged
 
-            PROPRIETARY_PACKAGE -> relative.nameCount == 1 || fileName == PACKAGE_JSON
+            PROPRIETARY_PACKAGE -> packageRootChanged || packageManifestChanged
             else -> false
         }
     }
@@ -134,6 +134,7 @@ internal object IconCatalogInvalidation {
     private const val TDS_ICONS_PACKAGE = "tds-icons"
     private const val PROPRIETARY_PACKAGE = "proprietary"
     private const val PACKAGE_JSON = "package.json"
+    private const val SVG_EXTENSION = ".svg"
 }
 
 private fun Path.normalized(): Path = toAbsolutePath().normalize()
