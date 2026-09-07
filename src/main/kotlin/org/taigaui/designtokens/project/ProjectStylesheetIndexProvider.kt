@@ -29,17 +29,10 @@ internal class ProjectStylesheetIndexProvider(
     val size: Int
         get() = cache.size
 
-    fun isCached(
-        sourceFile: Path,
-        designTokensPackage: DesignTokensPackage?,
-    ): Boolean = isCached(request(sourceFile, designTokensPackage))
-
     fun isCached(request: ProjectStylesheetIndexRequest?): Boolean =
         request
             ?.let(cache::contains)
             ?: true
-
-    fun getIndex(sourceFile: Path): DesignTokenIndex? = getIndex(request(sourceFile))
 
     fun getIndex(request: ProjectStylesheetIndexRequest?): DesignTokenIndex? =
         request
