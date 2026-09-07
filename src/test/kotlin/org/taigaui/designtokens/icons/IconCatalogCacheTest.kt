@@ -86,6 +86,7 @@ class IconCatalogCacheTest {
         assertTrue(IconCatalogInvalidation.isAffected(scopeRoot, scopeRoot.resolve("proprietary/package.json")))
 
         assertFalse(IconCatalogInvalidation.isAffected(scopeRoot, scopeRoot.resolve("core/styles/variables.less")))
+        assertFalse(IconCatalogInvalidation.isAffected(scopeRoot, scopeRoot.resolve("icons/src/index.ts")))
         assertFalse(IconCatalogInvalidation.isAffected(scopeRoot, scopeRoot.resolve("icons/fesm2022/index.mjs")))
         assertFalse(IconCatalogInvalidation.isAffected(scopeRoot, workspace.resolve("src/app.ts")))
     }
