@@ -14,8 +14,7 @@ internal data class IconCatalogContext(
         get() = Files.isDirectory(proprietaryPackageRoot)
 
     companion object {
-        fun from(scopeRoot: Path): IconCatalogContext =
-            IconCatalogContext(scopeRoot.toAbsolutePath().normalize())
+        fun from(scopeRoot: Path): IconCatalogContext = IconCatalogContext(scopeRoot.toAbsolutePath().normalize())
 
         private val ICONS_SOURCE = Path.of("icons", "src")
         private val TDS_ICONS_SOURCE = Path.of("tds-icons", "src")
@@ -35,8 +34,7 @@ internal class TdsIconCatalogSource(
     override fun supports(context: IconCatalogContext): Boolean =
         context.isProprietary && Files.isDirectory(context.tdsIconsRoot)
 
-    override fun load(context: IconCatalogContext): IconCatalogLoadResult =
-        scanner.load(context.tdsIconsRoot)
+    override fun load(context: IconCatalogContext): IconCatalogLoadResult = scanner.load(context.tdsIconsRoot)
 }
 
 internal class TbankCdnIconCatalogSource(
@@ -66,8 +64,7 @@ internal class PublicIconCatalogSource(
 ) : IconCatalogSource {
     override fun supports(context: IconCatalogContext): Boolean = !context.isProprietary
 
-    override fun load(context: IconCatalogContext): IconCatalogLoadResult =
-        scanner.load(context.publicIconsRoot)
+    override fun load(context: IconCatalogContext): IconCatalogLoadResult = scanner.load(context.publicIconsRoot)
 }
 
 internal class LocalIconCatalogScanner {
