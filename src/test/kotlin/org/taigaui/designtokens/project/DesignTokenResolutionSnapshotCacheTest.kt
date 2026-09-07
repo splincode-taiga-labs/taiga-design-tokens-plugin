@@ -12,7 +12,7 @@ import java.nio.file.Path
 class DesignTokenResolutionSnapshotCacheTest {
     @Test
     fun `reuses snapshot while index inputs are unchanged`() {
-        val sourceFile = Path.of("build/fixtures/token-snapshot/src/app.css").toAbsolutePath().normalize()
+        val contextKey = contextKey()
         val installedIndex = index("--tui-installed", "red")
         val projectIndex = index("--tui-project", "blue")
         val cache = DesignTokenResolutionSnapshotCache()
@@ -23,8 +23,8 @@ class DesignTokenResolutionSnapshotCacheTest {
                 nameCatalogIndex = installedIndex,
             )
 
-        val first = cache.getOrBuild(sourceFile, inputs)
-        val second = cache.getOrBuild(sourceFile, inputs)
+        val first = cache.getOrBuild(contextKey, inputs)
+        val second = cache.getOrBuild(contextKey, inputs)
 
         assertSame(first, second)
         assertSame(first.mergedIndex, second.mergedIndex)
@@ -36,7 +36,7 @@ class DesignTokenResolutionSnapshotCacheTest {
 
     @Test
     fun `rebuilds snapshot when project or name catalog input changes`() {
-        val sourceFile = Path.of("build/fixtures/token-snapshot/src/app.css").toAbsolutePath().normalize()
+        val contextKey = contextKey()
         val installedIndex = index("--tui-installed", "red")
         val firstProjectIndex = index("--tui-project", "blue")
         val secondProjectIndex = index("--tui-project", "green")
@@ -50,7 +50,7 @@ class DesignTokenResolutionSnapshotCacheTest {
         val cache = DesignTokenResolutionSnapshotCache()
         val first =
             cache.getOrBuild(
-                sourceFile,
+                contextKey,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = installedIndex,
                     projectIndex = firstProjectIndex,
@@ -59,7 +59,7 @@ class DesignTokenResolutionSnapshotCacheTest {
             )
         val projectChanged =
             cache.getOrBuild(
-                sourceFile,
+                contextKey,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = installedIndex,
                     projectIndex = secondProjectIndex,
@@ -68,7 +68,7 @@ class DesignTokenResolutionSnapshotCacheTest {
             )
         val catalogChanged =
             cache.getOrBuild(
-                sourceFile,
+                contextKey,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = installedIndex,
                     projectIndex = secondProjectIndex,
@@ -77,7 +77,7 @@ class DesignTokenResolutionSnapshotCacheTest {
             )
         val resolutionOnly =
             cache.getOrBuild(
-                sourceFile,
+                contextKey,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = installedIndex,
                     projectIndex = secondProjectIndex,
@@ -97,13 +97,13 @@ class DesignTokenResolutionSnapshotCacheTest {
 
     @Test
     fun `drops resolver memoization when snapshot input is replaced`() {
-        val sourceFile = Path.of("build/fixtures/token-snapshot/src/app.css").toAbsolutePath().normalize()
+        val contextKey = contextKey()
         val firstIndex = index("--tui-token", "red")
         val secondIndex = index("--tui-token", "blue")
         val cache = DesignTokenResolutionSnapshotCache()
         val first =
             cache.getOrBuild(
-                sourceFile,
+                contextKey,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = firstIndex,
                     projectIndex = null,
@@ -120,7 +120,7 @@ class DesignTokenResolutionSnapshotCacheTest {
 
         val replaced =
             cache.getOrBuild(
-                sourceFile,
+                contextKey,
                 DesignTokenResolutionSnapshotInputs(
                     installedIndex = secondIndex,
                     projectIndex = null,
@@ -141,6 +141,17 @@ class DesignTokenResolutionSnapshotCacheTest {
         assertEquals("blue", replacedResult.value)
         assertEquals(1, replacedResolver.parsedValueCacheSize)
         assertEquals(1, replacedResolver.resolutionCacheSize)
+    }
+
+    private fun contextKey(): TokenContextKey {
+        val workspaceRoot = Path.of("build/fixtures/token-snapshot").toAbsolutePath().normalize()
+
+        return TokenContextKey(
+            workspaceRoot = workspaceRoot,
+            projectRoot = workspaceRoot,
+            packageRoot = workspaceRoot.resolve("node_modules/@taiga-ui/design-tokens"),
+            projectEntryFiles = listOf(workspaceRoot.resolve("src/styles.scss")),
+        ).normalized()
     }
 
     private fun index(
