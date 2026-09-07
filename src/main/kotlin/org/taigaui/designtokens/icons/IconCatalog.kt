@@ -42,6 +42,19 @@ internal class IconCatalog(
     fun svgSource(iconName: String): IconSvgSource? = entriesByName[iconName]?.svgSource
 }
 
+internal enum class IconCatalogCachePolicy(
+    val maxAge: Duration?,
+) {
+    LOCAL(maxAge = null),
+    REMOTE_SUCCESS(maxAge = Duration.ofMinutes(15)),
+    REMOTE_RETRY(maxAge = Duration.ofSeconds(30)),
+}
+
+internal data class IconCatalogLoadResult(
+    val catalog: IconCatalog,
+    val cachePolicy: IconCatalogCachePolicy,
+)
+
 internal class IconCatalogLoader(
     private val remoteFetcher: IconCatalogFetcher = TbankIconCatalogFetcher(),
 ) {
@@ -61,32 +74,45 @@ internal class IconCatalogLoader(
 
     fun load(scopeRoot: Path): List<String> = loadCatalog(scopeRoot).names
 
-    fun loadCatalog(scopeRoot: Path): IconCatalog {
+    fun loadCatalog(scopeRoot: Path): IconCatalog = loadCatalogWithPolicy(scopeRoot).catalog
+
+    fun loadCatalogWithPolicy(scopeRoot: Path): IconCatalogLoadResult {
         val normalizedScope = scopeRoot.toAbsolutePath().normalize()
         val proprietaryRoot = normalizedScope.resolve(PROPRIETARY_PACKAGE)
-        val entries =
-            if (Files.isDirectory(proprietaryRoot)) {
-                loadProprietaryIcons(normalizedScope)
-            } else {
-                scanSvgIcons(normalizedScope.resolve(ICONS_SOURCE))
-            }
 
-        return IconCatalog(entries)
+        return if (Files.isDirectory(proprietaryRoot)) {
+            loadProprietaryCatalog(normalizedScope)
+        } else {
+            IconCatalogLoadResult(
+                catalog = IconCatalog(scanSvgIcons(normalizedScope.resolve(ICONS_SOURCE))),
+                cachePolicy = IconCatalogCachePolicy.LOCAL,
+            )
+        }
     }
 
-    private fun loadProprietaryIcons(scopeRoot: Path): List<IconCatalogEntry> {
+    private fun loadProprietaryCatalog(scopeRoot: Path): IconCatalogLoadResult {
         val tdsIconsRoot = scopeRoot.resolve(TDS_ICONS_SOURCE)
 
-        return if (Files.isDirectory(tdsIconsRoot)) {
-            scanSvgIcons(tdsIconsRoot)
-        } else {
-            runCatching {
-                remoteFetcher
-                    .fetch()
-                    ?.let(TbankIconCatalogParser::parseEntries)
-                    .orEmpty()
-            }.getOrElse { emptyList() }
+        if (Files.isDirectory(tdsIconsRoot)) {
+            return IconCatalogLoadResult(
+                catalog = IconCatalog(scanSvgIcons(tdsIconsRoot)),
+                cachePolicy = IconCatalogCachePolicy.LOCAL,
+            )
         }
+
+        val remoteContent = runCatching(remoteFetcher::fetch).getOrNull()
+        val entries = remoteContent?.let(TbankIconCatalogParser::parseEntries).orEmpty()
+        val cachePolicy =
+            if (remoteContent != null && entries.isNotEmpty()) {
+                IconCatalogCachePolicy.REMOTE_SUCCESS
+            } else {
+                IconCatalogCachePolicy.REMOTE_RETRY
+            }
+
+        return IconCatalogLoadResult(
+            catalog = IconCatalog(entries),
+            cachePolicy = cachePolicy,
+        )
     }
 
     private fun scanSvgIcons(root: Path): List<IconCatalogEntry> {
