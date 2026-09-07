@@ -133,11 +133,21 @@ class DesignTokenIndexService(
 
     internal fun contextKey(sourceFile: Path): TokenContextKey {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
-        val designTokensPackage = packageResolver.resolve(normalizedSourceFile)
-        val projectRequest =
-            projectStylesheetIndexProvider.request(normalizedSourceFile, designTokensPackage)
 
-        return tokenContextKey(designTokensPackage, projectRequest)
+        return runCatching {
+            val designTokensPackage = packageResolver.resolve(normalizedSourceFile)
+            val projectRequest =
+                projectStylesheetIndexProvider.request(normalizedSourceFile, designTokensPackage)
+
+            tokenContextKey(designTokensPackage, projectRequest)
+        }.getOrElse {
+            TokenContextKey(
+                workspaceRoot = normalizedSourceFile.parent,
+                projectRoot = normalizedSourceFile.parent,
+                packageRoot = null,
+                projectEntryFiles = listOf(normalizedSourceFile),
+            ).normalized()
+        }
     }
 
     internal fun isIndexCached(sourceFile: Path): Boolean =
