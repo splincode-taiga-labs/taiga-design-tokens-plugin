@@ -11,9 +11,9 @@ class IconCatalogSourceTest {
         val loader =
             IconCatalogLoader(
                 listOf(
-                    RecordingSource("first", supports = false, calls),
-                    RecordingSource("second", supports = true, calls),
-                    RecordingSource("third", supports = true, calls),
+                    RecordingSource("first", supports = false, calls = calls),
+                    RecordingSource("second", supports = true, calls = calls),
+                    RecordingSource("third", supports = true, calls = calls),
                 ),
             )
         val scopeRoot =
