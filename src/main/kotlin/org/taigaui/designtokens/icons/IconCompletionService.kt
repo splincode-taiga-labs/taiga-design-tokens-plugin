@@ -139,18 +139,20 @@ internal class IconCompletionService(
         scopeRoot: Path,
         callback: () -> Unit,
     ) {
-        val pending =
+        val access =
             synchronized(lock) {
                 pendingWarmups[scopeRoot]
                     ?.also { current -> current.callbacks.add(callback) }
+                    ?.let { current -> WarmupAccess(current, shouldStart = false) }
                     ?: PendingWarmup(
                         generation = cache.generation(scopeRoot),
                         callbacks = mutableListOf(callback),
                     ).also { created -> pendingWarmups[scopeRoot] = created }
+                        .let { created -> WarmupAccess(created, shouldStart = true) }
             }
 
-        if (pending.callbacks.size == 1) {
-            launchWarmup(scopeRoot, pending)
+        if (access.shouldStart) {
+            launchWarmup(scopeRoot, access.pending)
         }
     }
 
@@ -191,15 +193,12 @@ internal class IconCompletionService(
             when (outcome) {
                 WarmupOutcome.Ignore -> Unit
                 is WarmupOutcome.Retry -> launchWarmup(scopeRoot, outcome.pending)
-                is WarmupOutcome.Publish -> publishCallbacks(outcome.callbacks)
-            }
-        }
-    }
-
-    private suspend fun publishCallbacks(callbacks: List<() -> Unit>) {
-        if (callbacks.isNotEmpty() && !project.isDisposed) {
-            withContext(Dispatchers.EDT) {
-                callbacks.forEach { current -> current() }
+                is WarmupOutcome.Publish ->
+                    if (outcome.callbacks.isNotEmpty() && !project.isDisposed) {
+                        withContext(Dispatchers.EDT) {
+                            outcome.callbacks.forEach { current -> current() }
+                        }
+                    }
             }
         }
     }
@@ -212,6 +211,11 @@ internal class IconCompletionService(
     private data class PendingWarmup(
         val generation: Long,
         val callbacks: MutableList<() -> Unit>,
+    )
+
+    private data class WarmupAccess(
+        val pending: PendingWarmup,
+        val shouldStart: Boolean,
     )
 
     private sealed interface WarmupOutcome {
