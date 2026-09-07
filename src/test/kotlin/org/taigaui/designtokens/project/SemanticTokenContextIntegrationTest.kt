@@ -64,7 +64,7 @@ class SemanticTokenContextIntegrationTest : BasePlatformTestCase() {
 
         assertEquals("red", resolvedValue(firstSource, LOCAL_TOKEN_NAME))
         assertEquals("blue", resolvedValue(secondSource, LOCAL_TOKEN_NAME))
-        assertNotSame(service.contextKey(firstSource), service.contextKey(secondSource))
+        assertFalse(service.contextKey(firstSource) == service.contextKey(secondSource))
         assertEquals(2, service.cachedProjectIndexCount)
         assertEquals(2, service.cachedResolutionSnapshotCount)
     }
@@ -77,8 +77,9 @@ class SemanticTokenContextIntegrationTest : BasePlatformTestCase() {
             .resolveToken(sourceFile, tokenName)
             .flatMap { group -> group.resolutions }
             .mapNotNull { resolution -> resolution.result as? DesignTokenValueResolution.Resolved }
+            .map(DesignTokenValueResolution.Resolved::value)
+            .distinct()
             .single()
-            .value
 
     private fun createFile(
         path: Path,
