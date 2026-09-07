@@ -6,6 +6,25 @@ import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.resolution.DesignTokenValueResolver
 import java.nio.file.Path
 
+internal data class TokenContextKey(
+    val workspaceRoot: Path?,
+    val projectRoot: Path?,
+    val packageRoot: Path?,
+    val projectEntryFiles: List<Path>,
+) {
+    fun normalized(): TokenContextKey =
+        copy(
+            workspaceRoot = workspaceRoot?.toAbsolutePath()?.normalize(),
+            projectRoot = projectRoot?.toAbsolutePath()?.normalize(),
+            packageRoot = packageRoot?.toAbsolutePath()?.normalize(),
+            projectEntryFiles =
+                projectEntryFiles
+                    .map(Path::toAbsolutePath)
+                    .map(Path::normalize)
+                    .distinct(),
+        )
+}
+
 internal data class DesignTokenResolutionSnapshotInputs(
     val installedIndex: DesignTokenIndex?,
     val projectIndex: DesignTokenIndex?,
@@ -62,19 +81,19 @@ internal class DesignTokenResolutionSnapshot private constructor(
 
 internal class DesignTokenResolutionSnapshotCache {
     private val lock = Any()
-    private val entries = linkedMapOf<Path, DesignTokenResolutionSnapshot>()
+    private val entries = linkedMapOf<TokenContextKey, DesignTokenResolutionSnapshot>()
 
     val size: Int
         get() = synchronized(lock) { entries.size }
 
     fun getOrBuild(
-        sourceFile: Path,
+        contextKey: TokenContextKey,
         inputs: DesignTokenResolutionSnapshotInputs,
     ): DesignTokenResolutionSnapshot {
-        val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
+        val normalizedContextKey = contextKey.normalized()
         val cached =
             synchronized(lock) {
-                entries[normalizedSourceFile]
+                entries[normalizedContextKey]
                     ?.takeIf { snapshot -> snapshot.matches(inputs) }
             }
 
@@ -85,9 +104,9 @@ internal class DesignTokenResolutionSnapshotCache {
         val snapshot = DesignTokenResolutionSnapshot.build(inputs)
 
         return synchronized(lock) {
-            entries[normalizedSourceFile]
+            entries[normalizedContextKey]
                 ?.takeIf { cachedSnapshot -> cachedSnapshot.matches(inputs) }
-                ?: snapshot.also { builtSnapshot -> entries[normalizedSourceFile] = builtSnapshot }
+                ?: snapshot.also { builtSnapshot -> entries[normalizedContextKey] = builtSnapshot }
         }
     }
 
