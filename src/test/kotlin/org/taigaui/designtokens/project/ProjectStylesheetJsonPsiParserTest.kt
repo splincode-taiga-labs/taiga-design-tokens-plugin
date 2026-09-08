@@ -40,12 +40,12 @@ class ProjectStylesheetJsonPsiParserTest : BasePlatformTestCase() {
         )
     }
 
-    fun testIgnoresStylesSyntaxInsideStringAndNonArrayProperty() {
+    fun testIgnoresCommentedStylesAndNonArrayProperty() {
         val groups =
             ProjectStylesheetJsonPsiParser(project).parseStyleGroups(
                 """
                 {
-                  "description": "styles: [fake.css]",
+                  // "styles": ["fake.css"],
                   "styles": "ignored.css",
                   "targets": {
                     "build": {
