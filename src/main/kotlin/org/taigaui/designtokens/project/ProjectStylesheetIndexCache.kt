@@ -77,16 +77,6 @@ internal class ProjectStylesheetIndexCache(
                 .map(Path::toAbsolutePath)
                 .map(Path::normalize)
                 .distinct()
-        val removedEntries =
-            synchronized(lock) {
-                val sizeBefore = entries.size
-
-                entries.entries.removeIf { (request, entry) ->
-                    normalizedPaths.any { changedPath -> entry.isAffectedBy(request, changedPath) }
-                }
-
-                sizeBefore - entries.size
-            }
 
         singleFlight.updatePending { request, pending ->
             val broadInvalidation =
@@ -100,7 +90,15 @@ internal class ProjectStylesheetIndexCache(
             }
         }
 
-        return removedEntries
+        return synchronized(lock) {
+            val sizeBefore = entries.size
+
+            entries.entries.removeIf { (request, entry) ->
+                normalizedPaths.any { changedPath -> entry.isAffectedBy(request, changedPath) }
+            }
+
+            sizeBefore - entries.size
+        }
     }
 
     fun clear() {
