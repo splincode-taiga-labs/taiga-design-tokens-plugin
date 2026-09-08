@@ -58,6 +58,7 @@ dependencies {
 
         bundledPlugin("JavaScript")
         bundledPlugin("com.intellij.css")
+        bundledPlugin("com.intellij.modules.json")
         testFramework(TestFrameworkType.Platform)
     }
 }
