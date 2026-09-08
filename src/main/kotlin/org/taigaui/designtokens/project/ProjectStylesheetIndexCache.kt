@@ -1,9 +1,9 @@
 package org.taigaui.designtokens.project
 
+import org.taigaui.designtokens.cache.GenerationAwareSingleFlight
+import org.taigaui.designtokens.cache.PendingBuildAction
 import org.taigaui.designtokens.index.DesignTokenIndex
 import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionException
 
 internal data class ProjectStylesheetIndexBuildResult(
     val index: DesignTokenIndex,
@@ -28,7 +28,12 @@ internal class ProjectStylesheetIndexCache(
 ) {
     private val lock = Any()
     private val entries = linkedMapOf<ProjectStylesheetIndexRequest, ProjectStylesheetIndexBuildResult>()
-    private val pendingBuilds = linkedMapOf<ProjectStylesheetIndexRequest, PendingBuild>()
+    private val singleFlight =
+        GenerationAwareSingleFlight<
+            ProjectStylesheetIndexRequest,
+            ProjectStylesheetIndexBuildResult,
+            PendingInvalidationMetadata,
+        >(::PendingInvalidationMetadata)
 
     val size: Int
         get() = synchronized(lock) { entries.size }
@@ -40,107 +45,68 @@ internal class ProjectStylesheetIndexCache(
 
     fun getOrBuild(request: ProjectStylesheetIndexRequest): DesignTokenIndex {
         val normalizedRequest = request.normalized()
-        val access =
-            synchronized(lock) {
-                entries[normalizedRequest]?.let { entry ->
-                    return entry.index
-                }
+        val cached = synchronized(lock) { entries[normalizedRequest] }
 
-                pendingBuilds[normalizedRequest]
-                    ?.let { pendingBuild -> BuildAccess(pendingBuild, shouldBuild = false) }
-                    ?: PendingBuild()
-                        .also { pendingBuild -> pendingBuilds[normalizedRequest] = pendingBuild }
-                        .let { pendingBuild -> BuildAccess(pendingBuild, shouldBuild = true) }
-            }
-
-        return if (access.shouldBuild) {
-            buildAndPublish(normalizedRequest, access.pendingBuild)
-        } else {
-            access.pendingBuild.await()
+        if (cached != null) {
+            return cached.index
         }
+
+        return singleFlight
+            .getOrBuild(
+                key = normalizedRequest,
+                build = {
+                    synchronized(lock) { entries[normalizedRequest] }
+                        ?: indexBuilder.build(normalizedRequest).normalized()
+                },
+                isCurrent = { pending, result ->
+                    !pending.wasInvalidated { changedPath ->
+                        result.isAffectedBy(normalizedRequest, changedPath)
+                    }
+                },
+                publish = { result ->
+                    synchronized(lock) {
+                        entries[normalizedRequest] = result
+                    }
+                },
+            ).index
     }
 
-    fun invalidate(changedPaths: Collection<Path>): Int =
-        synchronized(lock) {
-            val normalizedPaths =
-                changedPaths
-                    .map(Path::toAbsolutePath)
-                    .map(Path::normalize)
-                    .distinct()
+    fun invalidate(changedPaths: Collection<Path>): Int {
+        val normalizedPaths =
+            changedPaths
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .distinct()
+
+        singleFlight.updatePending { request, pending ->
+            val broadInvalidation =
+                normalizedPaths.any { changedPath -> request.isBroadlyAffectedBy(changedPath) }
+
+            if (broadInvalidation) {
+                PendingBuildAction.INVALIDATE
+            } else {
+                pending.recordChanges(normalizedPaths)
+                PendingBuildAction.KEEP
+            }
+        }
+
+        return synchronized(lock) {
             val sizeBefore = entries.size
 
             entries.entries.removeIf { (request, entry) ->
                 normalizedPaths.any { changedPath -> entry.isAffectedBy(request, changedPath) }
             }
 
-            pendingBuilds.entries.removeIf { (request, pendingBuild) ->
-                val broadInvalidation =
-                    normalizedPaths.any { changedPath -> request.isBroadlyAffectedBy(changedPath) }
-
-                if (broadInvalidation) {
-                    true
-                } else {
-                    pendingBuild.recordChanges(normalizedPaths)
-                    false
-                }
-            }
-
             sizeBefore - entries.size
         }
+    }
 
     fun clear() {
+        singleFlight.clear()
+
         synchronized(lock) {
             entries.clear()
-            pendingBuilds.clear()
         }
-    }
-
-    private fun buildAndPublish(
-        request: ProjectStylesheetIndexRequest,
-        pendingBuild: PendingBuild,
-    ): DesignTokenIndex =
-        runCatching { indexBuilder.build(request).normalized() }
-            .fold(
-                onSuccess = { result -> publishSuccess(request, pendingBuild, result) },
-                onFailure = { error -> publishFailure(request, pendingBuild, error) },
-            )
-
-    private fun publishSuccess(
-        request: ProjectStylesheetIndexRequest,
-        pendingBuild: PendingBuild,
-        result: ProjectStylesheetIndexBuildResult,
-    ): DesignTokenIndex {
-        synchronized(lock) {
-            if (pendingBuilds[request] === pendingBuild) {
-                pendingBuilds.remove(request)
-
-                if (
-                    !pendingBuild.wasInvalidated { changedPath ->
-                        result.isAffectedBy(request, changedPath)
-                    }
-                ) {
-                    entries[request] = result
-                }
-            }
-        }
-        pendingBuild.complete(result.index)
-
-        return result.index
-    }
-
-    private fun publishFailure(
-        request: ProjectStylesheetIndexRequest,
-        pendingBuild: PendingBuild,
-        error: Throwable,
-    ): Nothing {
-        synchronized(lock) {
-            if (pendingBuilds[request] === pendingBuild) {
-                pendingBuilds.remove(request)
-            }
-        }
-        pendingBuild.completeExceptionally(error)
-
-        throw error
     }
 
     private fun ProjectStylesheetIndexBuildResult.isAffectedBy(
@@ -176,37 +142,6 @@ internal class ProjectStylesheetIndexCache(
             '.' !in fileName
     }
 
-    private class PendingBuild {
-        private val future = CompletableFuture<DesignTokenIndex>()
-        private val changedPaths = linkedSetOf<Path>()
-
-        fun recordChanges(paths: Collection<Path>) {
-            changedPaths.addAll(paths)
-        }
-
-        fun wasInvalidated(isAffected: (Path) -> Boolean): Boolean = changedPaths.any(isAffected)
-
-        fun complete(index: DesignTokenIndex) {
-            future.complete(index)
-        }
-
-        fun completeExceptionally(error: Throwable) {
-            future.completeExceptionally(error)
-        }
-
-        fun await(): DesignTokenIndex =
-            try {
-                future.join()
-            } catch (error: CompletionException) {
-                throw error.cause ?: error
-            }
-    }
-
-    private data class BuildAccess(
-        val pendingBuild: PendingBuild,
-        val shouldBuild: Boolean,
-    )
-
     private companion object {
         const val ANGULAR_JSON = "angular.json"
         const val NX_JSON = "nx.json"
@@ -214,4 +149,14 @@ internal class ProjectStylesheetIndexCache(
         const val PACKAGE_JSON = "package.json"
         const val NODE_MODULES = "node_modules"
     }
+}
+
+private class PendingInvalidationMetadata {
+    private val changedPaths = linkedSetOf<Path>()
+
+    fun recordChanges(paths: Collection<Path>) {
+        changedPaths.addAll(paths)
+    }
+
+    fun wasInvalidated(isAffected: (Path) -> Boolean): Boolean = changedPaths.any(isAffected)
 }
