@@ -1,5 +1,7 @@
 package org.taigaui.designtokens.project
 
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -26,11 +28,12 @@ internal data class ProjectStylesheetScope(
 )
 
 internal class DesignTokenProjectStylesheetGraph(
+    project: Project = ProjectManager.getInstance().defaultProject,
     readText: (Path) -> String? = { path ->
         runCatching { Files.readString(path) }.getOrNull()
     },
 ) {
-    private val entrypointResolver = ProjectStylesheetEntrypointResolver(readText)
+    private val entrypointResolver = ProjectStylesheetEntrypointResolver(project, readText)
     private val importResolver = ProjectStylesheetImportResolver(readText)
 
     fun createRequest(
