@@ -1,17 +1,14 @@
 package org.taigaui.designtokens.project
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Test
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.nio.file.Files
 import java.nio.file.Path
 
-class RepresentativeAngularNxFixtureTest {
-    @Test
-    fun `builds a large reachable stylesheet scope without unrelated app styles`() =
+class RepresentativeAngularNxFixtureTest : BasePlatformTestCase() {
+    fun testBuildsALargeReachableStylesheetScopeWithoutUnrelatedAppStyles() =
         withWorkspace { workspaceRoot ->
             val fixture = RepresentativeAngularNxFixture.create(workspaceRoot)
-            val graph = DesignTokenProjectStylesheetGraph()
+            val graph = DesignTokenProjectStylesheetGraph(project)
             val scope =
                 graph.buildScope(
                     graph.createRequest(
