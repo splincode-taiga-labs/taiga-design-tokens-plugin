@@ -10,13 +10,15 @@ class ProjectStylesheetEntrypointResolverTest {
         val workspaceRoot = path("workspace")
         val projectRoot = workspaceRoot.resolve("apps/demo")
         val sourceFile = projectRoot.resolve("src/app/component.ts")
-        val configured = projectRoot.resolve("src/configured.css")
+        val nx = projectRoot.resolve("src/nx.css")
+        val angular = projectRoot.resolve("src/angular.css")
         val conventional = projectRoot.resolve("src/styles.less")
         val current = projectRoot.resolve("src/component.scss")
         val calls = mutableListOf<String>()
         val resolver =
             ProjectStylesheetEntrypointResolver(
-                provider("configured", calls, configured, conventional),
+                provider("nx", calls, nx, conventional),
+                provider("angular", calls, angular, conventional),
                 provider("conventional", calls, conventional),
                 provider("current", calls, current),
             )
@@ -28,8 +30,8 @@ class ProjectStylesheetEntrypointResolverTest {
                 workspaceRoot = workspaceRoot,
             )
 
-        assertEquals(listOf("configured", "conventional", "current"), calls)
-        assertEquals(listOf(configured, conventional, current), result)
+        assertEquals(listOf("nx", "angular", "conventional", "current"), calls)
+        assertEquals(listOf(nx, conventional, angular, current), result)
     }
 
     private fun provider(
