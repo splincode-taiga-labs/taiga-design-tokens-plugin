@@ -35,7 +35,7 @@ internal class ProjectStylesheetJsonPsiParser(
                     if (property.name == STYLES_PROPERTY && value is JsonArray) {
                         value
                             .collectStylesheetPaths()
-                            .takeIf(List<String>::isNotEmpty)
+                            .takeIf { paths -> paths.isNotEmpty() }
                             ?.let(groups::add)
                     }
 
