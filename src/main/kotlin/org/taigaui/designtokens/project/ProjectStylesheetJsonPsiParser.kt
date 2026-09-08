@@ -52,7 +52,10 @@ internal class ProjectStylesheetJsonPsiParser(
 
     private fun JsonValue.collectStylesheetPaths(paths: MutableList<String>) {
         when (this) {
-            is JsonStringLiteral -> value.takeIf(String::isStylesheetPath)?.let(paths::add)
+            is JsonStringLiteral ->
+                value
+                    .takeIf { path -> path.isStylesheetPath() }
+                    ?.let(paths::add)
             is JsonObject ->
                 propertyList
                     .mapNotNull { property -> property.value }
