@@ -136,7 +136,7 @@ internal class GenerationAwareSingleFlight<K, V, M>(
                         pendingBuilds.remove(key)
                         publication.fold(
                             onSuccess = { BuildOutcome.Success(value) },
-                            onFailure = BuildOutcome::Failure,
+                            onFailure = { error -> BuildOutcome.Failure(error) },
                         )
                     }
                 }
