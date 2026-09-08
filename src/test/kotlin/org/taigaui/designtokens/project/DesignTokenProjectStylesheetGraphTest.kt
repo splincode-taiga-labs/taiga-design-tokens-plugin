@@ -107,6 +107,49 @@ class DesignTokenProjectStylesheetGraphTest : BasePlatformTestCase() {
             )
         }
 
+    fun testSupportsObjectStyleEntriesFromNxProjectConfiguration() =
+        withWorkspace { workspaceRoot ->
+            val projectRoot = workspaceRoot.resolve("apps/demo")
+            val sourceFile = createFile(projectRoot.resolve("src/component.ts"), "export const demo = true;")
+            val stylesFile =
+                createFile(
+                    projectRoot.resolve("src/styles.scss"),
+                    ":root { --tui-test: #789; }",
+                )
+
+            createFile(workspaceRoot.resolve("nx.json"), "{}")
+            createFile(
+                projectRoot.resolve("project.json"),
+                """
+                {
+                  "targets": {
+                    "build": {
+                      "options": {
+                        "styles": [
+                          {
+                            "input": "apps/demo/src/styles.scss",
+                            "inject": true
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """.trimIndent(),
+            )
+
+            val graph = DesignTokenProjectStylesheetGraph(project)
+            val scope =
+                graph.buildScope(
+                    graph.createRequest(
+                        sourceFile = sourceFile,
+                        workspaceRootHint = workspaceRoot,
+                    ),
+                )
+
+            assertEquals(listOf(stylesFile.normalized()), scope.sourceFiles)
+        }
+
     fun testFollowsImportsFromTheCurrentStylesheet() =
         withWorkspace { workspaceRoot ->
             val sourceFile =
