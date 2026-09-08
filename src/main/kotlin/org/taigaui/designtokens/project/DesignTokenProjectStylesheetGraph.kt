@@ -1,7 +1,6 @@
 package org.taigaui.designtokens.project
 
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.ProjectManager
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -28,7 +27,7 @@ internal data class ProjectStylesheetScope(
 )
 
 internal class DesignTokenProjectStylesheetGraph(
-    project: Project = ProjectManager.getInstance().defaultProject,
+    project: Project,
     readText: (Path) -> String? = { path ->
         runCatching { Files.readString(path) }.getOrNull()
     },
