@@ -20,17 +20,26 @@ class GenerationAwareSingleFlightTest {
         try {
             val first =
                 executor.submit<Int> {
-                    singleFlight.getOrBuild("token") {
-                        builds.incrementAndGet()
-                        buildStarted.countDown()
-                        releaseBuild.await(10, TimeUnit.SECONDS)
-                        42
-                    }
+                    singleFlight.getOrBuild(
+                        key = "token",
+                        build = {
+                            builds.incrementAndGet()
+                            buildStarted.countDown()
+                            releaseBuild.await(10, TimeUnit.SECONDS)
+                            42
+                        },
+                    )
                 }
 
             assertTrue(buildStarted.await(10, TimeUnit.SECONDS))
 
-            val second = executor.submit<Int> { singleFlight.getOrBuild("token") { error("duplicate build") } }
+            val second =
+                executor.submit<Int> {
+                    singleFlight.getOrBuild(
+                        key = "token",
+                        build = { error("duplicate build") },
+                    )
+                }
 
             releaseBuild.countDown()
 
@@ -54,13 +63,16 @@ class GenerationAwareSingleFlightTest {
         try {
             val result =
                 executor.submit<Int> {
-                    singleFlight.getOrBuild("token") {
-                        val currentBuild = builds.incrementAndGet()
+                    singleFlight.getOrBuild(
+                        key = "token",
+                        build = {
+                            val currentBuild = builds.incrementAndGet()
 
-                        buildStarted.countDown()
-                        releaseBuild.await(10, TimeUnit.SECONDS)
-                        currentBuild
-                    }
+                            buildStarted.countDown()
+                            releaseBuild.await(10, TimeUnit.SECONDS)
+                            currentBuild
+                        },
+                    )
                 }
 
             assertTrue(buildStarted.await(10, TimeUnit.SECONDS))
