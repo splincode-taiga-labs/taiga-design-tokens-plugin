@@ -65,7 +65,7 @@ class ProjectStylesheetIndexCacheTest {
     }
 
     @Test
-    fun `related invalidation during build prevents stale project index publication`() {
+    fun `related invalidation during build retries before returning stale project index`() {
         val workspaceRoot = Path.of("build/fixtures/project-cache-concurrency").toAbsolutePath().normalize()
         val request = request(workspaceRoot, "src/component.scss")
         val theme = workspaceRoot.resolve("src/theme.scss")
@@ -79,7 +79,7 @@ class ProjectStylesheetIndexCacheTest {
                 releaseBuild.await(10, TimeUnit.SECONDS)
                 buildResult(cacheRequest, setOf(theme))
             }
-        val executor = Executors.newFixedThreadPool(2)
+        val executor = Executors.newSingleThreadExecutor()
 
         try {
             val buildFuture = executor.submit<DesignTokenIndex> { cache.getOrBuild(request) }
@@ -89,10 +89,6 @@ class ProjectStylesheetIndexCacheTest {
 
             releaseBuild.countDown()
             buildFuture.get(10, TimeUnit.SECONDS)
-
-            assertFalse(cache.contains(request))
-
-            cache.getOrBuild(request)
 
             assertEquals(2, builds.get())
             assertTrue(cache.contains(request))
@@ -128,6 +124,41 @@ class ProjectStylesheetIndexCacheTest {
 
             releaseBuild.countDown()
             buildFuture.get(10, TimeUnit.SECONDS)
+
+            assertEquals(1, builds.get())
+            assertTrue(cache.contains(request))
+        } finally {
+            releaseBuild.countDown()
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `concurrent callers share one project index build`() {
+        val workspaceRoot = Path.of("build/fixtures/project-cache-single-flight").toAbsolutePath().normalize()
+        val request = request(workspaceRoot, "src/component.scss")
+        val buildStarted = CountDownLatch(1)
+        val releaseBuild = CountDownLatch(1)
+        val builds = AtomicInteger()
+        val cache =
+            ProjectStylesheetIndexCache { cacheRequest ->
+                builds.incrementAndGet()
+                buildStarted.countDown()
+                releaseBuild.await(10, TimeUnit.SECONDS)
+                buildResult(cacheRequest, cacheRequest.entryFiles.toSet())
+            }
+        val executor = Executors.newFixedThreadPool(2)
+
+        try {
+            val first = executor.submit<DesignTokenIndex> { cache.getOrBuild(request) }
+
+            assertTrue(buildStarted.await(10, TimeUnit.SECONDS))
+
+            val second = executor.submit<DesignTokenIndex> { cache.getOrBuild(request) }
+
+            releaseBuild.countDown()
+            first.get(10, TimeUnit.SECONDS)
+            second.get(10, TimeUnit.SECONDS)
 
             assertEquals(1, builds.get())
             assertTrue(cache.contains(request))
