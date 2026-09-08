@@ -1,11 +1,12 @@
 package org.taigaui.designtokens.project
 
 import java.nio.file.Files
+import java.nio.file.Path
 
 internal class NxProjectStylesheetEntrypointProvider(
     private val configurationReader: ProjectStylesheetConfigurationReader,
 ) : ProjectStylesheetEntrypointProvider {
-    override fun find(context: ProjectStylesheetEntrypointContext): List<java.nio.file.Path> {
+    override fun find(context: ProjectStylesheetEntrypointContext): List<Path> {
         val projectConfig = context.projectRoot.resolve(PROJECT_JSON)
 
         return if (Files.isRegularFile(projectConfig)) {
