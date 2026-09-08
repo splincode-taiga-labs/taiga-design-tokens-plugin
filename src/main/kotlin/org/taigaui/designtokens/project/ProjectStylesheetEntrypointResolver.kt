@@ -5,14 +5,7 @@ import java.nio.file.Path
 internal class ProjectStylesheetEntrypointResolver private constructor(
     private val providers: List<ProjectStylesheetEntrypointProvider>,
 ) {
-    constructor(readText: (Path) -> String?) : this(
-        providers =
-            listOf(
-                ConfiguredProjectStylesheetEntrypointProvider(readText),
-                ConventionalProjectStylesheetEntrypointProvider(),
-                CurrentFileProjectStylesheetEntrypointProvider(),
-            ),
-    )
+    constructor(readText: (Path) -> String?) : this(defaultProviders(readText))
 
     internal constructor(vararg providers: ProjectStylesheetEntrypointProvider) : this(
         providers = providers.toList(),
@@ -33,5 +26,18 @@ internal class ProjectStylesheetEntrypointResolver private constructor(
         return providers
             .flatMap { provider -> provider.find(context) }
             .distinct()
+    }
+
+    private companion object {
+        fun defaultProviders(readText: (Path) -> String?): List<ProjectStylesheetEntrypointProvider> {
+            val configurationReader = ProjectStylesheetConfigurationReader(readText)
+
+            return listOf(
+                NxProjectStylesheetEntrypointProvider(configurationReader),
+                AngularProjectStylesheetEntrypointProvider(configurationReader),
+                ConventionalProjectStylesheetEntrypointProvider(),
+                CurrentFileProjectStylesheetEntrypointProvider(),
+            )
+        }
     }
 }
