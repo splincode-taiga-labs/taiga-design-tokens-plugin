@@ -147,11 +147,10 @@ internal class GenerationAwareSingleFlight<K, V, M>(
         return outcome
     }
 
-    private fun generationOf(key: K): BuildGeneration =
-        BuildGeneration(
-            epoch = epoch,
-            revision = generations[key] ?: 0L,
-        )
+    private fun generationOf(key: K): BuildGeneration = BuildGeneration(
+        epoch = epoch,
+        revision = generations[key] ?: 0L,
+    )
 }
 
 private data class BuildGeneration(
@@ -169,12 +168,11 @@ private class PendingBuild<V, M>(
         future.complete(outcome)
     }
 
-    fun await(): BuildOutcome<V> =
-        try {
-            future.join()
-        } catch (error: CompletionException) {
-            BuildOutcome.Failure(error.cause ?: error)
-        }
+    fun await(): BuildOutcome<V> = try {
+        future.join()
+    } catch (error: CompletionException) {
+        BuildOutcome.Failure(error.cause ?: error)
+    }
 }
 
 private data class BuildAccess<V, M>(
