@@ -6,6 +6,7 @@ internal class CurrentFileProjectStylesheetEntrypointProvider : ProjectStyleshee
             .takeIf(ProjectStylesheetPathResolver::isStylesheet)
             ?.takeIf { path ->
                 !ProjectStylesheetPathResolver.isNodeModulesPath(path, context.workspaceRoot)
-            }?.let(::listOf)
+            }
+            ?.let(::listOf)
             .orEmpty()
 }
