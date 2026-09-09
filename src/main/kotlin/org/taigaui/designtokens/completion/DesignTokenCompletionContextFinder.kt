@@ -16,6 +16,8 @@ import com.intellij.psi.PsiFile
 import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffset
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffsetFinder
+import org.taigaui.designtokens.index.DesignTokenDeprecation
+import org.taigaui.designtokens.project.DesignTokenCatalogEntry
 import java.nio.file.Path
 
 internal data class DesignTokenCompletionContext(
@@ -46,23 +48,26 @@ class UnknownDesignTokenInspection :
         }
 }
 
+class DeprecatedDesignTokenInspection :
+    LocalInspectionTool(),
+    DumbAware {
+    override fun buildVisitor(
+        holder: ProblemsHolder,
+        isOnTheFly: Boolean,
+    ): PsiElementVisitor =
+        object : PsiElementVisitor() {
+            override fun visitFile(file: PsiFile) {
+                inspectDeprecatedDesignTokens(file, holder)
+            }
+        }
+}
+
 private fun inspectUnknownDesignTokens(
     file: PsiFile,
     holder: ProblemsHolder,
 ) {
-    val sourceFile = file.inspectionSourceFile() ?: return
-    val project = file.project
-    val knownTokens =
-        project
-            .service<DesignTokenCompletionService>()
-            .namesForInspection(sourceFile) {
-                if (file.isValid) {
-                    DaemonCodeAnalyzer
-                        .getInstance(project)
-                        .restart(file, INSPECTION_RESTART_REASON)
-                }
-            }?.toSet()
-            ?: return
+    val catalog = file.designTokenCatalogForInspection() ?: return
+    val knownTokens = catalog.map(DesignTokenCatalogEntry::name).toSet()
 
     DesignTokenReferenceAtOffsetFinder
         .findAll(file.text)
@@ -73,6 +78,42 @@ private fun inspectUnknownDesignTokens(
                 reference,
                 DesignTokenNameMatcher.suggestions(reference.name, knownTokens),
             )
+        }
+}
+
+private fun inspectDeprecatedDesignTokens(
+    file: PsiFile,
+    holder: ProblemsHolder,
+) {
+    val catalog =
+        file
+            .designTokenCatalogForInspection()
+            ?.associateBy(DesignTokenCatalogEntry::name)
+            ?: return
+
+    DesignTokenReferenceAtOffsetFinder
+        .findAll(file.text)
+        .forEach { reference ->
+            catalog[reference.name]
+                ?.deprecation
+                ?.let { deprecation ->
+                    holder.registerDeprecatedTokenProblem(file, reference, deprecation)
+                }
+        }
+}
+
+private fun PsiFile.designTokenCatalogForInspection(): List<DesignTokenCatalogEntry>? {
+    val sourceFile = inspectionSourceFile() ?: return null
+    val project = project
+
+    return project
+        .service<DesignTokenCompletionService>()
+        .entriesForInspection(sourceFile) {
+            if (isValid) {
+                DaemonCodeAnalyzer
+                    .getInstance(project)
+                    .restart(this, INSPECTION_RESTART_REASON)
+            }
         }
 }
 
@@ -87,19 +128,42 @@ private fun ProblemsHolder.registerUnknownTokenProblem(
     reference: DesignTokenReferenceAtOffset,
     replacements: List<String>,
 ) {
-    val range = TextRange(reference.startOffset, reference.endOffset)
     val problemBuilder =
         problem(file, UNKNOWN_TOKEN_MESSAGE)
             .highlight(ProblemHighlightType.GENERIC_ERROR_OR_WARNING)
-            .range(range)
+            .range(reference.textRange())
 
     replacements.forEach { replacement ->
-        problemBuilder.fix(ReplaceUnknownDesignTokenQuickFix(replacement))
+        problemBuilder.fix(ReplaceDesignTokenQuickFix(replacement))
     }
     problemBuilder.register()
 }
 
-private class ReplaceUnknownDesignTokenQuickFix(
+private fun ProblemsHolder.registerDeprecatedTokenProblem(
+    file: PsiFile,
+    reference: DesignTokenReferenceAtOffset,
+    deprecation: DesignTokenDeprecation,
+) {
+    val problemBuilder =
+        problem(file, deprecation.problemMessage())
+            .highlight(ProblemHighlightType.LIKE_DEPRECATED)
+            .range(reference.textRange())
+
+    deprecation.replacement?.let { replacement ->
+        problemBuilder.fix(ReplaceDesignTokenQuickFix(replacement))
+    }
+    problemBuilder.register()
+}
+
+private fun DesignTokenReferenceAtOffset.textRange(): TextRange = TextRange(startOffset, endOffset)
+
+private fun DesignTokenDeprecation.problemMessage(): String =
+    message
+        ?.takeIf(String::isNotBlank)
+        ?.let { details -> "$DEPRECATED_TOKEN_MESSAGE: $details" }
+        ?: DEPRECATED_TOKEN_MESSAGE
+
+private class ReplaceDesignTokenQuickFix(
     private val replacement: String,
 ) : LocalQuickFix,
     DumbAware {
@@ -283,4 +347,5 @@ private fun Char.isQuote(): Boolean = this == '\'' || this == '"'
 private fun Char.isIdentifierCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_'
 
 private const val UNKNOWN_TOKEN_MESSAGE = "Unknown Taiga UI design token"
+private const val DEPRECATED_TOKEN_MESSAGE = "Deprecated Taiga UI design token"
 private const val INSPECTION_RESTART_REASON = "Taiga UI design token index updated"
