@@ -15,6 +15,7 @@ import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
 import org.taigaui.designtokens.diagnostics.PerformanceMetric
+import org.taigaui.designtokens.index.DesignTokenDeprecation
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
 import org.taigaui.designtokens.packageinfo.DesignTokensPackage
@@ -132,6 +133,17 @@ class DesignTokenIndexService(
             requireCompleteNameCatalog = true,
         ).tokenNames
 
+    internal fun completionTokenCatalog(sourceFile: Path): List<DesignTokenCatalogEntry> =
+        resolutionSnapshot(
+            sourceFile = sourceFile,
+            requireCompleteNameCatalog = true,
+        ).tokenCatalog
+
+    internal fun deprecationFor(
+        sourceFile: Path,
+        tokenName: String,
+    ): DesignTokenDeprecation? = resolutionSnapshot(sourceFile).deprecationFor(tokenName)
+
     internal fun contextKey(sourceFile: Path): TokenContextKey {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
 
@@ -241,6 +253,7 @@ internal object VfsEventPaths {
                 is VFilePropertyChangeEvent -> addRenamePaths(event)
             }
         }
+    }
 
     private fun MutableSet<Path>.addRenamePaths(event: VFilePropertyChangeEvent) {
         if (event.propertyName == VirtualFile.PROP_NAME) {
