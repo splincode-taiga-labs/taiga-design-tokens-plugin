@@ -24,7 +24,10 @@ internal data class DesignTokenHoverPopupModel(
 
             return DesignTokenHoverPopupModel(
                 tokenName = tokenName,
-                description = DesignTokenDescriptionExtractor.extract(origins),
+                description =
+                    DesignTokenDescriptionExtractor.extract(
+                        origins.filter { origin -> origin.deprecation == null },
+                    ),
                 sections = groups.toHoverPackageSections(tokenName),
                 deprecation = origins.effectiveDeprecation(),
             )
