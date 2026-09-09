@@ -4,16 +4,20 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
+import com.intellij.psi.PsiWhiteSpace
 import com.intellij.psi.css.CssDeclaration
 import com.intellij.psi.css.CssRuleset
 import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
 import org.taigaui.designtokens.diagnostics.PerformanceMetric
 import org.taigaui.designtokens.index.DesignTokenDeclaration
+import org.taigaui.designtokens.index.DesignTokenDeprecation
+import org.taigaui.designtokens.index.DesignTokenDeprecationParser
 import org.taigaui.designtokens.index.DesignTokenSourceExtractor
 import org.taigaui.designtokens.index.DesignTokenSourceFormat
 import java.nio.file.Path
@@ -98,10 +102,37 @@ class PsiDesignTokenSourceExtractor(
                 sourceFile = sourceFile,
                 line = line,
                 selectorChain = contextChain(content),
+                deprecation = deprecation(tokenName),
             )
         } else {
             null
         }
+    }
+
+    private fun CssDeclaration.deprecation(tokenName: String): DesignTokenDeprecation? =
+        listOfNotNull(previousComment(), nextComment())
+            .mapNotNull { comment -> DesignTokenDeprecationParser.parse(comment.text, tokenName) }
+            .distinct()
+            .singleOrNull()
+
+    private fun PsiElement.previousComment(): PsiComment? {
+        var sibling = prevSibling
+
+        while (sibling is PsiWhiteSpace) {
+            sibling = sibling.prevSibling
+        }
+
+        return sibling as? PsiComment
+    }
+
+    private fun PsiElement.nextComment(): PsiComment? {
+        var sibling = nextSibling
+
+        while (sibling is PsiWhiteSpace) {
+            sibling = sibling.nextSibling
+        }
+
+        return sibling as? PsiComment
     }
 
     private fun CssDeclaration.rawValue(): String =
