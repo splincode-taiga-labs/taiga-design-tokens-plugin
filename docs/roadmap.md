@@ -138,73 +138,50 @@ Implemented:
 
 Remaining product work:
 
-- Mark deprecated tokens and suggest replacements.
-- Add an optional setting for completion/source-detail behavior where useful.
-- Add an optional setting for detailed source lists and selector contexts in token hover.
+1. [#47 — Highlight deprecated design tokens and suggest replacements](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/47).
+2. [#31 — Add event plugin support](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/31).
+3. [#49 — Add plugin settings for completion and token hover details](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
 
 ## Stage 6 — Performance and architecture hardening
 
-Status: planned.
+Status: implemented.
 
-Tracked by [#18](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/18).
+Tracked and completed by [#18](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/18).
 
-Work in small measured PRs, in this order where practical:
+Implemented:
 
-1. **Diagnostics and representative fixture**
-   - Add telemetry-free timing/counter diagnostics for package scanning, project graph building, PSI extraction, index composition, value resolution, and icon catalog loading.
-   - Add a representative Angular/Nx-style fixture with many reachable stylesheets.
-   - Capture a baseline before changing cache/index behavior.
+- telemetry-free performance diagnostics and a representative Angular/Nx fixture;
+- precise dependency-aware project stylesheet invalidation;
+- per-file declaration caching for incremental project-index rebuilds;
+- immutable token-resolution snapshots and cached merged indexes;
+- memoized `var(...)` parsing and safe recursive resolution results;
+- semantic context keys shared across source files in the same effective project context;
+- explicit icon-catalog invalidation and remote refresh policy;
+- extensible ordered icon source strategies;
+- generation-aware single-flight infrastructure where it reduces code without hiding domain semantics;
+- extensible Nx/Angular/conventional/current-file stylesheet entrypoint providers;
+- structured IntelliJ JSON PSI parsing for workspace configuration.
 
-2. **Precise project stylesheet invalidation**
-   - Store stylesheet dependencies with cached project scopes/indexes.
-   - Invalidate only scopes that actually depend on a changed stylesheet.
-   - Keep broad invalidation only for structural inputs such as workspace/project configuration and entrypoint changes.
-
-3. **Per-file declaration cache**
-   - Cache extracted declarations by normalized stylesheet path and modification state.
-   - Reuse unchanged file declarations when rebuilding a project index.
-
-4. **Immutable token resolution snapshot**
-   - Cache the installed index, project index, merged index, token-name catalog, and resolver for one effective project context.
-   - Avoid rebuilding/merging/sorting the same token indexes on every hover or completion-preview request.
-
-5. **Value parsing and resolution memoization**
-   - Cache parsed `var(...)` expressions and safe resolution results inside the owning snapshot/generation.
-   - Preserve ambiguity, fallback, and cycle semantics.
-
-6. **Semantic context keys**
-   - Replace per-file snapshots where possible with a workspace/project/package context identity.
-   - Reuse one snapshot and one cold warmup across files with the same effective context.
-
-7. **Icon catalog invalidation**
-   - Refresh local icon catalogs after relevant package/SVG changes without requiring an IDE restart.
-   - Define safe refresh behavior for the remote proprietary fallback.
-
-8. **Extensible icon sources**
-   - Extract source selection into ordered strategies while preserving current public/proprietary precedence.
-
-9. **Shared cache/warmup infrastructure and entrypoint providers**
-   - Consider generation-aware shared cache primitives only after the concrete indexing work makes the common behavior clear.
-   - Split stylesheet entrypoint discovery into providers when that clearly reduces complexity and enables additional build systems.
-
-Acceptance goals:
-
-- unrelated stylesheet edits do not rebuild unrelated project token contexts;
-- unchanged stylesheets are not reparsed during incremental rebuilds;
-- repeated hover/completion preview uses an existing token snapshot instead of repeatedly merging indexes;
-- multiple files in one effective context can share cache state and warmups;
-- icon catalogs refresh after relevant package changes;
-- diagnostics demonstrate reduced redundant work on representative projects.
+Acceptance goals from #18 are covered by the merged implementation and CI regression tests.
 
 ## Stage 7 — Release and production hardening
 
 Status: planned.
 
-- Add accessibility checks for color swatches, keyboard interaction, focus behavior, and editor hints where applicable.
-- Test the packaged plugin manually against representative real Angular/Nx monorepos and pnpm layouts.
-- Run Plugin Verifier against the supported WebStorm/IntelliJ Platform matrix.
-- Resolve the intended supported IDE range and align `since-build`, target platform, and Java compatibility accordingly.
-- Finalize plugin metadata and release notes.
-- Add plugin signing.
-- Configure JetBrains Marketplace publishing.
-- Publish the first production-ready release after the supported IDE matrix and real-project validation are green.
+Tracked by:
+
+- [#50 — Define supported IDE matrix and add Plugin Verifier CI](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/50).
+- [#51 — Validate packaged plugin against real Angular and Nx projects](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/51).
+- [#52 — Audit editor popups, previews and inlay hints for accessibility](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/52).
+- [#53 — Add plugin signing and JetBrains Marketplace publishing](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/53).
+- [#54 — Prepare the first production-ready plugin release](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/54).
+
+Recommended order:
+
+1. Define and continuously verify the supported IDE/platform matrix (#50).
+2. Validate the packaged plugin against representative real projects (#51).
+3. Complete the accessibility/focus audit (#52).
+4. Configure signing and controlled Marketplace publishing (#53).
+5. Complete the final release checklist and publish the first production-ready release (#54).
+
+The production release should happen only after the supported IDE matrix, real-project validation, accessibility checks, signing, and publishing pipeline are green.
