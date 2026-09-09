@@ -1,15 +1,11 @@
 package org.taigaui.designtokens.project
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.nio.file.Files
 import java.nio.file.Path
 
-class DesignTokenProjectStylesheetGraphTest {
-    @Test
-    fun `follows angular global styles and sass imports without scanning unrelated files`() =
+class DesignTokenProjectStylesheetGraphTest : BasePlatformTestCase() {
+    fun testFollowsAngularGlobalStylesAndSassImportsWithoutScanningUnrelatedFiles() =
         withWorkspace { workspaceRoot ->
             val sourceFile = createFile(workspaceRoot.resolve("src/app/component.scss"), "color: var(--tui-test);")
             val stylesFile = createFile(workspaceRoot.resolve("src/styles.scss"), "@use './theme';")
@@ -42,7 +38,7 @@ class DesignTokenProjectStylesheetGraphTest {
                 """.trimIndent(),
             )
 
-            val graph = DesignTokenProjectStylesheetGraph()
+            val graph = DesignTokenProjectStylesheetGraph(project)
             val scope =
                 graph.buildScope(
                     graph.createRequest(
@@ -60,8 +56,7 @@ class DesignTokenProjectStylesheetGraphTest {
             )
         }
 
-    @Test
-    fun `supports nx project styles plus less and css imports`() =
+    fun testSupportsNxProjectStylesPlusLessAndCssImports() =
         withWorkspace { workspaceRoot ->
             val projectRoot = workspaceRoot.resolve("apps/demo")
             val sourceFile = createFile(projectRoot.resolve("src/component.css"), "color: var(--tui-test);")
@@ -96,7 +91,7 @@ class DesignTokenProjectStylesheetGraphTest {
                 """.trimIndent(),
             )
 
-            val graph = DesignTokenProjectStylesheetGraph()
+            val graph = DesignTokenProjectStylesheetGraph(project)
             val scope =
                 graph.buildScope(
                     graph.createRequest(
@@ -112,8 +107,50 @@ class DesignTokenProjectStylesheetGraphTest {
             )
         }
 
-    @Test
-    fun `follows imports from the current stylesheet`() =
+    fun testSupportsObjectStyleEntriesFromNxProjectConfiguration() =
+        withWorkspace { workspaceRoot ->
+            val projectRoot = workspaceRoot.resolve("apps/demo")
+            val sourceFile = createFile(projectRoot.resolve("src/component.ts"), "export const demo = true;")
+            val stylesFile =
+                createFile(
+                    projectRoot.resolve("src/styles.scss"),
+                    ":root { --tui-test: #789; }",
+                )
+
+            createFile(workspaceRoot.resolve("nx.json"), "{}")
+            createFile(
+                projectRoot.resolve("project.json"),
+                """
+                {
+                  "targets": {
+                    "build": {
+                      "options": {
+                        "styles": [
+                          {
+                            "input": "apps/demo/src/styles.scss",
+                            "inject": true
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """.trimIndent(),
+            )
+
+            val graph = DesignTokenProjectStylesheetGraph(project)
+            val scope =
+                graph.buildScope(
+                    graph.createRequest(
+                        sourceFile = sourceFile,
+                        workspaceRootHint = workspaceRoot,
+                    ),
+                )
+
+            assertEquals(listOf(stylesFile.normalized()), scope.sourceFiles)
+        }
+
+    fun testFollowsImportsFromTheCurrentStylesheet() =
         withWorkspace { workspaceRoot ->
             val sourceFile =
                 createFile(
@@ -126,7 +163,7 @@ class DesignTokenProjectStylesheetGraphTest {
                     ":root { --tui-local: tomato; }",
                 )
 
-            val graph = DesignTokenProjectStylesheetGraph()
+            val graph = DesignTokenProjectStylesheetGraph(project)
             val scope =
                 graph.buildScope(
                     graph.createRequest(

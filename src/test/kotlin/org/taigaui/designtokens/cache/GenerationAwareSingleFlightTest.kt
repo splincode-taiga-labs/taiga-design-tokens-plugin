@@ -13,6 +13,7 @@ class GenerationAwareSingleFlightTest {
     fun `coalesces concurrent builds for the same key`() {
         val builds = AtomicInteger()
         val buildStarted = CountDownLatch(1)
+        val secondJoined = CountDownLatch(1)
         val releaseBuild = CountDownLatch(1)
         val singleFlight = GenerationAwareSingleFlight<String, Int, Unit> { Unit }
         val executor = Executors.newFixedThreadPool(2)
@@ -37,10 +38,12 @@ class GenerationAwareSingleFlightTest {
                 executor.submit<Int> {
                     singleFlight.getOrBuild(
                         key = "token",
+                        updateMetadata = { secondJoined.countDown() },
                         build = { error("duplicate build") },
                     )
                 }
 
+            assertTrue(secondJoined.await(10, TimeUnit.SECONDS))
             releaseBuild.countDown()
 
             assertEquals(42, first.get(10, TimeUnit.SECONDS))

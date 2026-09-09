@@ -1,14 +1,11 @@
 package org.taigaui.designtokens.project
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.nio.file.Files
 import java.nio.file.Path
 
-class ProjectStylesheetNxWorkspaceRootTest {
-    @Test
-    fun `nx workspace marker wins over nested package and node modules hint`() {
+class ProjectStylesheetNxWorkspaceRootTest : BasePlatformTestCase() {
+    fun testNxWorkspaceMarkerWinsOverNestedPackageAndNodeModulesHint() {
         val workspaceRoot = Files.createTempDirectory("project-stylesheet-nx-root")
 
         try {
@@ -37,7 +34,7 @@ class ProjectStylesheetNxWorkspaceRootTest {
                 """.trimIndent(),
             )
 
-            val graph = DesignTokenProjectStylesheetGraph()
+            val graph = DesignTokenProjectStylesheetGraph(project)
             val request =
                 graph.createRequest(
                     sourceFile = sourceFile,

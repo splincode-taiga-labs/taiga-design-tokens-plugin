@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.project
 
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
 import org.taigaui.designtokens.diagnostics.PerformanceMetric
@@ -13,10 +14,15 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 internal class ProjectStylesheetIndexProvider(
+    project: Project,
     private val packageResolver: DesignTokensPackageResolver,
     sourceExtractor: DesignTokenSourceExtractor,
 ) {
-    private val graph = DesignTokenProjectStylesheetGraph(::readProjectText)
+    private val graph =
+        DesignTokenProjectStylesheetGraph(
+            project = project,
+            readText = ::readProjectText,
+        )
     private val declarationCache =
         ProjectStylesheetDeclarationCache(sourceExtractor) { sourceFile ->
             modificationStamp(sourceFile)

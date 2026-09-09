@@ -1,13 +1,11 @@
 package org.taigaui.designtokens.project
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.nio.file.Files
 import java.nio.file.Path
 
-class ProjectStylesheetCascadeOrderGraphTest {
-    @Test
-    fun `preserves configured entrypoint and import order before current stylesheet`() =
+class ProjectStylesheetCascadeOrderGraphTest : BasePlatformTestCase() {
+    fun testPreservesConfiguredEntrypointAndImportOrderBeforeCurrentStylesheet() =
         withWorkspace { workspaceRoot ->
             val baseFile = createFile(workspaceRoot.resolve("src/base.less"), ":root { --tui-test: blue; }")
             val themeFile = createFile(workspaceRoot.resolve("src/theme.less"), ":root { --tui-test: green; }")
@@ -37,7 +35,7 @@ class ProjectStylesheetCascadeOrderGraphTest {
                 """.trimIndent(),
             )
 
-            val graph = DesignTokenProjectStylesheetGraph()
+            val graph = DesignTokenProjectStylesheetGraph(project)
             val scope =
                 graph.buildScope(
                     graph.createRequest(

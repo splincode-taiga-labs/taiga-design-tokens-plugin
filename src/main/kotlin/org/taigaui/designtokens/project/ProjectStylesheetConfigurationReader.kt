@@ -4,6 +4,7 @@ import java.nio.file.Path
 
 internal class ProjectStylesheetConfigurationReader(
     private val readText: (Path) -> String?,
+    private val parser: ProjectStylesheetJsonPsiParser,
 ) {
     fun readStyleGroups(
         configFile: Path,
@@ -11,21 +12,17 @@ internal class ProjectStylesheetConfigurationReader(
         workspaceRoot: Path,
     ): List<List<Path>> =
         readText(configFile)
-            ?.let { content -> STYLES_ARRAY_PATTERN.findAll(content) }
-            ?.map { match ->
-                QUOTED_STYLESHEET_PATTERN
-                    .findAll(match.groupValues[1])
-                    .map { styleMatch -> styleMatch.groupValues[1] }
-                    .mapNotNull { configuredPath ->
-                        resolveConfiguredPath(
-                            configFile = configFile,
-                            configuredPath = configuredPath,
-                            projectRoot = projectRoot,
-                            workspaceRoot = workspaceRoot,
-                        )
-                    }.toList()
+            ?.let(parser::parseStyleGroups)
+            ?.map { group ->
+                group.mapNotNull { configuredPath ->
+                    resolveConfiguredPath(
+                        configFile = configFile,
+                        configuredPath = configuredPath,
+                        projectRoot = projectRoot,
+                        workspaceRoot = workspaceRoot,
+                    )
+                }
             }?.filter { group -> group.isNotEmpty() }
-            ?.toList()
             .orEmpty()
 
     private fun resolveConfiguredPath(
@@ -53,14 +50,5 @@ internal class ProjectStylesheetConfigurationReader(
             .filterNot { path -> ProjectStylesheetPathResolver.isNodeModulesPath(path, workspaceRoot) }
             .mapNotNull(ProjectStylesheetPathResolver::resolveSourceFile)
             .firstOrNull()
-    }
-
-    private companion object {
-        val STYLES_ARRAY_PATTERN = Regex("""(?s)[\"']styles[\"']\s*:\s*\[(.*?)]""")
-        val QUOTED_STYLESHEET_PATTERN =
-            Regex(
-                pattern = """[\"']([^\"']+\.(?:css|less|scss))[\"']""",
-                option = RegexOption.IGNORE_CASE,
-            )
     }
 }

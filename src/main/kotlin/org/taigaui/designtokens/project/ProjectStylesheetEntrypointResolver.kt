@@ -1,11 +1,15 @@
 package org.taigaui.designtokens.project
 
+import com.intellij.openapi.project.Project
 import java.nio.file.Path
 
 internal class ProjectStylesheetEntrypointResolver private constructor(
     private val providers: List<ProjectStylesheetEntrypointProvider>,
 ) {
-    constructor(readText: (Path) -> String?) : this(defaultProviders(readText))
+    constructor(
+        project: Project,
+        readText: (Path) -> String?,
+    ) : this(defaultProviders(project, readText))
 
     internal constructor(vararg providers: ProjectStylesheetEntrypointProvider) : this(
         providers = providers.toList(),
@@ -29,8 +33,15 @@ internal class ProjectStylesheetEntrypointResolver private constructor(
     }
 
     private companion object {
-        fun defaultProviders(readText: (Path) -> String?): List<ProjectStylesheetEntrypointProvider> {
-            val configurationReader = ProjectStylesheetConfigurationReader(readText)
+        fun defaultProviders(
+            project: Project,
+            readText: (Path) -> String?,
+        ): List<ProjectStylesheetEntrypointProvider> {
+            val configurationReader =
+                ProjectStylesheetConfigurationReader(
+                    readText = readText,
+                    parser = ProjectStylesheetJsonPsiParser(project),
+                )
 
             return listOf(
                 NxProjectStylesheetEntrypointProvider(configurationReader),

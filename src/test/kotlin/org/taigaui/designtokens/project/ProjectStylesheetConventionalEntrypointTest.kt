@@ -1,13 +1,11 @@
 package org.taigaui.designtokens.project
 
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import java.nio.file.Files
 import java.nio.file.Path
 
-class ProjectStylesheetConventionalEntrypointTest {
-    @Test
-    fun `keeps src styles less when project has other configured style entries`() {
+class ProjectStylesheetConventionalEntrypointTest : BasePlatformTestCase() {
+    fun testKeepsSrcStylesLessWhenProjectHasOtherConfiguredStyleEntries() {
         val workspaceRoot = Files.createTempDirectory("project-stylesheet-conventional")
 
         try {
@@ -38,7 +36,7 @@ class ProjectStylesheetConventionalEntrypointTest {
             )
             createFile(projectRoot.resolve("src/another.css"), "body { margin: 0; }")
 
-            val graph = DesignTokenProjectStylesheetGraph()
+            val graph = DesignTokenProjectStylesheetGraph(project)
             val scope =
                 graph.buildScope(
                     graph.createRequest(

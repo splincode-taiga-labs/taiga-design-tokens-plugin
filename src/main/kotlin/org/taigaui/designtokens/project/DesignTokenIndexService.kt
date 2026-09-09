@@ -59,6 +59,7 @@ class DesignTokenIndexService(
         }
     private val projectStylesheetIndexProvider =
         ProjectStylesheetIndexProvider(
+            project = project,
             packageResolver = packageResolver,
             sourceExtractor = sourceExtractor,
         )
