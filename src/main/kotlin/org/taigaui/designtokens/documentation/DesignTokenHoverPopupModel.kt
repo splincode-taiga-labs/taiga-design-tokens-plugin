@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.documentation
 
+import org.taigaui.designtokens.index.DesignTokenDeprecation
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import java.awt.Color
 import java.nio.file.Path
@@ -8,6 +9,7 @@ internal data class DesignTokenHoverPopupModel(
     val tokenName: String,
     val description: String?,
     val sections: List<DesignTokenHoverPackageSection>,
+    val deprecation: DesignTokenDeprecation? = null,
 ) {
     val referenceChainCount: Int = sections.sumOf { section -> section.chains.size }
 
@@ -15,6 +17,7 @@ internal data class DesignTokenHoverPopupModel(
         fun create(
             tokenName: String,
             groups: List<DesignTokenResolutionGroup>,
+            deprecation: DesignTokenDeprecation? = null,
         ): DesignTokenHoverPopupModel =
             DesignTokenHoverPopupModel(
                 tokenName = tokenName,
@@ -23,6 +26,7 @@ internal data class DesignTokenHoverPopupModel(
                         groups.flatMap { group -> group.origins },
                     ),
                 sections = groups.toHoverPackageSections(tokenName),
+                deprecation = deprecation,
             )
 
         fun notFound(
