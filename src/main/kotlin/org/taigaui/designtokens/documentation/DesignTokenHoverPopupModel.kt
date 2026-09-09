@@ -1,6 +1,8 @@
 package org.taigaui.designtokens.documentation
 
 import org.taigaui.designtokens.index.DesignTokenDeprecation
+import org.taigaui.designtokens.index.DesignTokenOrigin
+import org.taigaui.designtokens.index.PROJECT_STYLES_PACKAGE
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
 import java.awt.Color
 import java.nio.file.Path
@@ -17,17 +19,16 @@ internal data class DesignTokenHoverPopupModel(
         fun create(
             tokenName: String,
             groups: List<DesignTokenResolutionGroup>,
-            deprecation: DesignTokenDeprecation? = null,
-        ): DesignTokenHoverPopupModel =
-            DesignTokenHoverPopupModel(
+        ): DesignTokenHoverPopupModel {
+            val origins = groups.flatMap { group -> group.origins }
+
+            return DesignTokenHoverPopupModel(
                 tokenName = tokenName,
-                description =
-                    DesignTokenDescriptionExtractor.extract(
-                        groups.flatMap { group -> group.origins },
-                    ),
+                description = DesignTokenDescriptionExtractor.extract(origins),
                 sections = groups.toHoverPackageSections(tokenName),
-                deprecation = deprecation,
+                deprecation = origins.effectiveDeprecation(),
             )
+        }
 
         fun notFound(
             tokenName: String,
@@ -49,6 +50,16 @@ internal data class DesignTokenHoverPopupModel(
                 sections = emptyList(),
             )
     }
+}
+
+private fun List<DesignTokenOrigin>.effectiveDeprecation(): DesignTokenDeprecation? {
+    val projectOrigins = filter { origin -> origin.packageName == PROJECT_STYLES_PACKAGE }
+
+    return projectOrigins
+        .ifEmpty { this }
+        .mapNotNull(DesignTokenOrigin::deprecation)
+        .distinct()
+        .singleOrNull()
 }
 
 internal data class DesignTokenHoverPackageSection(
