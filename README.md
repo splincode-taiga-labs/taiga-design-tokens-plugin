@@ -16,7 +16,7 @@ Inside CSS, Less, and SCSS `var(...)` expressions, typing `--tui-` opens WebStor
 }
 ```
 
-The selected completion item shows a side preview with the effective value, platform/theme variants, and a color swatch when applicable.
+The selected completion item shows a side preview with the effective value, platform/theme variants, and a color swatch when applicable. Deprecated tokens remain discoverable but are visually marked as deprecated.
 
 ### Hover preview
 
@@ -28,6 +28,7 @@ The popup can display:
 - color previews;
 - project overrides and installed-package values;
 - reference chains for tokens that use other `var(...)` values;
+- deprecation details and an explicit replacement when the installed token source provides one;
 - navigation to the source declaration.
 
 ### Unknown-token inspection
@@ -41,6 +42,12 @@ Unknown `--tui-*` references are highlighted in CSS, Less, and SCSS.
 ```
 
 When a safe match exists, the plugin offers a `Replace with ...` quick fix. Ambiguous or distant names remain warnings without an unsafe automatic replacement.
+
+### Deprecated-token inspection
+
+When an installed or project token declaration is explicitly documented with `@deprecated`, usages are marked as deprecated in CSS, Less, and SCSS. If the metadata names exactly one replacement `--tui-*` token, the plugin offers a `Replace with ...` quick fix.
+
+Replacement names are read from the token source metadata for the installed project version; the plugin does not infer migration targets by fuzzy matching. A project-defined override suppresses package deprecation for the same token name unless the local declaration is itself explicitly deprecated.
 
 ### Project overrides
 
