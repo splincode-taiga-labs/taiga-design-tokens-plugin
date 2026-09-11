@@ -132,6 +132,12 @@ class DesignTokenIndexService(
             requireCompleteNameCatalog = true,
         ).tokenNames
 
+    internal fun completionTokenCatalog(sourceFile: Path): List<DesignTokenCatalogEntry> =
+        resolutionSnapshot(
+            sourceFile = sourceFile,
+            requireCompleteNameCatalog = true,
+        ).tokenCatalog
+
     internal fun contextKey(sourceFile: Path): TokenContextKey {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
 
@@ -218,12 +224,8 @@ class DesignTokenIndexService(
         )
     }
 
-    private fun DesignTokensPackage.needsCompleteNameCatalog(): Boolean =
-        sourcePackages.any { sourcePackage -> sourcePackage.name == PROPRIETARY_PACKAGE }
-
     private companion object {
         val LOG = Logger.getInstance(DesignTokenIndexService::class.java)
-        const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
     }
 }
 
@@ -256,6 +258,9 @@ internal object VfsEventPaths {
     }
 }
 
+private fun DesignTokensPackage.needsCompleteNameCatalog(): Boolean =
+    sourcePackages.any { sourcePackage -> sourcePackage.name == PROPRIETARY_PACKAGE }
+
 private fun tokenContextKey(
     designTokensPackage: DesignTokensPackage?,
     projectRequest: ProjectStylesheetIndexRequest?,
@@ -268,3 +273,5 @@ private fun tokenContextKey(
     ).normalized()
 
 private fun String.toPathOrNull(): Path? = runCatching { Path.of(this) }.getOrNull()
+
+private const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"

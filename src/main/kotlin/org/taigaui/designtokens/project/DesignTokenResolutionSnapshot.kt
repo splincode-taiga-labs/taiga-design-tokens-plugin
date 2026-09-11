@@ -2,6 +2,7 @@ package org.taigaui.designtokens.project
 
 import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
 import org.taigaui.designtokens.diagnostics.PerformanceMetric
+import org.taigaui.designtokens.index.DesignTokenDeprecation
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.resolution.DesignTokenValueResolver
 import java.nio.file.Path
@@ -25,6 +26,11 @@ internal data class TokenContextKey(
         )
 }
 
+internal data class DesignTokenCatalogEntry(
+    val name: String,
+    val deprecation: DesignTokenDeprecation? = null,
+)
+
 internal data class DesignTokenResolutionSnapshotInputs(
     val installedIndex: DesignTokenIndex?,
     val projectIndex: DesignTokenIndex?,
@@ -32,19 +38,33 @@ internal data class DesignTokenResolutionSnapshotInputs(
 )
 
 internal class DesignTokenResolutionSnapshot private constructor(
-    val installedIndex: DesignTokenIndex?,
-    val projectIndex: DesignTokenIndex?,
-    private val nameCatalogIndex: DesignTokenIndex?,
+    private val inputs: DesignTokenResolutionSnapshotInputs,
+    private val effectiveNameCatalogIndex: DesignTokenIndex?,
     val mergedIndex: DesignTokenIndex?,
-    val tokenNames: List<String>,
+    val tokenCatalog: List<DesignTokenCatalogEntry>,
     val resolver: DesignTokenValueResolver?,
 ) {
-    fun matches(inputs: DesignTokenResolutionSnapshotInputs): Boolean {
-        val nameCatalogMatches =
-            inputs.nameCatalogIndex == null || nameCatalogIndex === inputs.nameCatalogIndex
+    val installedIndex: DesignTokenIndex?
+        get() = inputs.installedIndex
 
-        return installedIndex === inputs.installedIndex &&
-            projectIndex === inputs.projectIndex &&
+    val projectIndex: DesignTokenIndex?
+        get() = inputs.projectIndex
+
+    val tokenNames: List<String> = tokenCatalog.map(DesignTokenCatalogEntry::name)
+
+    private val deprecationsByName =
+        tokenCatalog
+            .mapNotNull { entry -> entry.deprecation?.let { deprecation -> entry.name to deprecation } }
+            .toMap()
+
+    fun deprecationFor(name: String): DesignTokenDeprecation? = deprecationsByName[name]
+
+    fun matches(candidate: DesignTokenResolutionSnapshotInputs): Boolean {
+        val nameCatalogMatches =
+            candidate.nameCatalogIndex == null || effectiveNameCatalogIndex === candidate.nameCatalogIndex
+
+        return installedIndex === candidate.installedIndex &&
+            projectIndex === candidate.projectIndex &&
             nameCatalogMatches
     }
 
@@ -66,13 +86,28 @@ internal class DesignTokenResolutionSnapshot private constructor(
                     inputs.projectIndex?.names?.let(::addAll)
                 }.distinct()
                     .sorted()
+            val tokenCatalog =
+                tokenNames.map { name ->
+                    val projectDefinesToken =
+                        inputs.projectIndex
+                            ?.find(name)
+                            .orEmpty()
+                            .isNotEmpty()
+                    val deprecation =
+                        if (projectDefinesToken) {
+                            inputs.projectIndex?.deprecationFor(name)
+                        } else {
+                            effectiveNameCatalogIndex?.deprecationFor(name)
+                        }
+
+                    DesignTokenCatalogEntry(name, deprecation)
+                }
 
             return DesignTokenResolutionSnapshot(
-                installedIndex = inputs.installedIndex,
-                projectIndex = inputs.projectIndex,
-                nameCatalogIndex = effectiveNameCatalogIndex,
+                inputs = inputs,
+                effectiveNameCatalogIndex = effectiveNameCatalogIndex,
                 mergedIndex = mergedIndex,
-                tokenNames = tokenNames,
+                tokenCatalog = tokenCatalog,
                 resolver = mergedIndex?.let(::DesignTokenValueResolver),
             )
         }

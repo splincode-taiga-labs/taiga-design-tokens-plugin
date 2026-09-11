@@ -98,6 +98,7 @@ class PsiDesignTokenSourceExtractor(
                 sourceFile = sourceFile,
                 line = line,
                 selectorChain = contextChain(content),
+                deprecation = PsiDesignTokenDeprecationExtractor.extract(this, tokenName),
             )
         } else {
             null

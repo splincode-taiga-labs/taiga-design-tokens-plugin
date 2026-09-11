@@ -6,6 +6,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import org.taigaui.designtokens.index.DesignTokenDeprecation
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
@@ -61,6 +62,12 @@ internal class DesignTokenHoverPopupPanel(
 
         contentPanel.removeAll()
         contentPanel.add(createHeader(model.tokenName, model.description, descriptionWidth))
+
+        model.deprecation?.let { deprecation ->
+            contentPanel.add(Box.createVerticalStrut(JBUI.scale(10)))
+            contentPanel.add(createDeprecationNotice(deprecation, descriptionWidth))
+        }
+
         contentPanel.add(Box.createVerticalStrut(JBUI.scale(14)))
         contentPanel.add(
             createDesignTokenValueSections(
@@ -151,6 +158,38 @@ private fun createHeader(
             )
         }
     }
+
+private fun createDeprecationNotice(
+    deprecation: DesignTokenDeprecation,
+    width: Int,
+): JComponent =
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+        add(
+            JBLabel("Deprecated").apply {
+                font = font.deriveFont(Font.BOLD)
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            },
+        )
+
+        deprecation.displayMessage()?.let { text ->
+            add(Box.createVerticalStrut(JBUI.scale(2)))
+            add(
+                WrappedTextPane(
+                    text = text,
+                    width = width,
+                    textFont = UIUtil.getLabelFont(),
+                    textColor = UIUtil.getContextHelpForeground(),
+                    alignment = StyleConstants.ALIGN_LEFT,
+                ),
+            )
+        }
+    }
+
+private fun DesignTokenDeprecation.displayMessage(): String? =
+    message ?: replacement?.let { token -> "Use $token instead." }
 
 private fun createTitleRow(tokenName: String): JComponent =
     JPanel().apply {

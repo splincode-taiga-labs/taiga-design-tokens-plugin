@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.taigaui.designtokens.project.DesignTokenCatalogEntry
 import org.taigaui.designtokens.project.DesignTokenIndexService
 import org.taigaui.designtokens.project.TokenContextKey
 import java.nio.file.Path
@@ -19,38 +20,48 @@ internal class DesignTokenCompletionService(
     private val coroutineScope: CoroutineScope,
 ) {
     private val lock = Any()
-    private val snapshots = mutableMapOf<TokenContextKey, List<String>>()
+    private val snapshots = mutableMapOf<TokenContextKey, List<DesignTokenCatalogEntry>>()
     private val pendingWarmups = mutableSetOf<TokenContextKey>()
     private val pendingCallbacks = mutableMapOf<TokenContextKey, MutableList<PendingCallback>>()
 
     fun namesFor(
         sourceFile: Path,
         onUpdated: () -> Unit,
-    ): List<String>? =
-        namesFor(
+    ): List<String>? = entriesFor(sourceFile, onUpdated)?.map(DesignTokenCatalogEntry::name)
+
+    fun namesForInspection(
+        sourceFile: Path,
+        onUpdated: () -> Unit,
+    ): List<String>? = entriesForInspection(sourceFile, onUpdated)?.map(DesignTokenCatalogEntry::name)
+
+    fun entriesFor(
+        sourceFile: Path,
+        onUpdated: () -> Unit,
+    ): List<DesignTokenCatalogEntry>? =
+        entriesFor(
             sourceFile = sourceFile,
             onUpdated = onUpdated,
             allowStaleSnapshot = true,
             notifyWhenUnchanged = false,
         )
 
-    fun namesForInspection(
+    fun entriesForInspection(
         sourceFile: Path,
         onUpdated: () -> Unit,
-    ): List<String>? =
-        namesFor(
+    ): List<DesignTokenCatalogEntry>? =
+        entriesFor(
             sourceFile = sourceFile,
             onUpdated = onUpdated,
             allowStaleSnapshot = false,
             notifyWhenUnchanged = true,
         )
 
-    private fun namesFor(
+    private fun entriesFor(
         sourceFile: Path,
         onUpdated: () -> Unit,
         allowStaleSnapshot: Boolean,
         notifyWhenUnchanged: Boolean,
-    ): List<String>? {
+    ): List<DesignTokenCatalogEntry>? {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val indexService = project.service<DesignTokenIndexService>()
         val contextKey = indexService.contextKey(normalizedSourceFile)
@@ -58,8 +69,8 @@ internal class DesignTokenCompletionService(
 
         if (indexService.isIndexCached(normalizedSourceFile)) {
             return indexService
-                .completionTokenNames(normalizedSourceFile)
-                .also { names -> storeSnapshot(contextKey, names) }
+                .completionTokenCatalog(normalizedSourceFile)
+                .also { entries -> storeSnapshot(contextKey, entries) }
         }
 
         scheduleWarmup(
@@ -92,9 +103,9 @@ internal class DesignTokenCompletionService(
             var completed = false
 
             try {
-                val names = project.service<DesignTokenIndexService>().completionTokenNames(sourceFile)
+                val entries = project.service<DesignTokenIndexService>().completionTokenCatalog(sourceFile)
 
-                publishWarmup(contextKey, names)
+                publishWarmup(contextKey, entries)
                 completed = true
             } finally {
                 if (!completed) {
@@ -109,19 +120,19 @@ internal class DesignTokenCompletionService(
 
     private suspend fun publishWarmup(
         contextKey: TokenContextKey,
-        names: List<String>,
+        entries: List<DesignTokenCatalogEntry>,
     ) {
         val callbacks =
             synchronized(lock) {
-                val previous = snapshots.put(contextKey, names)
-                val namesChanged = previous != names
+                val previous = snapshots.put(contextKey, entries)
+                val entriesChanged = previous != entries
                 val pending = pendingCallbacks.remove(contextKey).orEmpty()
 
                 pendingWarmups.remove(contextKey)
                 pending
-                    .filter { callback -> namesChanged || callback.notifyWhenUnchanged }
+                    .filter { callback -> entriesChanged || callback.notifyWhenUnchanged }
                     .map(PendingCallback::callback)
-                    .takeIf { names.isNotEmpty() }
+                    .takeIf { entries.isNotEmpty() }
                     .orEmpty()
             }
 
@@ -134,10 +145,10 @@ internal class DesignTokenCompletionService(
 
     private fun storeSnapshot(
         contextKey: TokenContextKey,
-        names: List<String>,
+        entries: List<DesignTokenCatalogEntry>,
     ) {
         synchronized(lock) {
-            snapshots[contextKey] = names
+            snapshots[contextKey] = entries
         }
     }
 

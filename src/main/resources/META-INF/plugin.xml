@@ -38,6 +38,14 @@
             level="WARNING"
             implementationClass="org.taigaui.designtokens.completion.UnknownDesignTokenInspection"
         />
+        <localInspection
+            shortName="DeprecatedTaigaUIDesignToken"
+            displayName="Deprecated Taiga UI design token"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            level="WARNING"
+            implementationClass="org.taigaui.designtokens.completion.DeprecatedDesignTokenInspection"
+        />
         <typedHandler
             implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
             order="first, before completionAutoPopup"

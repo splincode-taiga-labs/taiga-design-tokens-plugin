@@ -13,6 +13,7 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
+import org.taigaui.designtokens.project.DesignTokenCatalogEntry
 import java.nio.file.Path
 
 class DesignTokenCompletionContributor : CompletionContributor() {
@@ -35,23 +36,34 @@ private class DesignTokenCompletionProvider : CompletionProvider<CompletionParam
 
         request.project.service<DesignTokenCompletionPreviewController>().ensureAttached()
 
-        val names =
+        val entries =
             request.project
                 .service<DesignTokenCompletionService>()
-                .namesFor(request.sourceFile, request::scheduleRefresh)
+                .entriesFor(request.sourceFile, request::scheduleRefresh)
                 .orEmpty()
         val matchingResult = result.withPrefixMatcher(request.prefix)
 
-        names.forEach { name ->
-            matchingResult.addElement(
-                LookupElementBuilder
-                    .create(name)
-                    .withTypeText(COMPLETION_TYPE_TEXT, true)
-                    .withInsertHandler { insertionContext, _ ->
-                        removeExistingTokenSuffix(insertionContext)
-                    },
-            )
+        entries.forEach { entry ->
+            matchingResult.addElement(entry.toLookupElement())
         }
+    }
+}
+
+private fun DesignTokenCatalogEntry.toLookupElement(): LookupElementBuilder {
+    val base =
+        LookupElementBuilder
+            .create(name)
+            .withTypeText(COMPLETION_TYPE_TEXT, true)
+            .withInsertHandler { insertionContext, _ ->
+                removeExistingTokenSuffix(insertionContext)
+            }
+
+    return if (deprecation == null) {
+        base
+    } else {
+        base
+            .withStrikeoutness(true)
+            .withTailText(" (deprecated)", true)
     }
 }
 

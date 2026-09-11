@@ -16,6 +16,7 @@ import com.intellij.psi.PsiFile
 import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffset
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffsetFinder
+import org.taigaui.designtokens.project.DesignTokenCatalogEntry
 import java.nio.file.Path
 
 internal data class DesignTokenCompletionContext(
@@ -50,19 +51,8 @@ private fun inspectUnknownDesignTokens(
     file: PsiFile,
     holder: ProblemsHolder,
 ) {
-    val sourceFile = file.inspectionSourceFile() ?: return
-    val project = file.project
-    val knownTokens =
-        project
-            .service<DesignTokenCompletionService>()
-            .namesForInspection(sourceFile) {
-                if (file.isValid) {
-                    DaemonCodeAnalyzer
-                        .getInstance(project)
-                        .restart(file, INSPECTION_RESTART_REASON)
-                }
-            }?.toSet()
-            ?: return
+    val catalog = file.designTokenCatalogForInspection() ?: return
+    val knownTokens = catalog.map(DesignTokenCatalogEntry::name).toSet()
 
     DesignTokenReferenceAtOffsetFinder
         .findAll(file.text)
@@ -73,6 +63,21 @@ private fun inspectUnknownDesignTokens(
                 reference,
                 DesignTokenNameMatcher.suggestions(reference.name, knownTokens),
             )
+        }
+}
+
+internal fun PsiFile.designTokenCatalogForInspection(): List<DesignTokenCatalogEntry>? {
+    val sourceFile = inspectionSourceFile() ?: return null
+    val project = project
+
+    return project
+        .service<DesignTokenCompletionService>()
+        .entriesForInspection(sourceFile) {
+            if (isValid) {
+                DaemonCodeAnalyzer
+                    .getInstance(project)
+                    .restart(this, INSPECTION_RESTART_REASON)
+            }
         }
 }
 
@@ -87,19 +92,20 @@ private fun ProblemsHolder.registerUnknownTokenProblem(
     reference: DesignTokenReferenceAtOffset,
     replacements: List<String>,
 ) {
-    val range = TextRange(reference.startOffset, reference.endOffset)
     val problemBuilder =
         problem(file, UNKNOWN_TOKEN_MESSAGE)
             .highlight(ProblemHighlightType.GENERIC_ERROR_OR_WARNING)
-            .range(range)
+            .range(reference.textRange())
 
     replacements.forEach { replacement ->
-        problemBuilder.fix(ReplaceUnknownDesignTokenQuickFix(replacement))
+        problemBuilder.fix(ReplaceDesignTokenQuickFix(replacement))
     }
     problemBuilder.register()
 }
 
-private class ReplaceUnknownDesignTokenQuickFix(
+private fun DesignTokenReferenceAtOffset.textRange(): TextRange = TextRange(startOffset, endOffset)
+
+internal class ReplaceDesignTokenQuickFix(
     private val replacement: String,
 ) : LocalQuickFix,
     DumbAware {

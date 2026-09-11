@@ -1,0 +1,39 @@
+package org.taigaui.designtokens.psi
+
+import com.intellij.psi.PsiComment
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.css.CssDeclaration
+import org.taigaui.designtokens.index.DesignTokenDeprecation
+import org.taigaui.designtokens.index.DesignTokenDeprecationParser
+
+internal object PsiDesignTokenDeprecationExtractor {
+    fun extract(
+        declaration: CssDeclaration,
+        tokenName: String,
+    ): DesignTokenDeprecation? =
+        listOfNotNull(declaration.previousComment(), declaration.nextComment())
+            .mapNotNull { comment -> DesignTokenDeprecationParser.parse(comment.text, tokenName) }
+            .distinct()
+            .singleOrNull()
+
+    private fun PsiElement.previousComment(): PsiComment? {
+        var sibling = prevSibling
+
+        while (sibling is PsiWhiteSpace) {
+            sibling = sibling.prevSibling
+        }
+
+        return sibling as? PsiComment
+    }
+
+    private fun PsiElement.nextComment(): PsiComment? {
+        var sibling = nextSibling
+
+        while (sibling is PsiWhiteSpace) {
+            sibling = sibling.nextSibling
+        }
+
+        return sibling as? PsiComment
+    }
+}

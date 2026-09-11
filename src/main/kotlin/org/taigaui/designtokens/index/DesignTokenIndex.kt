@@ -12,6 +12,17 @@ class DesignTokenIndex private constructor(
 
     fun find(name: String): List<DesignTokenVariant> = variantsByName[name].orEmpty()
 
+    fun deprecationFor(name: String): DesignTokenDeprecation? {
+        val origins = find(name).flatMap { variant -> variant.origins }
+        val projectOrigins = origins.filter { origin -> origin.packageName == PROJECT_STYLES_PACKAGE }
+        val effectiveOrigins = projectOrigins.ifEmpty { origins }
+
+        return effectiveOrigins
+            .mapNotNull(DesignTokenOrigin::deprecation)
+            .distinct()
+            .singleOrNull()
+    }
+
     companion object {
         fun build(
             packageRoot: Path,
@@ -46,6 +57,7 @@ class DesignTokenIndex private constructor(
                                     declaration,
                                 ),
                             cascadeOrder = declaration.cascadeOrder,
+                            deprecation = declaration.deprecation,
                         )
 
                     groupedOrigins.getOrPut(key, ::mutableListOf).add(origin)
