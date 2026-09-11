@@ -88,7 +88,11 @@ internal class DesignTokenResolutionSnapshot private constructor(
                     .sorted()
             val tokenCatalog =
                 tokenNames.map { name ->
-                    val projectDefinesToken = inputs.projectIndex?.find(name).orEmpty().isNotEmpty()
+                    val projectDefinesToken =
+                        inputs.projectIndex
+                            ?.find(name)
+                            .orEmpty()
+                            .isNotEmpty()
                     val deprecation =
                         if (projectDefinesToken) {
                             inputs.projectIndex?.deprecationFor(name)
