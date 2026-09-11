@@ -36,7 +36,11 @@ class DeprecatedDesignTokenIntegrationTest : BasePlatformTestCase() {
         val sourceFile = createFile(sourcePath, ".demo { color: var(--tui-leg); }")
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
-        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.text.indexOf("--tui-leg") + 9)
+        val caretOffset =
+            myFixture.editor.document.text
+                .indexOf("--tui-leg") + 9
+
+        myFixture.editor.caretModel.moveToOffset(caretOffset)
         indexService.completionTokenCatalog(sourcePath)
         myFixture.completeBasic()
 
@@ -55,7 +59,9 @@ class DeprecatedDesignTokenIntegrationTest : BasePlatformTestCase() {
         val sourceFile = createFile(sourcePath, ".demo { color: var(--tui-legacy); }")
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
-        val tokenOffset = myFixture.editor.document.text.indexOf("--tui-legacy")
+        val tokenOffset =
+            myFixture.editor.document.text
+                .indexOf("--tui-legacy")
 
         myFixture.editor.caretModel.moveToOffset(tokenOffset + 5)
         indexService.completionTokenCatalog(sourcePath)
@@ -161,7 +167,7 @@ class DeprecatedDesignTokenIntegrationTest : BasePlatformTestCase() {
             packageRoot.resolve("tokens.css"),
             """
             :root {
-                ${deprecationComment}--tui-legacy: #000;
+                $deprecationComment--tui-legacy: #000;
                 --tui-legacy-secondary: #111;
                 --tui-text-primary: #222;
             }
