@@ -38,11 +38,11 @@ private fun String.normalizeComment(): String =
         .map(String::trim)
         .map { line ->
             line
+                .removeSuffix("*/")
                 .removePrefix("/**")
                 .removePrefix("/*")
                 .removePrefix("//")
                 .removePrefix("*")
-                .removeSuffix("*/")
                 .trim()
         }.filter(String::isNotEmpty)
         .joinToString(separator = " ")
