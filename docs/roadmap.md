@@ -118,6 +118,17 @@ Implemented:
 - Restart highlighting after background token-index warmup instead of reporting false unknown-token warnings from a stale catalog.
 - Offer `Replace with ...` only when the closest known design token is sufficiently close and unambiguous.
 
+### Deprecated design tokens
+
+- Discover version-aware deprecation metadata from adjacent comments on installed/project token declarations.
+- Keep deprecated tokens discoverable in completion while marking them as deprecated.
+- Show deprecation and explicit replacement information in hover and completion previews.
+- Highlight deprecated `--tui-*` usages with a dedicated inspection in CSS, Less, and SCSS.
+- Offer `Replace with ...` only when metadata names one explicit, unambiguous replacement.
+- Let project-defined overrides suppress package-level deprecation for the effective local token.
+- Keep deprecation state context-aware for monorepos with different installed Taiga UI versions.
+- Implemented and verified by [#47](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/47) / [#55](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/pull/55).
+
 ### Icon completion and preview
 
 - Complete `@tui.*` icon names in JavaScript, TypeScript, HTML, and Angular templates, including static and bound string attributes.
@@ -138,9 +149,8 @@ Implemented:
 
 Remaining product work:
 
-1. [#47 — Highlight deprecated design tokens and suggest replacements](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/47).
-2. [#31 — Add event plugin support](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/31).
-3. [#49 — Add plugin settings for completion and token hover details](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
+1. [#31 — Add event plugin support](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/31).
+2. [#49 — Add plugin settings for completion and token hover details](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
 
 ## Stage 6 — Performance and architecture hardening
 
@@ -183,5 +193,23 @@ Recommended order:
 3. Complete the accessibility/focus audit (#52).
 4. Configure signing and controlled Marketplace publishing (#53).
 5. Complete the final release checklist and publish the first production-ready release (#54).
+
+## Current execution order
+
+```text
+#31 event plugins
+  ↓
+#49 plugin settings
+  ↓
+#50 IDE compatibility / Plugin Verifier
+  ↓
+#51 real-project validation
+  ↓
+#52 accessibility
+  ↓
+#53 signing / Marketplace
+  ↓
+#54 first production-ready release
+```
 
 The production release should happen only after the supported IDE matrix, real-project validation, accessibility checks, signing, and publishing pipeline are green.
