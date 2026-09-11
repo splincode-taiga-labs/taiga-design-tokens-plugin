@@ -38,14 +38,20 @@ internal data class DesignTokenResolutionSnapshotInputs(
 )
 
 internal class DesignTokenResolutionSnapshot private constructor(
-    val installedIndex: DesignTokenIndex?,
-    val projectIndex: DesignTokenIndex?,
-    private val nameCatalogIndex: DesignTokenIndex?,
+    private val inputs: DesignTokenResolutionSnapshotInputs,
+    private val effectiveNameCatalogIndex: DesignTokenIndex?,
     val mergedIndex: DesignTokenIndex?,
-    val tokenNames: List<String>,
     val tokenCatalog: List<DesignTokenCatalogEntry>,
     val resolver: DesignTokenValueResolver?,
 ) {
+    val installedIndex: DesignTokenIndex?
+        get() = inputs.installedIndex
+
+    val projectIndex: DesignTokenIndex?
+        get() = inputs.projectIndex
+
+    val tokenNames: List<String> = tokenCatalog.map(DesignTokenCatalogEntry::name)
+
     private val deprecationsByName =
         tokenCatalog
             .mapNotNull { entry -> entry.deprecation?.let { deprecation -> entry.name to deprecation } }
@@ -53,12 +59,12 @@ internal class DesignTokenResolutionSnapshot private constructor(
 
     fun deprecationFor(name: String): DesignTokenDeprecation? = deprecationsByName[name]
 
-    fun matches(inputs: DesignTokenResolutionSnapshotInputs): Boolean {
+    fun matches(candidate: DesignTokenResolutionSnapshotInputs): Boolean {
         val nameCatalogMatches =
-            inputs.nameCatalogIndex == null || nameCatalogIndex === inputs.nameCatalogIndex
+            candidate.nameCatalogIndex == null || effectiveNameCatalogIndex === candidate.nameCatalogIndex
 
-        return installedIndex === inputs.installedIndex &&
-            projectIndex === inputs.projectIndex &&
+        return installedIndex === candidate.installedIndex &&
+            projectIndex === candidate.projectIndex &&
             nameCatalogMatches
     }
 
@@ -94,11 +100,9 @@ internal class DesignTokenResolutionSnapshot private constructor(
                 }
 
             return DesignTokenResolutionSnapshot(
-                installedIndex = inputs.installedIndex,
-                projectIndex = inputs.projectIndex,
-                nameCatalogIndex = effectiveNameCatalogIndex,
+                inputs = inputs,
+                effectiveNameCatalogIndex = effectiveNameCatalogIndex,
                 mergedIndex = mergedIndex,
-                tokenNames = tokenNames,
                 tokenCatalog = tokenCatalog,
                 resolver = mergedIndex?.let(::DesignTokenValueResolver),
             )
