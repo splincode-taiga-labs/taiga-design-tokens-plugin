@@ -29,7 +29,7 @@
         },
         {
           "name": "Custom modifiers for declarative events handling",
-          "priority": "normal",
+          "priority": "high",
           "pattern": {
             "template": [
               {
@@ -106,7 +106,7 @@
                 "priority": "high",
                 "repeat": true,
                 "unique": true,
-                "required": false
+                "required": true
               }
             ]
           },
