@@ -1,0 +1,45 @@
+package org.taigaui.designtokens.events
+
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class EventPluginsWebTypesTest {
+    @Test
+    fun `event plugins fallback web types are packaged`() {
+        val resource = javaClass.classLoader.getResource("web-types/event-plugins@3.1.0.web-types.json")
+
+        assertNotNull("event plugins fallback Web Types must be available on the test classpath", resource)
+
+        val webTypes = resource!!.readText()
+
+        assertTrue(webTypes.contains("\"name\": \"@taiga-ui/event-plugins\""))
+        assertTrue(webTypes.contains("\"version\": \"3.1.0\""))
+        assertTrue(webTypes.contains("\"ng-custom-events\""))
+        assertTrue(webTypes.contains("\"#item:event\""))
+        assertTrue(webTypes.contains("\"#...\""))
+        assertTrue(webTypes.contains("\"#item:modifier\""))
+        assertTrue(webTypes.contains("\"name\": \"stop\""))
+        assertTrue(webTypes.contains("\"name\": \"prevent\""))
+        assertTrue(webTypes.contains("\"template\": [\"longtap\"]"))
+        assertTrue(webTypes.contains("\"template\": [\"resize\"]"))
+        assertTrue(webTypes.contains("debounce~<delay>ms"))
+        assertTrue(webTypes.contains("throttle~<delay>ms"))
+    }
+
+    @Test
+    fun `plugin descriptor registers event plugin support`() {
+        val descriptor = javaClass.classLoader.getResource("META-INF/plugin.xml")
+
+        assertNotNull("META-INF/plugin.xml must be available on the test classpath", descriptor)
+
+        val pluginXml = descriptor!!.readText()
+
+        assertTrue(pluginXml.contains("<polySymbols.webTypes"))
+        assertTrue(pluginXml.contains("source=\"web-types/event-plugins@3.1.0.web-types.json\""))
+        assertTrue(pluginXml.contains("enableByDefault=\"false\""))
+        assertTrue(pluginXml.contains("<editorFactoryMouseListener"))
+        assertTrue(pluginXml.contains("<editorFactoryMouseMotionListener"))
+        assertTrue(pluginXml.contains("EventPluginsHoverPopupListener"))
+    }
+}

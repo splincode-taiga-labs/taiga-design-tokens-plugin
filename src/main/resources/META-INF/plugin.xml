@@ -14,6 +14,10 @@
     <depends>com.intellij.css</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <polySymbols.webTypes
+            source="web-types/event-plugins@3.1.0.web-types.json"
+            enableByDefault="false"
+        />
         <completion.contributor
             language="CSS"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
@@ -82,6 +86,12 @@
             nameKey="inlay.rem.px.name"
             descriptionKey="inlay.rem.px.description"
             providerId="taiga.rem.px.embedded.styles"
+        />
+        <editorFactoryMouseListener
+            implementation="org.taigaui.designtokens.events.EventPluginsHoverPopupListener"
+        />
+        <editorFactoryMouseMotionListener
+            implementation="org.taigaui.designtokens.events.EventPluginsHoverPopupListener"
         />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"

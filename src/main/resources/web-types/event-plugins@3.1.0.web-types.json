@@ -1,0 +1,106 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JetBrains/web-types/master/schema/web-types.json",
+  "name": "@taiga-ui/event-plugins",
+  "framework": "angular",
+  "version": "3.1.0",
+  "description-markup": "markdown",
+  "contributions": {
+    "js": {
+      "ng-custom-events": [
+        {
+          "name": "Longtap event",
+          "description": "Fires for a long press or context-menu gesture. Uses the native `contextmenu` event where available and provides an iOS-compatible fallback.",
+          "priority": "normal",
+          "pattern": {
+            "template": ["longtap"]
+          }
+        },
+        {
+          "name": "Resize event",
+          "description": "Fires when the element dimensions change, using `ResizeObserver` under the hood.",
+          "priority": "normal",
+          "pattern": {
+            "template": ["resize"]
+          }
+        },
+        {
+          "name": "Custom modifiers for declarative events handling",
+          "priority": "normal",
+          "pattern": {
+            "template": [
+              {
+                "items": {
+                  "path": "/js/events",
+                  "includeVirtual": false
+                },
+                "template": ["#item:event"]
+              },
+              {
+                "items": "ng-event-plugins-modifiers",
+                "template": [".", "#...", "#item:modifier"],
+                "priority": "high",
+                "repeat": true,
+                "unique": true,
+                "required": false
+              }
+            ]
+          },
+          "ng-event-plugins-modifiers": [
+            {
+              "name": "capture",
+              "description": "Listens for the event during the capture phase instead of the bubbling phase."
+            },
+            {
+              "name": "once",
+              "description": "Removes the event listener automatically after the first invocation."
+            },
+            {
+              "name": "passive",
+              "description": "Registers a passive event listener, allowing the browser to optimize scrolling and other input handling."
+            },
+            {
+              "name": "prevent",
+              "description": "Calls `event.preventDefault()` before invoking the event handler."
+            },
+            {
+              "name": "self",
+              "description": "Invokes the handler only when the event originated from the element itself, ignoring bubbled events from descendants."
+            },
+            {
+              "name": "silent",
+              "description": "Legacy alias for `zoneless`. Runs the event handler outside Angular's `NgZone` to avoid triggering change detection."
+            },
+            {
+              "name": "zoneless",
+              "description": "Runs the event handler outside Angular's `NgZone` to avoid triggering change detection."
+            },
+            {
+              "name": "stop",
+              "description": "Calls `event.stopPropagation()` before invoking the event handler."
+            },
+            {
+              "name": "debounce~<delay>ms",
+              "description": "Invokes the handler after events stop arriving for the specified delay in milliseconds. Example: `click.debounce~300ms`.",
+              "pattern": "debounce~\\d+ms"
+            },
+            {
+              "name": "debounce~<delay>s",
+              "description": "Invokes the handler after events stop arriving for the specified delay in seconds. Example: `click.debounce~2s`.",
+              "pattern": "debounce~\\d+s"
+            },
+            {
+              "name": "throttle~<delay>ms",
+              "description": "Invokes the handler at most once per specified interval in milliseconds. Example: `click.throttle~300ms`.",
+              "pattern": "throttle~\\d+ms"
+            },
+            {
+              "name": "throttle~<delay>s",
+              "description": "Invokes the handler at most once per specified interval in seconds. Example: `click.throttle~2s`.",
+              "pattern": "throttle~\\d+s"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

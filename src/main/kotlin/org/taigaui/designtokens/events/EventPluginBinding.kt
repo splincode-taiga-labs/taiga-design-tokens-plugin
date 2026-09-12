@@ -1,0 +1,132 @@
+package org.taigaui.designtokens.events
+
+internal data class EventPluginBinding(
+    val source: String,
+    val event: String,
+    val modifiers: List<EventPluginModifier>,
+) {
+    val combinedBehavior: String
+        get() = "Handles $event: ${modifiers.joinToString(separator = "; ") { modifier -> modifier.behavior }}."
+
+    companion object {
+        fun parse(attributeName: String): EventPluginBinding? {
+            if (!attributeName.startsWith('(') || !attributeName.endsWith(')')) {
+                return null
+            }
+
+            val source = attributeName.substring(1, attributeName.lastIndex)
+            val parts = source.split('.')
+            val firstModifierIndex = parts.indexOfFirst { part -> EventPluginModifier.parse(part) != null }
+
+            if (firstModifierIndex <= 0) {
+                return null
+            }
+
+            val modifiers =
+                parts
+                    .drop(firstModifierIndex)
+                    .map { part -> EventPluginModifier.parse(part) ?: return null }
+
+            return EventPluginBinding(
+                source = attributeName,
+                event = parts.take(firstModifierIndex).joinToString("."),
+                modifiers = modifiers,
+            )
+        }
+    }
+}
+
+internal data class EventPluginModifier(
+    val source: String,
+    val description: String,
+    val behavior: String,
+) {
+    companion object {
+        fun parse(source: String): EventPluginModifier? =
+            when (source) {
+                "capture" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Listens for the event during the capture phase instead of the bubbling phase.",
+                        behavior = "listens during the capture phase",
+                    )
+
+                "once" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Removes the event listener automatically after the first invocation.",
+                        behavior = "removes the listener after the first invocation",
+                    )
+
+                "passive" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Registers a passive event listener, allowing the browser to optimize input handling.",
+                        behavior = "registers the listener as passive",
+                    )
+
+                "prevent" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Calls event.preventDefault() before invoking the event handler.",
+                        behavior = "calls event.preventDefault() before the handler",
+                    )
+
+                "self" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Invokes the handler only when the event originated from the element itself.",
+                        behavior = "ignores bubbled events from descendants",
+                    )
+
+                "silent" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Legacy alias for zoneless; runs the handler outside Angular's NgZone.",
+                        behavior = "runs the handler outside Angular's NgZone",
+                    )
+
+                "zoneless" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Runs the event handler outside Angular's NgZone to avoid change detection.",
+                        behavior = "runs the handler outside Angular's NgZone",
+                    )
+
+                "stop" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Calls event.stopPropagation() before invoking the event handler.",
+                        behavior = "calls event.stopPropagation() before the handler",
+                    )
+
+                else -> parseTimedModifier(source)
+            }
+
+        private fun parseTimedModifier(source: String): EventPluginModifier? {
+            val match = TIMED_MODIFIER.matchEntire(source) ?: return null
+            val kind = match.groupValues[1]
+            val delay = match.groupValues[2]
+
+            return when (kind) {
+                "debounce" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Invokes the handler after events stop arriving for $delay.",
+                        behavior = "debounces the handler by $delay",
+                    )
+
+                "throttle" ->
+                    EventPluginModifier(
+                        source = source,
+                        description = "Invokes the handler at most once per $delay interval.",
+                        behavior = "throttles the handler to once per $delay",
+                    )
+
+                else -> null
+            }
+        }
+
+        private val TIMED_MODIFIER = Regex("(debounce|throttle)~(\\d+(?:ms|s))")
+    }
+}
