@@ -50,6 +50,14 @@
             level="WARNING"
             implementationClass="org.taigaui.designtokens.completion.DeprecatedDesignTokenInspection"
         />
+        <localInspection
+            shortName="DuplicateTaigaUIEventModifier"
+            displayName="Duplicate Taiga UI event modifier"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            level="ERROR"
+            implementationClass="org.taigaui.designtokens.events.DuplicateEventPluginModifierInspection"
+        />
         <typedHandler
             implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
             order="first, before completionAutoPopup"
