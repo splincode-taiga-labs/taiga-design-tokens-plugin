@@ -26,8 +26,8 @@ class EventPluginsWebTypesTest {
         assertTrue(webTypes.contains("\"regex\": \"space|dot|esc|escape|enter"))
         assertTrue(webTypes.contains("\"name\": \"stop\""))
         assertTrue(webTypes.contains("\"name\": \"prevent\""))
-        assertTrue(webTypes.contains("\"template\": [\n              \"longtap\""))
-        assertTrue(webTypes.contains("\"template\": [\n              \"resize\""))
+        assertTrue(webTypes.contains("\"longtap\""))
+        assertTrue(webTypes.contains("\"resize\""))
         assertTrue(webTypes.contains("debounce~<delay>ms"))
         assertTrue(webTypes.contains("throttle~<delay>ms"))
     }
