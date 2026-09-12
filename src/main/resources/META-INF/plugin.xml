@@ -51,6 +51,14 @@
             implementationClass="org.taigaui.designtokens.completion.DeprecatedDesignTokenInspection"
         />
         <localInspection
+            shortName="UnknownTaigaUIEventModifier"
+            displayName="Unknown Taiga UI event modifier"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            level="ERROR"
+            implementationClass="org.taigaui.designtokens.events.UnknownEventPluginModifierInspection"
+        />
+        <localInspection
             shortName="DuplicateTaigaUIEventModifier"
             displayName="Duplicate Taiga UI event modifier"
             groupName="Taiga UI"
