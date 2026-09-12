@@ -30,6 +30,10 @@ class EventPluginsWebTypesTest {
         assertTrue(webTypes.contains("\"resize\""))
         assertTrue(webTypes.contains("debounce~<delay>ms"))
         assertTrue(webTypes.contains("throttle~<delay>ms"))
+
+        val taigaModifiers = webTypes.substring(webTypes.indexOf("\"items\": \"ng-event-plugins-modifiers\""))
+
+        assertTrue(taigaModifiers.substringBefore("\"ng-event-plugins-key-event-modifiers\"").contains("\"unique\": true"))
     }
 
     @Test
