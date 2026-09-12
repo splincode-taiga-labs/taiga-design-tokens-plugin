@@ -14,6 +14,10 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
             return true
         }
 
+        if (isFalseAngularHostBindingWarning(highlightInfo, psiFile)) {
+            return false
+        }
+
         val inspectionToolId = highlightInfo.inspectionToolId
 
         if (inspectionToolId != null && inspectionToolId !in CONFLICTING_INSPECTIONS) {
@@ -39,6 +43,32 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
             highlightInfo.endOffset,
             eventStart,
             eventEnd,
+        )
+    }
+
+    private fun isFalseAngularHostBindingWarning(
+        highlightInfo: HighlightInfo,
+        psiFile: PsiFile,
+    ): Boolean {
+        if (highlightInfo.severity.compareTo(HighlightSeverity.ERROR) >= 0) {
+            return false
+        }
+
+        val hostBinding =
+            AngularHostBindingSupport.findAt(
+                psiFile,
+                highlightInfo.startOffset,
+            ) ?: return false
+
+        if (EventPluginBinding.parse(hostBinding.source) == null) {
+            return false
+        }
+
+        return rangesIntersect(
+            highlightInfo.startOffset,
+            highlightInfo.endOffset,
+            hostBinding.startOffset,
+            hostBinding.endOffset,
         )
     }
 
