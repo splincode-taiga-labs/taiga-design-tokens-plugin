@@ -44,29 +44,43 @@ internal object EventPluginUnknownModifierFinder {
         buildList {
             EVENT_BINDING_PATTERN.findAll(text).forEach { bindingMatch ->
                 val bindingGroup = bindingMatch.groups[1] ?: return@forEach
-                val segments = EVENT_SEGMENT_PATTERN.findAll(bindingGroup.value).toList()
-                val firstModifierIndex =
-                    segments.indexOfFirst { segment -> EventPluginModifier.parse(segment.value) != null }
 
-                segments.forEachIndexed { index, segment ->
-                    val source = segment.value
+                addAll(
+                    findInEventName(
+                        eventName = bindingGroup.value,
+                        eventNameStartOffset = bindingGroup.range.first,
+                    ),
+                )
+            }
+        }
 
-                    if (EventPluginModifier.parse(source) != null || index == 0) {
-                        return@forEachIndexed
-                    }
+    fun findInEventName(
+        eventName: String,
+        eventNameStartOffset: Int,
+    ): List<EventPluginUnknownModifier> =
+        buildList {
+            val segments = EVENT_SEGMENT_PATTERN.findAll(eventName).toList()
+            val firstModifierIndex =
+                segments.indexOfFirst { segment -> EventPluginModifier.parse(segment.value) != null }
 
-                    val followsTaigaModifier = firstModifierIndex > 0 && index > firstModifierIndex
-                    val looksLikeTaigaModifier = source.looksLikeTaigaModifier()
+            segments.forEachIndexed { index, segment ->
+                val source = segment.value
 
-                    if (followsTaigaModifier || looksLikeTaigaModifier) {
-                        add(
-                            EventPluginUnknownModifier(
-                                modifier = source,
-                                startOffset = bindingGroup.range.first + segment.range.first,
-                                endOffset = bindingGroup.range.first + segment.range.last + 1,
-                            ),
-                        )
-                    }
+                if (EventPluginModifier.parse(source) != null || index == 0) {
+                    return@forEachIndexed
+                }
+
+                val followsTaigaModifier = firstModifierIndex > 0 && index > firstModifierIndex
+                val looksLikeTaigaModifier = source.looksLikeTaigaModifier()
+
+                if (followsTaigaModifier || looksLikeTaigaModifier) {
+                    add(
+                        EventPluginUnknownModifier(
+                            modifier = source,
+                            startOffset = eventNameStartOffset + segment.range.first,
+                            endOffset = eventNameStartOffset + segment.range.last + 1,
+                        ),
+                    )
                 }
             }
         }
