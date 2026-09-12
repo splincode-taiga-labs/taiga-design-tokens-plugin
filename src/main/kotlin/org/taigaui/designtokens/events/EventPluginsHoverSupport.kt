@@ -16,6 +16,8 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.openapi.util.text.StringUtil
+import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiFile
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineName
@@ -203,10 +205,17 @@ private fun EditorMouseEvent.toEventPluginsHoverRequest(project: Project): Event
             }
         }
 
-private fun EditorMouseEvent.eventPluginBindingUnderPointer(): EventPluginBindingAtOffset? =
-    EventPluginBindingAtOffsetFinder
-        .find(editor.document.immutableCharSequence, offset)
-        ?.takeIf { reference -> editor.isPointerOver(reference, mouseEvent.point) }
+private fun EditorMouseEvent.eventPluginBindingUnderPointer(): EventPluginBindingAtOffset? {
+    val project = editor.project
+    val file = project?.let { PsiDocumentManager.getInstance(it).getPsiFile(editor.document) }
+
+    return EventPluginBindingAtOffsetFinder
+        .find(
+            file = file,
+            text = editor.document.immutableCharSequence,
+            offset = offset,
+        )?.takeIf { reference -> editor.isPointerOver(reference, mouseEvent.point) }
+}
 
 private fun EventPluginsHoverRequest.isStillCurrent(project: Project): Boolean =
     editor.canShowEventPluginsHover(project) &&
@@ -268,6 +277,26 @@ internal data class EventPluginBindingAtOffset(
 )
 
 internal object EventPluginBindingAtOffsetFinder {
+    fun find(
+        file: PsiFile?,
+        text: CharSequence,
+        offset: Int,
+    ): EventPluginBindingAtOffset? =
+        find(text, offset)
+            ?: file
+                ?.let { AngularHostBindingSupport.findAt(it, offset) }
+                ?.let { hostBinding ->
+                    EventPluginBinding
+                        .parse(hostBinding.source)
+                        ?.let { binding ->
+                            EventPluginBindingAtOffset(
+                                binding = binding,
+                                startOffset = hostBinding.startOffset,
+                                endOffset = hostBinding.endOffset,
+                            )
+                        }
+                }
+
     fun find(
         text: CharSequence,
         offset: Int,
