@@ -9,30 +9,31 @@ internal data class EventPluginBinding(
         get() = "Handles $event: ${modifiers.joinToString(separator = "; ") { modifier -> modifier.behavior }}."
 
     companion object {
-        fun parse(attributeName: String): EventPluginBinding? {
-            if (!attributeName.startsWith('(') || !attributeName.endsWith(')')) {
-                return null
-            }
+        fun parse(attributeName: String): EventPluginBinding? =
+            attributeName
+                .takeIf { name -> name.startsWith('(') && name.endsWith(')') }
+                ?.let { name ->
+                    val source = name.substring(1, name.lastIndex)
+                    val parts = source.split('.')
+                    val firstModifierIndex = parts.indexOfFirst { part -> EventPluginModifier.parse(part) != null }
 
-            val source = attributeName.substring(1, attributeName.lastIndex)
-            val parts = source.split('.')
-            val firstModifierIndex = parts.indexOfFirst { part -> EventPluginModifier.parse(part) != null }
+                    firstModifierIndex
+                        .takeIf { index -> index > 0 }
+                        ?.let { index ->
+                            val modifierParts = parts.drop(index)
+                            val modifiers = modifierParts.mapNotNull(EventPluginModifier::parse)
 
-            if (firstModifierIndex <= 0) {
-                return null
-            }
-
-            val modifiers =
-                parts
-                    .drop(firstModifierIndex)
-                    .map { part -> EventPluginModifier.parse(part) ?: return null }
-
-            return EventPluginBinding(
-                source = attributeName,
-                event = parts.take(firstModifierIndex).joinToString("."),
-                modifiers = modifiers,
-            )
-        }
+                            modifiers
+                                .takeIf { parsed -> parsed.size == modifierParts.size }
+                                ?.let {
+                                    EventPluginBinding(
+                                        source = name,
+                                        event = parts.take(index).joinToString("."),
+                                        modifiers = modifiers,
+                                    )
+                                }
+                        }
+                }
     }
 }
 
