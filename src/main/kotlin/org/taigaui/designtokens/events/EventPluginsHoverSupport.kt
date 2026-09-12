@@ -276,70 +276,54 @@ internal object EventPluginBindingAtOffsetFinder {
             null
         } else {
             val searchOffset = offset.coerceAtMost(text.lastIndex)
-            val start = findOpeningParenthesis(text, searchOffset)
-            val end = findClosingParenthesis(text, searchOffset)
+            val range = findBindingRange(text, searchOffset)
 
-            if (start == null || end == null || searchOffset < start || searchOffset > end || !hasAttributeValue(text, end)) {
+            if (range == null || !hasAttributeValue(text, range.last)) {
                 null
             } else {
-                val source = text.subSequence(start, end + 1).toString()
+                val source = text.subSequence(range.first, range.last + 1).toString()
 
                 EventPluginBinding
                     .parse(source)
                     ?.let { binding ->
                         EventPluginBindingAtOffset(
                             binding = binding,
-                            startOffset = start,
-                            endOffset = end + 1,
+                            startOffset = range.first,
+                            endOffset = range.last + 1,
                         )
                     }
             }
         }
 
+    private fun findBindingRange(
+        text: CharSequence,
+        offset: Int,
+    ): IntRange? {
+        val start = findOpeningParenthesis(text, offset)
+        val end = findClosingParenthesis(text, offset)
+
+        return if (start != null && end != null && offset in start..end) {
+            start..end
+        } else {
+            null
+        }
+    }
+
     private fun findOpeningParenthesis(
         text: CharSequence,
         offset: Int,
-    ): Int? {
-        var result: Int? = null
-
-        for (index in offset downTo maxOf(0, offset - MAX_BINDING_LENGTH)) {
-            val char = text[index]
-
-            if (char == '(') {
-                result = index
-                break
-            }
-
-            if (char.isBindingBoundary()) {
-                break
-            }
-        }
-
-        return result
-    }
+    ): Int? =
+        (offset downTo maxOf(0, offset - MAX_BINDING_LENGTH))
+            .firstOrNull { index -> text[index] == '(' || text[index].isBindingBoundary() }
+            ?.takeIf { index -> text[index] == '(' }
 
     private fun findClosingParenthesis(
         text: CharSequence,
         offset: Int,
-    ): Int? {
-        var result: Int? = null
-        val end = minOf(text.lastIndex, offset + MAX_BINDING_LENGTH)
-
-        for (index in offset..end) {
-            val char = text[index]
-
-            if (char == ')') {
-                result = index
-                break
-            }
-
-            if (char.isBindingBoundary()) {
-                break
-            }
-        }
-
-        return result
-    }
+    ): Int? =
+        (offset..minOf(text.lastIndex, offset + MAX_BINDING_LENGTH))
+            .firstOrNull { index -> text[index] == ')' || text[index].isBindingBoundary() }
+            ?.takeIf { index -> text[index] == ')' }
 
     private fun hasAttributeValue(
         text: CharSequence,
