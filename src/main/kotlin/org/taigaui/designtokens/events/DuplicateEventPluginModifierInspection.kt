@@ -41,31 +41,45 @@ internal data class EventPluginDuplicateModifier(
 internal object EventPluginDuplicateModifierFinder {
     fun findAll(text: String): List<EventPluginDuplicateModifier> =
         buildList {
-            EVENT_BINDING_PATTERN.findAll(text).forEach binding@{ bindingMatch ->
-                val bindingGroup = bindingMatch.groups[1] ?: return@binding
-                val segments = EVENT_SEGMENT_PATTERN.findAll(bindingGroup.value).toList()
-                val firstModifierIndex =
-                    segments.indexOfFirst { segment -> EventPluginModifier.parse(segment.value) != null }
+            EVENT_BINDING_PATTERN.findAll(text).forEach { bindingMatch ->
+                val bindingGroup = bindingMatch.groups[1] ?: return@forEach
 
-                if (firstModifierIndex <= 0) {
-                    return@binding
-                }
+                addAll(
+                    findInEventName(
+                        eventName = bindingGroup.value,
+                        eventNameStartOffset = bindingGroup.range.first,
+                    ),
+                )
+            }
+        }
 
-                val seenModifiers = mutableSetOf<String>()
+    fun findInEventName(
+        eventName: String,
+        eventNameStartOffset: Int,
+    ): List<EventPluginDuplicateModifier> =
+        buildList {
+            val segments = EVENT_SEGMENT_PATTERN.findAll(eventName).toList()
+            val firstModifierIndex =
+                segments.indexOfFirst { segment -> EventPluginModifier.parse(segment.value) != null }
 
-                segments.drop(firstModifierIndex).forEach segment@{ segment ->
-                    val modifier = EventPluginModifier.parse(segment.value) ?: return@segment
-                    val identity = modifier.identity()
+            if (firstModifierIndex <= 0) {
+                return@buildList
+            }
 
-                    if (!seenModifiers.add(identity)) {
-                        add(
-                            EventPluginDuplicateModifier(
-                                modifier = segment.value,
-                                startOffset = bindingGroup.range.first + segment.range.first,
-                                endOffset = bindingGroup.range.first + segment.range.last + 1,
-                            ),
-                        )
-                    }
+            val seenModifiers = mutableSetOf<String>()
+
+            segments.drop(firstModifierIndex).forEach { segment ->
+                val modifier = EventPluginModifier.parse(segment.value) ?: return@forEach
+                val identity = modifier.identity()
+
+                if (!seenModifiers.add(identity)) {
+                    add(
+                        EventPluginDuplicateModifier(
+                            modifier = segment.value,
+                            startOffset = eventNameStartOffset + segment.range.first,
+                            endOffset = eventNameStartOffset + segment.range.last + 1,
+                        ),
+                    )
                 }
             }
         }
