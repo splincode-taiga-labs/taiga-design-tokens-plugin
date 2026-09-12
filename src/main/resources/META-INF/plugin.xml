@@ -31,7 +31,7 @@
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
         <completion.contributor
-            language="TypeScript"
+            language="any"
             implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginCompletionContributor"
         />
         <completion.contributor
