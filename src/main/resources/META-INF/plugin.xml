@@ -68,6 +68,15 @@
             level="ERROR"
             implementationClass="org.taigaui.designtokens.events.DuplicateEventPluginModifierInspection"
         />
+        <localInspection
+            shortName="InvalidTaigaUIEventModifierInHostBinding"
+            displayName="Invalid Taiga UI event modifier in Angular host binding"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            language="TypeScript"
+            level="ERROR"
+            implementationClass="org.taigaui.designtokens.events.TypeScriptEventPluginModifierInspection"
+        />
         <daemon.highlightInfoFilter
             implementation="org.taigaui.designtokens.events.EventPluginKeyEventHighlightInfoFilter"
         />
