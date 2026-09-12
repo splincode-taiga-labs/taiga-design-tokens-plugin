@@ -46,7 +46,14 @@ internal object AngularHostBindingSupport {
             return null
         }
 
-        val decorator = PsiTreeUtil.getParentOfType(hostProperty, ES6Decorator::class.java, false) ?: return null
+        val metadataObject = hostProperty.context as? JSObjectLiteralExpression ?: return null
+        val outerObject = PsiTreeUtil.getParentOfType(metadataObject, JSObjectLiteralExpression::class.java, true)
+
+        if (outerObject != null) {
+            return null
+        }
+
+        val decorator = PsiTreeUtil.getParentOfType(metadataObject, ES6Decorator::class.java, false) ?: return null
 
         if (decorator.decoratorName !in ANGULAR_ENTITY_DECORATORS) {
             return null
