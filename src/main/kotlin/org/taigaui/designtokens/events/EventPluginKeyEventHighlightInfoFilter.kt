@@ -22,8 +22,9 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
 
         val reference =
             EventPluginBindingAtOffsetFinder.find(
-                psiFile.text,
-                highlightInfo.startOffset,
+                file = psiFile,
+                text = psiFile.text,
+                offset = highlightInfo.startOffset,
             ) ?: return true
 
         if (!AngularExtendedKeyEventSupport.isValid(reference.binding.event)) {
