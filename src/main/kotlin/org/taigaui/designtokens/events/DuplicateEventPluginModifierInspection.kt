@@ -41,20 +41,20 @@ internal data class EventPluginDuplicateModifier(
 internal object EventPluginDuplicateModifierFinder {
     fun findAll(text: String): List<EventPluginDuplicateModifier> =
         buildList {
-            EVENT_BINDING_PATTERN.findAll(text).forEach { bindingMatch ->
-                val bindingGroup = bindingMatch.groups[1] ?: return@forEach
+            EVENT_BINDING_PATTERN.findAll(text).forEach binding@{ bindingMatch ->
+                val bindingGroup = bindingMatch.groups[1] ?: return@binding
                 val segments = EVENT_SEGMENT_PATTERN.findAll(bindingGroup.value).toList()
                 val firstModifierIndex =
                     segments.indexOfFirst { segment -> EventPluginModifier.parse(segment.value) != null }
 
                 if (firstModifierIndex <= 0) {
-                    return@forEach
+                    return@binding
                 }
 
                 val seenModifiers = mutableSetOf<String>()
 
-                segments.drop(firstModifierIndex).forEach { segment ->
-                    val modifier = EventPluginModifier.parse(segment.value) ?: return@forEach
+                segments.drop(firstModifierIndex).forEach segment@{ segment ->
+                    val modifier = EventPluginModifier.parse(segment.value) ?: return@segment
                     val identity = modifier.identity()
 
                     if (!seenModifiers.add(identity)) {
