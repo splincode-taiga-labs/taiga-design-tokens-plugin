@@ -37,6 +37,40 @@ class EventPluginBindingTest {
     }
 
     @Test
+    fun `finds unknown taiga modifier typos`() {
+        val text =
+            """
+            <button (click.captre)="method()"></button>
+            <button (click.zoneless.captre)="method()"></button>
+            <button (keydown.enter.stop)="method()"></button>
+            """.trimIndent()
+
+        val problems = EventPluginUnknownModifierFinder.findAll(text)
+
+        assertEquals(listOf("captre", "captre"), problems.map(EventPluginUnknownModifier::modifier))
+        problems.forEach { problem ->
+            assertEquals(problem.modifier, text.substring(problem.startOffset, problem.endOffset))
+        }
+    }
+
+    @Test
+    fun `finds duplicate taiga modifiers`() {
+        val text =
+            """
+            <button (click.zoneless.zoneless)="method()"></button>
+            <button (click.debounce~100ms.debounce~200ms)="method()"></button>
+            <button (keydown.enter.stop)="method()"></button>
+            """.trimIndent()
+
+        val problems = EventPluginDuplicateModifierFinder.findAll(text)
+
+        assertEquals(listOf("zoneless", "debounce~200ms"), problems.map(EventPluginDuplicateModifier::modifier))
+        problems.forEach { problem ->
+            assertEquals(problem.modifier, text.substring(problem.startOffset, problem.endOffset))
+        }
+    }
+
+    @Test
     fun `ignores bindings without taiga modifiers`() {
         assertNull(EventPluginBinding.parse("(click)"))
         assertNull(EventPluginBinding.parse("class"))
