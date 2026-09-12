@@ -2,6 +2,7 @@ package org.taigaui.designtokens.events
 
 import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
@@ -206,15 +207,23 @@ private fun EditorMouseEvent.toEventPluginsHoverRequest(project: Project): Event
         }
 
 private fun EditorMouseEvent.eventPluginBindingUnderPointer(): EventPluginBindingAtOffset? {
-    val project = editor.project
-    val file = project?.let { PsiDocumentManager.getInstance(it).getPsiFile(editor.document) }
+    val text = editor.document.immutableCharSequence
+    val textReference = EventPluginBindingAtOffsetFinder.find(text, offset)
+    val reference =
+        textReference
+            ?: editor.project?.let { project ->
+                ReadAction.compute<EventPluginBindingAtOffset?, RuntimeException> {
+                    val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document)
 
-    return EventPluginBindingAtOffsetFinder
-        .find(
-            file = file,
-            text = editor.document.immutableCharSequence,
-            offset = offset,
-        )?.takeIf { reference -> editor.isPointerOver(reference, mouseEvent.point) }
+                    EventPluginBindingAtOffsetFinder.find(
+                        file = file,
+                        text = text,
+                        offset = offset,
+                    )
+                }
+            }
+
+    return reference?.takeIf { candidate -> editor.isPointerOver(candidate, mouseEvent.point) }
 }
 
 private fun EventPluginsHoverRequest.isStillCurrent(project: Project): Boolean =
