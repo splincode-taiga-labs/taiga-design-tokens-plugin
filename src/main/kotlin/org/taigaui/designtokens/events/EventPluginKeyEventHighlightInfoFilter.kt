@@ -65,10 +65,12 @@ internal object AngularExtendedKeyEventSupport {
             return false
         }
 
-        val modifiers = parts.drop(1).dropLast(1).map(String::lowercase)
+        val modifiers = parts.drop(1).dropLast(1).map { part -> part.lowercase() }
         val keyName = parts.last()
+        val hasInvalidModifiers = modifiers.any { modifier -> modifier !in KEY_EVENT_MODIFIERS }
+        val hasDuplicateModifiers = modifiers.distinct().size != modifiers.size
 
-        if (modifiers.any { modifier -> modifier !in KEY_EVENT_MODIFIERS } || modifiers.distinct().size != modifiers.size) {
+        if (hasInvalidModifiers || hasDuplicateModifiers) {
             return false
         }
 
@@ -81,10 +83,13 @@ internal object AngularExtendedKeyEventSupport {
 
     private fun isKeyName(keyName: String): Boolean {
         val normalized = keyName.lowercase()
+        val isStandardCharacter =
+            normalized.length == 1 &&
+                (normalized[0].isLetterOrDigit() || normalized[0] in STANDARD_KEY_SYMBOLS)
 
         return normalized in SPECIAL_KEY_NAMES ||
             normalized.matches(FUNCTION_KEY) ||
-            normalized.length == 1 && (normalized[0].isLetterOrDigit() || normalized[0] in STANDARD_KEY_SYMBOLS)
+            isStandardCharacter
     }
 
     private fun isCodeKeyName(keyName: String): Boolean {
