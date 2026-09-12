@@ -2,6 +2,7 @@ package org.taigaui.designtokens.events
 
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -56,6 +57,45 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
+    fun `completes Taiga modifiers in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(click.<caret>)': 'onClick()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue("zoneless" in variants)
+        assertTrue("stop" in variants)
+        assertTrue("debounce~300ms" in variants)
+    }
+
+    @Test
+    fun `does not repeat already used Taiga modifier in host completion`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(click.zoneless.<caret>)': 'onClick()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertFalse("zoneless" in variants)
+        assertTrue("stop" in variants)
+    }
+
+    @Test
     fun `ignores similar keys outside Angular host metadata`() {
         val file =
             myFixture.configureByText(
@@ -74,6 +114,19 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             )
 
         assertTrue(AngularHostBindingSupport.findAll(file).isEmpty())
+    }
+
+    @Test
+    fun `does not complete Taiga modifiers in ordinary TypeScript objects`() {
+        myFixture.configureByText(
+            "plain.ts",
+            "const ordinary = {'(click.<caret>)': 'value'};",
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertFalse("zoneless" in variants)
+        assertFalse("stop" in variants)
     }
 
     @Test
