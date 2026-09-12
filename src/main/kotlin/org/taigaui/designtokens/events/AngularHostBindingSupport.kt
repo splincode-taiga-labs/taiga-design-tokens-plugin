@@ -5,6 +5,7 @@ import com.intellij.lang.javascript.psi.JSProperty
 import com.intellij.lang.javascript.psi.ecma6.ES6Decorator
 import com.intellij.openapi.application.ReadAction
 import com.intellij.psi.ElementManipulators
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
 
@@ -31,53 +32,55 @@ internal object AngularHostBindingSupport {
         offset: Int,
     ): AngularHostEventBinding? =
         ReadAction.compute<AngularHostEventBinding?, RuntimeException> {
-            findAtInReadAction(file, offset)
+            val safeOffset = offset.coerceIn(0, maxOf(0, file.textLength - 1))
+
+            file
+                .findElementAt(safeOffset)
+                ?.let(::findContainingInReadAction)
+                ?.takeIf { binding -> offset in binding.startOffset until binding.endOffset }
         }
 
-    private fun findAtInReadAction(
-        file: PsiFile,
-        offset: Int,
-    ): AngularHostEventBinding? {
-        val safeOffset = offset.coerceIn(0, maxOf(0, file.textLength - 1))
-        val element = file.findElementAt(safeOffset) ?: return null
-        val property = PsiTreeUtil.getParentOfType(element, JSProperty::class.java, false) ?: return null
-        val binding = property.toAngularHostEventBinding() ?: return null
-
-        return binding.takeIf { offset in binding.startOffset until binding.endOffset }
-    }
-
-    private fun JSProperty.toAngularHostEventBinding(): AngularHostEventBinding? {
-        val source = name?.takeIf { it.startsWith('(') && it.endsWith(')') } ?: return null
-        val hostObject = context as? JSObjectLiteralExpression ?: return null
-        val hostProperty = hostObject.context as? JSProperty ?: return null
-
-        if (hostProperty.name != HOST_PROPERTY) {
-            return null
+    fun findContaining(element: PsiElement): AngularHostEventBinding? =
+        ReadAction.compute<AngularHostEventBinding?, RuntimeException> {
+            findContainingInReadAction(element)
         }
 
-        val metadataObject = hostProperty.context as? JSObjectLiteralExpression ?: return null
-        val outerObject = PsiTreeUtil.getParentOfType(metadataObject, JSObjectLiteralExpression::class.java, true)
+    private fun findContainingInReadAction(element: PsiElement): AngularHostEventBinding? =
+        PsiTreeUtil
+            .getParentOfType(element, JSProperty::class.java, false)
+            ?.toAngularHostEventBinding()
 
-        if (outerObject != null) {
-            return null
-        }
+    private fun JSProperty.toAngularHostEventBinding(): AngularHostEventBinding? =
+        name
+            ?.takeIf { source -> source.startsWith('(') && source.endsWith(')') }
+            ?.takeIf { isAngularHostProperty() }
+            ?.let { source ->
+                nameIdentifier?.let { identifier ->
+                    val valueRange = ElementManipulators.getValueTextRange(identifier)
 
-        val decorator = PsiTreeUtil.getParentOfType(metadataObject, ES6Decorator::class.java, false) ?: return null
+                    AngularHostEventBinding(
+                        source = source,
+                        startOffset = identifier.textRange.startOffset + valueRange.startOffset,
+                        endOffset = identifier.textRange.startOffset + valueRange.endOffset,
+                    )
+                }
+            }
 
-        if (decorator.decoratorName !in ANGULAR_ENTITY_DECORATORS) {
-            return null
-        }
+    private fun JSProperty.isAngularHostProperty(): Boolean {
+        val hostProperty = (context as? JSObjectLiteralExpression)?.context as? JSProperty
+        val metadataObject = hostProperty?.context as? JSObjectLiteralExpression
+        val outerObject =
+            metadataObject?.let { objectLiteral ->
+                PsiTreeUtil.getParentOfType(objectLiteral, JSObjectLiteralExpression::class.java, true)
+            }
+        val decorator =
+            metadataObject?.let { objectLiteral ->
+                PsiTreeUtil.getParentOfType(objectLiteral, ES6Decorator::class.java, false)
+            }
 
-        val identifier = nameIdentifier ?: return null
-        val valueRange = ElementManipulators.getValueTextRange(identifier)
-        val startOffset = identifier.textRange.startOffset + valueRange.startOffset
-        val endOffset = identifier.textRange.startOffset + valueRange.endOffset
-
-        return AngularHostEventBinding(
-            source = source,
-            startOffset = startOffset,
-            endOffset = endOffset,
-        )
+        return hostProperty?.name == HOST_PROPERTY &&
+            outerObject == null &&
+            decorator?.decoratorName in ANGULAR_ENTITY_DECORATORS
     }
 
     private const val HOST_PROPERTY = "host"
