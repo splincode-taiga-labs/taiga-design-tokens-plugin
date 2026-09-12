@@ -24,7 +24,10 @@ internal data class EventPluginBinding(
                             val modifiers = modifierParts.mapNotNull(EventPluginModifier::parse)
 
                             modifiers
-                                .takeIf { parsed -> parsed.size == modifierParts.size }
+                                .takeIf { parsed ->
+                                    parsed.size == modifierParts.size &&
+                                        parsed.map(EventPluginModifier::source).distinct().size == parsed.size
+                                }
                                 ?.let {
                                     EventPluginBinding(
                                         source = name,
@@ -62,9 +65,7 @@ internal data class EventPluginModifier(
                 "passive" ->
                     EventPluginModifier(
                         source = source,
-                        description =
-                            "Registers a passive event listener, " +
-                                "allowing the browser to optimize input handling.",
+                        description = "Registers a passive event listener, allowing the browser to optimize input handling.",
                         behavior = "registers the listener as passive",
                     )
 
