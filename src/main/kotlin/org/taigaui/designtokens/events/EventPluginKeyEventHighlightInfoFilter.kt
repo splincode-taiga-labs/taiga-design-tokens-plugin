@@ -9,68 +9,68 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
     override fun accept(
         highlightInfo: HighlightInfo,
         psiFile: PsiFile?,
-    ): Boolean {
-        if (psiFile == null || highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0) {
-            return true
-        }
+    ): Boolean =
+        psiFile?.let { file ->
+            when {
+                highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 -> true
+                isValidAngularHostBindingDiagnostic(highlightInfo, file) -> false
+                !isPotentiallyConflictingInspection(highlightInfo) -> true
+                else -> !isFalseExtendedKeyEventDiagnostic(highlightInfo, file)
+            }
+        } ?: true
 
-        if (isFalseAngularHostBindingWarning(highlightInfo, psiFile)) {
-            return false
-        }
+    private fun isValidAngularHostBindingDiagnostic(
+        highlightInfo: HighlightInfo,
+        psiFile: PsiFile,
+    ): Boolean =
+        hostBindingAtHighlight(highlightInfo, psiFile)
+            ?.takeIf { hostBinding -> EventPluginBinding.parse(hostBinding.source) != null }
+            ?.let { hostBinding ->
+                rangesIntersect(
+                    highlightInfo.startOffset,
+                    highlightInfo.endOffset,
+                    hostBinding.startOffset,
+                    hostBinding.endOffset,
+                )
+            } == true
 
-        val inspectionToolId = highlightInfo.inspectionToolId
+    private fun hostBindingAtHighlight(
+        highlightInfo: HighlightInfo,
+        psiFile: PsiFile,
+    ): AngularHostEventBinding? =
+        sequenceOf(
+            highlightInfo.startOffset,
+            highlightInfo.startOffset + 1,
+            highlightInfo.endOffset - 1,
+        ).map { offset -> offset.coerceIn(0, maxOf(0, psiFile.textLength - 1)) }
+            .distinct()
+            .mapNotNull { offset -> AngularHostBindingSupport.findAt(psiFile, offset) }
+            .firstOrNull()
 
-        if (inspectionToolId != null && inspectionToolId !in CONFLICTING_INSPECTIONS) {
-            return true
-        }
+    private fun isPotentiallyConflictingInspection(highlightInfo: HighlightInfo): Boolean =
+        highlightInfo.inspectionToolId?.let(CONFLICTING_INSPECTIONS::contains) != false
 
-        val reference =
-            EventPluginBindingAtOffsetFinder.find(
+    private fun isFalseExtendedKeyEventDiagnostic(
+        highlightInfo: HighlightInfo,
+        psiFile: PsiFile,
+    ): Boolean =
+        EventPluginBindingAtOffsetFinder
+            .find(
                 file = psiFile,
                 text = psiFile.text,
                 offset = highlightInfo.startOffset,
-            ) ?: return true
+            )?.takeIf { reference -> AngularExtendedKeyEventSupport.isValid(reference.binding.event) }
+            ?.let { reference ->
+                val eventStart = reference.startOffset + 1
+                val eventEnd = eventStart + reference.binding.event.length
 
-        if (!AngularExtendedKeyEventSupport.isValid(reference.binding.event)) {
-            return true
-        }
-
-        val eventStart = reference.startOffset + 1
-        val eventEnd = eventStart + reference.binding.event.length
-
-        return !rangesIntersect(
-            highlightInfo.startOffset,
-            highlightInfo.endOffset,
-            eventStart,
-            eventEnd,
-        )
-    }
-
-    private fun isFalseAngularHostBindingWarning(
-        highlightInfo: HighlightInfo,
-        psiFile: PsiFile,
-    ): Boolean {
-        if (highlightInfo.severity.compareTo(HighlightSeverity.ERROR) >= 0) {
-            return false
-        }
-
-        val hostBinding =
-            AngularHostBindingSupport.findAt(
-                psiFile,
-                highlightInfo.startOffset,
-            ) ?: return false
-
-        if (EventPluginBinding.parse(hostBinding.source) == null) {
-            return false
-        }
-
-        return rangesIntersect(
-            highlightInfo.startOffset,
-            highlightInfo.endOffset,
-            hostBinding.startOffset,
-            hostBinding.endOffset,
-        )
-    }
+                rangesIntersect(
+                    highlightInfo.startOffset,
+                    highlightInfo.endOffset,
+                    eventStart,
+                    eventEnd,
+                )
+            } == true
 
     private fun rangesIntersect(
         firstStart: Int,
@@ -91,24 +91,21 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
 internal object AngularExtendedKeyEventSupport {
     fun isValid(event: String): Boolean {
         val parts = event.split('.')
+        val validEventPrefix = parts.size >= 2 && parts.first().lowercase() in KEY_EVENTS
 
-        if (parts.size < 2 || parts.first().lowercase() !in KEY_EVENTS) {
-            return false
-        }
-
-        val modifiers = parts.drop(1).dropLast(1).map { part -> part.lowercase() }
-        val keyName = parts.last()
-        val hasInvalidModifiers = modifiers.any { modifier -> modifier !in KEY_EVENT_MODIFIERS }
-        val hasDuplicateModifiers = modifiers.distinct().size != modifiers.size
-
-        if (hasInvalidModifiers || hasDuplicateModifiers) {
-            return false
-        }
-
-        return if ("code" in modifiers) {
-            isCodeKeyName(keyName)
+        return if (!validEventPrefix) {
+            false
         } else {
-            isKeyName(keyName)
+            val modifiers = parts.drop(1).dropLast(1).map { part -> part.lowercase() }
+            val keyName = parts.last()
+            val hasInvalidModifiers = modifiers.any { modifier -> modifier !in KEY_EVENT_MODIFIERS }
+            val hasDuplicateModifiers = modifiers.distinct().size != modifiers.size
+
+            when {
+                hasInvalidModifiers || hasDuplicateModifiers -> false
+                "code" in modifiers -> isCodeKeyName(keyName)
+                else -> isKeyName(keyName)
+            }
         }
     }
 
