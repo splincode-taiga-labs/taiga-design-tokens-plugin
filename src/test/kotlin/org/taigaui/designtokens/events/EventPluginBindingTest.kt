@@ -123,4 +123,40 @@ class EventPluginBindingTest {
 
         assertNull(EventPluginBindingAtOffsetFinder.find(text, offset))
     }
+
+    @Test
+    fun `offers host modifiers after a complete event`() {
+        val context = requireNotNull(HostEventPluginCompletionContext.parse("(click."))
+
+        assertEquals("", context.prefix)
+        assertTrue(context.usedModifierIdentities.isEmpty())
+    }
+
+    @Test
+    fun `filters host completion by current modifier prefix`() {
+        val context = requireNotNull(HostEventPluginCompletionContext.parse("(click.zone"))
+
+        assertEquals("zone", context.prefix)
+    }
+
+    @Test
+    fun `tracks used host modifiers`() {
+        val context = requireNotNull(HostEventPluginCompletionContext.parse("(click.zoneless.capture."))
+
+        assertEquals(setOf("zoneless", "capture"), context.usedModifierIdentities)
+    }
+
+    @Test
+    fun `supports host completion after angular extended key event`() {
+        assertTrue(HostEventPluginCompletionContext.parse("(keydown.enter.") != null)
+        assertTrue(HostEventPluginCompletionContext.parse("(keydown.shift.enter.") != null)
+        assertNull(HostEventPluginCompletionContext.parse("(keydown."))
+        assertNull(HostEventPluginCompletionContext.parse("(keydown.shift."))
+    }
+
+    @Test
+    fun `does not continue invalid or duplicate host modifier chains`() {
+        assertNull(HostEventPluginCompletionContext.parse("(click.captre."))
+        assertNull(HostEventPluginCompletionContext.parse("(click.zoneless.zoneless."))
+    }
 }
