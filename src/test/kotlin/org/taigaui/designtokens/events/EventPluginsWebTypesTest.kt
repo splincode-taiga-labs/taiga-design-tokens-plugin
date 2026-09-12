@@ -50,6 +50,8 @@ class EventPluginsWebTypesTest {
         assertTrue(pluginXml.contains("UnknownEventPluginModifierInspection"))
         assertTrue(pluginXml.contains("DuplicateEventPluginModifierInspection"))
         assertTrue(pluginXml.contains("TypeScriptEventPluginModifierInspection"))
+        assertTrue(pluginXml.contains("TypeScriptHostEventPluginCompletionContributor"))
+        assertTrue(pluginXml.contains("TypeScriptHostEventPluginCompletionAutoPopupHandler"))
         assertTrue(pluginXml.contains("shortName=\"UnknownTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("shortName=\"DuplicateTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("shortName=\"InvalidTaigaUIEventModifierInHostBinding\""))
