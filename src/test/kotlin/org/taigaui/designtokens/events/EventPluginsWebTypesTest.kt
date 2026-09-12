@@ -51,6 +51,7 @@ class EventPluginsWebTypesTest {
         assertTrue(pluginXml.contains("DuplicateEventPluginModifierInspection"))
         assertTrue(pluginXml.contains("shortName=\"UnknownTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("shortName=\"DuplicateTaigaUIEventModifier\""))
+        assertTrue(pluginXml.contains("language=\"HtmlCompatible\""))
         assertTrue(pluginXml.contains("level=\"ERROR\""))
         assertTrue(pluginXml.contains("<editorFactoryMouseListener"))
         assertTrue(pluginXml.contains("<editorFactoryMouseMotionListener"))
