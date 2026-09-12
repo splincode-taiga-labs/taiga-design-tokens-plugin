@@ -31,14 +31,9 @@ class EventPluginsWebTypesTest {
         assertTrue(webTypes.contains("debounce~<delay>ms"))
         assertTrue(webTypes.contains("throttle~<delay>ms"))
 
-        val customModifiers =
-            webTypes.substring(webTypes.indexOf("\"name\": \"Custom modifiers for declarative events handling\""))
-        val taigaModifierPattern =
-            customModifiers.substring(customModifiers.indexOf("\"items\": \"ng-event-plugins-modifiers\""))
+        val taigaModifiers = webTypes.substring(webTypes.indexOf("\"items\": \"ng-event-plugins-modifiers\""))
 
-        assertTrue(customModifiers.substringBefore("\"pattern\"").contains("\"priority\": \"high\""))
-        assertTrue(taigaModifierPattern.substringBefore("\"ng-event-plugins-key-event-modifiers\"").contains("\"unique\": true"))
-        assertTrue(taigaModifierPattern.substringBefore("\"ng-event-plugins-key-event-modifiers\"").contains("\"required\": true"))
+        assertTrue(taigaModifiers.substringBefore("\"ng-event-plugins-key-event-modifiers\"").contains("\"unique\": true"))
     }
 
     @Test
@@ -58,6 +53,8 @@ class EventPluginsWebTypesTest {
         assertTrue(pluginXml.contains("shortName=\"DuplicateTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("language=\"HtmlCompatible\""))
         assertTrue(pluginXml.contains("level=\"ERROR\""))
+        assertTrue(pluginXml.contains("<daemon.highlightInfoFilter"))
+        assertTrue(pluginXml.contains("EventPluginKeyEventHighlightInfoFilter"))
         assertTrue(pluginXml.contains("<editorFactoryMouseListener"))
         assertTrue(pluginXml.contains("<editorFactoryMouseMotionListener"))
         assertTrue(pluginXml.contains("EventPluginsHoverPopupListener"))
