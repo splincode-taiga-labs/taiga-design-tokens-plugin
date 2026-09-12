@@ -23,7 +23,7 @@ internal object AngularHostBindingSupport {
     fun findAll(file: PsiFile): List<AngularHostEventBinding> =
         PsiTreeUtil
             .findChildrenOfType(file, JSProperty::class.java)
-            .mapNotNull(JSProperty::toAngularHostEventBinding)
+            .mapNotNull { property -> property.toAngularHostEventBinding() }
 
     fun findAt(
         file: PsiFile,
