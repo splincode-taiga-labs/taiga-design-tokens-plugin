@@ -68,6 +68,9 @@
             level="ERROR"
             implementationClass="org.taigaui.designtokens.events.DuplicateEventPluginModifierInspection"
         />
+        <daemon.highlightInfoFilter
+            implementation="org.taigaui.designtokens.events.EventPluginKeyEventHighlightInfoFilter"
+        />
         <typedHandler
             implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
             order="first, before completionAutoPopup"
