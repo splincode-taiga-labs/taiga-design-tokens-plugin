@@ -30,6 +30,13 @@ class EventPluginBindingTest {
     }
 
     @Test
+    fun `rejects unknown and duplicate taiga modifiers`() {
+        assertNull(EventPluginBinding.parse("(click.captre)"))
+        assertNull(EventPluginBinding.parse("(click.zoneless.captre)"))
+        assertNull(EventPluginBinding.parse("(click.zoneless.zoneless)"))
+    }
+
+    @Test
     fun `ignores bindings without taiga modifiers`() {
         assertNull(EventPluginBinding.parse("(click)"))
         assertNull(EventPluginBinding.parse("class"))
