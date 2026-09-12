@@ -3,6 +3,7 @@ package org.taigaui.designtokens.events
 import com.intellij.lang.javascript.psi.JSObjectLiteralExpression
 import com.intellij.lang.javascript.psi.JSProperty
 import com.intellij.lang.javascript.psi.ecma6.ES6Decorator
+import com.intellij.openapi.application.ReadAction
 import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
@@ -26,6 +27,14 @@ internal object AngularHostBindingSupport {
             .mapNotNull { property -> property.toAngularHostEventBinding() }
 
     fun findAt(
+        file: PsiFile,
+        offset: Int,
+    ): AngularHostEventBinding? =
+        ReadAction.compute<AngularHostEventBinding?, RuntimeException> {
+            findAtInReadAction(file, offset)
+        }
+
+    private fun findAtInReadAction(
         file: PsiFile,
         offset: Int,
     ): AngularHostEventBinding? {
