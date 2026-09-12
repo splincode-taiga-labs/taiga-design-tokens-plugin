@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.events
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -34,6 +35,24 @@ class EventPluginBindingTest {
         assertNull(EventPluginBinding.parse("(click.captre)"))
         assertNull(EventPluginBinding.parse("(click.zoneless.captre)"))
         assertNull(EventPluginBinding.parse("(click.zoneless.zoneless)"))
+    }
+
+    @Test
+    fun `recognizes valid angular extended key events`() {
+        assertTrue(AngularExtendedKeyEventSupport.isValid("keydown.enter"))
+        assertTrue(AngularExtendedKeyEventSupport.isValid("keydown.shift.enter"))
+        assertTrue(AngularExtendedKeyEventSupport.isValid("keyup.escape"))
+        assertTrue(AngularExtendedKeyEventSupport.isValid("keydown.code.keyA"))
+        assertTrue(AngularExtendedKeyEventSupport.isValid("keydown.control.shift.f12"))
+    }
+
+    @Test
+    fun `rejects invalid angular extended key events`() {
+        assertFalse(AngularExtendedKeyEventSupport.isValid("click"))
+        assertFalse(AngularExtendedKeyEventSupport.isValid("keydown.foo"))
+        assertFalse(AngularExtendedKeyEventSupport.isValid("keydown.shift"))
+        assertFalse(AngularExtendedKeyEventSupport.isValid("keydown.shift.shift.enter"))
+        assertFalse(AngularExtendedKeyEventSupport.isValid("keydown.code.foo"))
     }
 
     @Test
