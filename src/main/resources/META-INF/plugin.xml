@@ -55,6 +55,7 @@
             displayName="Unknown Taiga UI event modifier"
             groupName="Taiga UI"
             enabledByDefault="true"
+            language="HtmlCompatible"
             level="ERROR"
             implementationClass="org.taigaui.designtokens.events.UnknownEventPluginModifierInspection"
         />
@@ -63,6 +64,7 @@
             displayName="Duplicate Taiga UI event modifier"
             groupName="Taiga UI"
             enabledByDefault="true"
+            language="HtmlCompatible"
             level="ERROR"
             implementationClass="org.taigaui.designtokens.events.DuplicateEventPluginModifierInspection"
         />
