@@ -1,16 +1,20 @@
 package org.taigaui.designtokens.events
 
+import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
+import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
-import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.TextRange
+import com.intellij.polySymbols.js.JS_PROPERTIES
+import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 
@@ -19,11 +23,37 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
         parameters: CompletionParameters,
         result: CompletionResultSet,
     ) {
-        parameters.toHostEventPluginCompletionRequest()?.let { request ->
-            result
-                .withPrefixMatcher(request.prefix)
-                .addAllElements(request.toLookupElements())
+        val request = parameters.toAngularHostCompletionRequest() ?: return
+        val queryExecutor = PolySymbolQueryExecutorFactory.create(request.context.hostObject)
+        val patchedResult =
+            result.withPrefixMatcher(
+                result.prefixMatcher.cloneWithPrefix(request.nameBeforeCaret),
+            )
+        val nativeItems =
+            queryExecutor
+                .codeCompletionQuery(
+                    JS_PROPERTIES,
+                    request.nameBeforeCaret,
+                    request.nameBeforeCaret.length,
+                ).run()
+
+        nativeItems.forEach { item ->
+            item.addToResult(parameters, patchedResult)
         }
+
+        HostEventPluginCompletionContext
+            .parse(request.nameBeforeCaret)
+            ?.let { context ->
+                val nativeNames = nativeItems.map { item -> item.name }.toSet()
+                val fallbackItems =
+                    context
+                        .toLookupElements()
+                        .filterNot { item -> item.lookupString in nativeNames }
+
+                result
+                    .withPrefixMatcher(context.prefix)
+                    .addAllElements(fallbackItems)
+            }
     }
 }
 
@@ -41,16 +71,6 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         }
 
         val caretOffset = editor.caretModel.offset
-        val completionContext =
-            HostEventPluginCompletionContext.findAfterTyping(
-                text = editor.document.immutableCharSequence,
-                caretOffset = caretOffset,
-                charTyped = charTyped,
-            ) ?: return Result.CONTINUE
-
-        if (completionContext.toLookupElements().isEmpty()) {
-            return Result.CONTINUE
-        }
 
         PsiDocumentManager.getInstance(project).commitDocument(editor.document)
 
@@ -60,8 +80,9 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
 
         editor.putUserData(HOST_COMPLETION_CARET_OFFSET, caretOffset)
 
-        // Suppress the standard auto-popup for this keystroke. Our lookup is opened from charTyped,
-        // after the character has actually been inserted into the document.
+        // The standard auto-popup runs before the character is inserted and does not reliably
+        // traverse Angular's HostBindingsScope. Invoke BASIC completion from charTyped instead,
+        // after the document contains the actual host binding prefix.
         return Result.STOP
     }
 
@@ -82,73 +103,44 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
             return Result.CONTINUE
         }
 
-        val caretOffset = editor.caretModel.offset
-        val completionContext =
-            HostEventPluginCompletionContext.findBeforeCaret(
-                text = editor.document.immutableCharSequence,
-                caretOffset = caretOffset,
-            ) ?: return Result.CONTINUE
+        val expectedCaretOffset = editor.caretModel.offset
 
-        if (completionContext.toLookupElements().isEmpty()) {
-            return Result.CONTINUE
-        }
-
-        showLookupLater(
-            project = project,
-            editor = editor,
-            expectedCaretOffset = caretOffset,
-            expectedContext = completionContext,
-        )
-
-        return Result.CONTINUE
-    }
-
-    private fun showLookupLater(
-        project: Project,
-        editor: Editor,
-        expectedCaretOffset: Int,
-        expectedContext: HostEventPluginCompletionContext,
-    ) {
         ApplicationManager.getApplication().invokeLater {
             if (project.isDisposed || editor.caretModel.offset != expectedCaretOffset) {
                 return@invokeLater
             }
 
-            val context =
-                HostEventPluginCompletionContext.findBeforeCaret(
-                    text = editor.document.immutableCharSequence,
-                    caretOffset = expectedCaretOffset,
-                )?.takeIf { current -> current == expectedContext }
-                    ?: return@invokeLater
-            val lookupElements = context.toLookupElements().toTypedArray()
+            PsiDocumentManager.getInstance(project).commitDocument(editor.document)
 
-            if (lookupElements.isNotEmpty()) {
-                LookupManager.hideActiveLookup(project)
-                LookupManager
-                    .getInstance(project)
-                    .showLookup(editor, lookupElements, context.prefix)
-            }
+            CodeCompletionHandlerBase(CompletionType.BASIC, false, false, true)
+                .invokeCompletion(project, editor)
         }
+
+        return Result.CONTINUE
     }
 }
 
-private fun CompletionParameters.toHostEventPluginCompletionRequest(): HostEventPluginCompletionContext? {
-    val caretOffset = editor.caretModel.offset
-    val completionContext =
-        HostEventPluginCompletionContext.findBeforeCaret(
-            text = editor.document.immutableCharSequence,
-            caretOffset = caretOffset,
-        )
-    val isHostProperty =
-        sequenceOf(position, originalPosition)
-            .filterNotNull()
-            .any(AngularHostBindingSupport::isInsideHostProperty) ||
-            AngularHostBindingSupport.isInsideHostProperty(
-                originalFile,
-                (caretOffset - 1).coerceAtLeast(0),
-            )
+private data class AngularHostCompletionRequest(
+    val context: AngularHostPropertyContext,
+    val nameBeforeCaret: String,
+)
 
-    return completionContext.takeIf { isHostProperty }
+private fun CompletionParameters.toAngularHostCompletionRequest(): AngularHostCompletionRequest? {
+    val caretOffset = editor.caretModel.offset
+    val context =
+        AngularHostBindingSupport.findPropertyContext(
+            originalFile,
+            (caretOffset - 1).coerceAtLeast(0),
+        ) ?: return null
+    val endOffset = caretOffset.coerceIn(context.nameStartOffset, context.nameEndOffset)
+    val nameBeforeCaret =
+        editor.document.getText(
+            TextRange(context.nameStartOffset, endOffset),
+        )
+
+    return nameBeforeCaret
+        .takeIf { name -> name.startsWith('(') || name.startsWith('[') }
+        ?.let { name -> AngularHostCompletionRequest(context, name) }
 }
 
 internal data class HostEventPluginCompletionContext(
@@ -264,7 +256,7 @@ internal data class HostEventPluginCompletionContext(
         }
 
         private fun Char.isEventNameCharacter(): Boolean =
-            isLetterOrDigit() || this == '-' || this == '_'
+            isLetterOrDigit() || this == '-' || this == '_' || this == '>'
 
         private fun Char.isBindingBoundary(): Boolean =
             isWhitespace() || this == '\'' || this == '"' || this == '{' || this == '}' || this == ',' || this == ':'
@@ -316,7 +308,7 @@ private fun EventPluginModifier.completionIdentity(): String =
     }
 
 private fun Char.isCompletionTrigger(): Boolean =
-    this == '.' || isLetterOrDigit()
+    isLetterOrDigit() || this == '.' || this == '>' || this == '-' || this == '_'
 
 private val EVENT_PLUGIN_EVENT_COMPLETIONS =
     listOf(
@@ -329,6 +321,11 @@ private val EVENT_PLUGIN_EVENT_COMPLETIONS =
             source = "resize",
             typeText = "Taiga UI event",
             description = "Fires when the element dimensions change using ResizeObserver.",
+        ),
+        EventPluginCompletion(
+            source = "visualViewport",
+            typeText = "Taiga UI global event target",
+            description = "Targets the browser VisualViewport when followed by '>'.",
         ),
     )
 
