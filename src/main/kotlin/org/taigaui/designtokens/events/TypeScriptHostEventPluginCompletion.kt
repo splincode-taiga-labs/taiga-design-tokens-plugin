@@ -165,8 +165,7 @@ internal data class HostEventPluginCompletionContext(
         fun findBeforeCaret(
             text: CharSequence,
             caretOffset: Int,
-        ): HostEventPluginCompletionContext? =
-            sourceBeforeCaret(text, caretOffset)?.let(::parse)
+        ): HostEventPluginCompletionContext? = sourceBeforeCaret(text, caretOffset)?.let(::parse)
 
         fun findAfterTyping(
             text: CharSequence,
