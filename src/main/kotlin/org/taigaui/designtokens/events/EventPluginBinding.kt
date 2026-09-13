@@ -46,30 +46,26 @@ internal data class GlobalEventPluginBinding(
 )
 
 internal object GlobalEventPluginBindingSupport {
-    fun parse(attributeName: String): GlobalEventPluginBinding? {
-        if (!attributeName.startsWith('(') || !attributeName.endsWith(')')) {
-            return null
-        }
+    fun parse(attributeName: String): GlobalEventPluginBinding? =
+        attributeName
+            .takeIf { name -> name.startsWith('(') && name.endsWith(')') }
+            ?.let { name ->
+                val source = name.substring(1, name.lastIndex)
+                val separatorIndex = source.indexOf('>')
 
-        val source = attributeName.substring(1, attributeName.lastIndex)
-        val separatorIndex = source.indexOf('>')
-
-        if (separatorIndex <= 0 || separatorIndex != source.lastIndexOf('>')) {
-            return null
-        }
-
-        val target = source.substring(0, separatorIndex)
-        val event = source.substring(separatorIndex + 1)
-
-        return GlobalEventPluginBinding(
-            source = attributeName,
-            target = target,
-            event = event,
-        ).takeIf {
-            target.matches(GLOBAL_TARGET) &&
-                event.matches(GLOBAL_EVENT)
-        }
-    }
+                source
+                    .takeIf { separatorIndex > 0 && separatorIndex == source.lastIndexOf('>') }
+                    ?.let {
+                        GlobalEventPluginBinding(
+                            source = name,
+                            target = source.substring(0, separatorIndex),
+                            event = source.substring(separatorIndex + 1),
+                        )
+                    }
+            }?.takeIf { binding ->
+                binding.target.matches(GLOBAL_TARGET) &&
+                    binding.event.matches(GLOBAL_EVENT)
+            }
 
     fun isValid(attributeName: String): Boolean = parse(attributeName) != null
 
@@ -104,9 +100,7 @@ internal data class EventPluginModifier(
                 "passive" ->
                     EventPluginModifier(
                         source = source,
-                        description =
-                            "Registers a passive event listener, " +
-                                "allowing the browser to optimize input handling.",
+                        description = "Registers a passive event listener, allowing the browser to optimize input handling.",
                         behavior = "registers the listener as passive",
                     )
 
