@@ -47,24 +47,22 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
     }
 }
 
-private fun CompletionParameters.toHostEventPluginCompletionRequest(): HostEventPluginCompletionContext? =
-    originalPosition
-        ?.let { position -> AngularHostBindingSupport.findContaining(position) }
-        ?.sourceBeforeCaret(
+private fun CompletionParameters.toHostEventPluginCompletionRequest(): HostEventPluginCompletionContext? {
+    val caretOffset = editor.caretModel.offset
+    val completionContext =
+        HostEventPluginCompletionContext.findBeforeCaret(
             text = editor.document.immutableCharSequence,
-            caretOffset = editor.caretModel.offset,
-        )?.let(HostEventPluginCompletionContext::parse)
+            caretOffset = caretOffset,
+        )
+    val hostBinding =
+        completionContext?.let {
+            AngularHostBindingSupport.findAt(
+                originalFile,
+                (caretOffset - 1).coerceAtLeast(0),
+            )
+        }
 
-private fun AngularHostEventBinding.sourceBeforeCaret(
-    text: CharSequence,
-    caretOffset: Int,
-): String? {
-    val validCaret = caretOffset in (startOffset + 1)..endOffset && startOffset in text.indices
-    val safeEnd = caretOffset.coerceAtMost(text.length)
-
-    return source
-        .takeIf { validCaret }
-        ?.let { text.subSequence(startOffset, safeEnd).toString() }
+    return completionContext.takeIf { hostBinding != null }
 }
 
 internal data class HostEventPluginCompletionContext(
