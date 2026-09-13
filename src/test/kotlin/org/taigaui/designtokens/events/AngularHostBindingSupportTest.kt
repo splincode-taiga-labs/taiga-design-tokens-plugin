@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.events
 
-import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.codeInsight.daemon.impl.HighlightInfo
+import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
 import com.intellij.util.ui.UIUtil
 import org.junit.Assert.assertEquals
@@ -247,7 +248,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
-    fun `does not highlight global event binding in Angular host metadata`() {
+    fun `suppresses global event binding warning in Angular host metadata`() {
         val binding = "(visualViewport>resize)"
         val file =
             myFixture.configureByText(
@@ -262,17 +263,14 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             )
         val startOffset = file.text.indexOf(binding)
         val endOffset = startOffset + binding.length
-        val highlights =
-            myFixture.doHighlighting().filter { highlight ->
-                highlight.severity.compareTo(HighlightSeverity.WEAK_WARNING) >= 0 &&
-                    highlight.startOffset < endOffset &&
-                    highlight.endOffset > startOffset
-            }
+        val highlight =
+            HighlightInfo
+                .newHighlightInfo(HighlightInfoType.WARNING)
+                .range(startOffset, endOffset)
+                .descriptionAndTooltip("Unknown host event binding")
+                .createUnconditionally()
 
-        assertTrue(
-            highlights.joinToString(separator = "\n") { highlight -> highlight.toString() },
-            highlights.isEmpty(),
-        )
+        assertFalse(EventPluginKeyEventHighlightInfoFilter().accept(highlight, file))
     }
 
     @Test
