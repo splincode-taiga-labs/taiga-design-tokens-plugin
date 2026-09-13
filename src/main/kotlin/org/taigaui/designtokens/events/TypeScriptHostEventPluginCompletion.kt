@@ -21,7 +21,9 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
             EVENT_PLUGIN_COMPLETIONS
                 .asSequence()
                 .filterNot { completion -> completion.identity in request.usedModifierIdentities }
-                .forEach { completion -> matchingResult.addElement(completion.toLookupElement()) }
+                .map(EventPluginCompletion::toLookupElement)
+                .toList()
+                .let(matchingResult::addAllElements)
         }
     }
 }
@@ -54,15 +56,16 @@ private fun CompletionParameters.toHostEventPluginCompletionRequest(): HostEvent
             text = editor.document.immutableCharSequence,
             caretOffset = caretOffset,
         )
-    val hostBinding =
-        completionContext?.let {
+    val isHostProperty =
+        sequenceOf(position, originalPosition)
+            .filterNotNull()
+            .any(AngularHostBindingSupport::isInsideHostProperty) ||
             AngularHostBindingSupport.findAt(
                 originalFile,
                 (caretOffset - 1).coerceAtLeast(0),
-            )
-        }
+            ) != null
 
-    return completionContext.takeIf { hostBinding != null }
+    return completionContext.takeIf { isHostProperty }
 }
 
 internal data class HostEventPluginCompletionContext(
