@@ -27,8 +27,7 @@ internal data class EventPluginBinding(
                                 .takeIf { parsed ->
                                     parsed.size == modifierParts.size &&
                                         parsed.map(EventPluginModifier::source).distinct().size == parsed.size
-                                }
-                                ?.let {
+                                }?.let {
                                     EventPluginBinding(
                                         source = name,
                                         event = parts.take(index).joinToString("."),
@@ -65,7 +64,9 @@ internal data class EventPluginModifier(
                 "passive" ->
                     EventPluginModifier(
                         source = source,
-                        description = "Registers a passive event listener, allowing the browser to optimize input handling.",
+                        description =
+                            "Registers a passive event listener, " +
+                                "allowing the browser to optimize input handling.",
                         behavior = "registers the listener as passive",
                     )
 
