@@ -12,27 +12,36 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
     ): Boolean =
         psiFile?.let { file ->
             when {
+                isSuppressedAngularHostBindingDiagnostic(highlightInfo, file) -> false
                 highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 -> true
-                isValidAngularHostBindingDiagnostic(highlightInfo, file) -> false
                 !isPotentiallyConflictingInspection(highlightInfo) -> true
                 else -> !isFalseExtendedKeyEventDiagnostic(highlightInfo, file)
             }
         } ?: true
 
-    private fun isValidAngularHostBindingDiagnostic(
+    private fun isSuppressedAngularHostBindingDiagnostic(
         highlightInfo: HighlightInfo,
         psiFile: PsiFile,
     ): Boolean =
-        hostBindingAtHighlight(highlightInfo, psiFile)
-            ?.takeIf { hostBinding -> EventPluginBinding.parse(hostBinding.source) != null }
-            ?.let { hostBinding ->
-                rangesIntersect(
-                    highlightInfo.startOffset,
-                    highlightInfo.endOffset,
-                    hostBinding.startOffset,
-                    hostBinding.endOffset,
-                )
-            } == true
+        isSuppressibleHostInspection(highlightInfo) &&
+            hostBindingAtHighlight(highlightInfo, psiFile)
+                ?.takeIf { hostBinding -> EventPluginBinding.parse(hostBinding.source) != null }
+                ?.let { hostBinding ->
+                    rangesIntersect(
+                        highlightInfo.startOffset,
+                        highlightInfo.endOffset,
+                        hostBinding.startOffset,
+                        hostBinding.endOffset,
+                    )
+                } == true
+
+    private fun isSuppressibleHostInspection(highlightInfo: HighlightInfo): Boolean {
+        val inspectionToolId = highlightInfo.inspectionToolId
+
+        return inspectionToolId == SPELLCHECKING_INSPECTION ||
+            highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) >= 0 &&
+            (inspectionToolId == null || inspectionToolId in CONFLICTING_INSPECTIONS)
+    }
 
     private fun hostBindingAtHighlight(
         highlightInfo: HighlightInfo,
@@ -80,6 +89,7 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
     ): Boolean = firstStart < secondEnd && firstEnd > secondStart
 
     private companion object {
+        const val SPELLCHECKING_INSPECTION = "SpellCheckingInspection"
         val CONFLICTING_INSPECTIONS =
             setOf(
                 "AngularUndefinedBinding",
