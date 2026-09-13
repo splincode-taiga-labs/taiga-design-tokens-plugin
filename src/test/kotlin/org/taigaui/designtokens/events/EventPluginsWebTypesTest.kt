@@ -31,9 +31,13 @@ class EventPluginsWebTypesTest {
         assertTrue(webTypes.contains("debounce~<delay>ms"))
         assertTrue(webTypes.contains("throttle~<delay>ms"))
 
-        val taigaModifiers = webTypes.substring(webTypes.indexOf("\"items\": \"ng-event-plugins-modifiers\""))
+        val taigaModifiers =
+            webTypes.substring(
+                webTypes.indexOf("\"items\": \"ng-event-plugins-modifiers\""),
+            )
+        val modifierPattern = taigaModifiers.substringBefore("\"ng-event-plugins-key-event-modifiers\"")
 
-        assertTrue(taigaModifiers.substringBefore("\"ng-event-plugins-key-event-modifiers\"").contains("\"unique\": true"))
+        assertTrue(modifierPattern.contains("\"unique\": true"))
     }
 
     @Test
@@ -43,6 +47,12 @@ class EventPluginsWebTypesTest {
         assertNotNull("META-INF/plugin.xml must be available on the test classpath", descriptor)
 
         val pluginXml = descriptor!!.readText()
+        val hostCompletionRegistration =
+            """
+            id="TaigaUIEventPluginHostCompletionContributor"
+            language="JavaScript"
+            order="first, before JSPatternBasedCompletionContributor, before JSCompletionContributor"
+            """.trimIndent()
 
         assertTrue(pluginXml.contains("<polySymbols.webTypes"))
         assertTrue(pluginXml.contains("source=\"web-types/event-plugins@3.1.0.web-types.json\""))
@@ -52,6 +62,7 @@ class EventPluginsWebTypesTest {
         assertTrue(pluginXml.contains("TypeScriptEventPluginModifierInspection"))
         assertTrue(pluginXml.contains("TypeScriptHostEventPluginCompletionContributor"))
         assertTrue(pluginXml.contains("TypeScriptHostEventPluginCompletionAutoPopupHandler"))
+        assertTrue(pluginXml.contains(hostCompletionRegistration))
         assertTrue(pluginXml.contains("shortName=\"UnknownTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("shortName=\"DuplicateTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("shortName=\"InvalidTaigaUIEventModifierInHostBinding\""))
