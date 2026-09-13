@@ -26,19 +26,9 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
     ): Boolean =
         hostBindingAtHighlight(highlightInfo, psiFile)
             ?.let { hostBinding ->
-                EventPluginBinding.parse(hostBinding.source)?.let { binding ->
-                    when {
-                        highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 ->
-                            modifierRanges(hostBinding, binding).any { range ->
-                                rangesIntersect(
-                                    highlightInfo.startOffset,
-                                    highlightInfo.endOffset,
-                                    range.startOffset,
-                                    range.endOffset,
-                                )
-                            }
-
-                        isPotentiallyConflictingInspection(highlightInfo) ->
+                when {
+                    GlobalEventPluginBindingSupport.isValid(hostBinding.source) ->
+                        isPotentiallyConflictingInspection(highlightInfo) &&
                             rangesIntersect(
                                 highlightInfo.startOffset,
                                 highlightInfo.endOffset,
@@ -46,8 +36,30 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
                                 hostBinding.endOffset,
                             )
 
-                        else -> false
-                    }
+                    else ->
+                        EventPluginBinding.parse(hostBinding.source)?.let { binding ->
+                            when {
+                                highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 ->
+                                    modifierRanges(hostBinding, binding).any { range ->
+                                        rangesIntersect(
+                                            highlightInfo.startOffset,
+                                            highlightInfo.endOffset,
+                                            range.startOffset,
+                                            range.endOffset,
+                                        )
+                                    }
+
+                                isPotentiallyConflictingInspection(highlightInfo) ->
+                                    rangesIntersect(
+                                        highlightInfo.startOffset,
+                                        highlightInfo.endOffset,
+                                        hostBinding.startOffset,
+                                        hostBinding.endOffset,
+                                    )
+
+                                else -> false
+                            }
+                        } ?: false
                 }
             } == true
 
