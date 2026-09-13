@@ -31,7 +31,9 @@
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
         <completion.contributor
+            id="TaigaUIEventPluginHostCompletionContributor"
             language="any"
+            order="first"
             implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginCompletionContributor"
         />
         <completion.contributor
