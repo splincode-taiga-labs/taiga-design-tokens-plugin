@@ -66,24 +66,26 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
     ): Result {
         editor.putUserData(HOST_COMPLETION_CARET_OFFSET, null)
 
-        if (!charTyped.isCompletionTrigger()) {
-            return Result.CONTINUE
-        }
-
         val caretOffset = editor.caretModel.offset
+        val shouldOpenCompletion =
+            if (charTyped.isCompletionTrigger()) {
+                PsiDocumentManager.getInstance(project).commitDocument(editor.document)
+                AngularHostBindingSupport.isInsideHostProperty(
+                    file,
+                    (caretOffset - 1).coerceAtLeast(0),
+                )
+            } else {
+                false
+            }
 
-        PsiDocumentManager.getInstance(project).commitDocument(editor.document)
-
-        if (!AngularHostBindingSupport.isInsideHostProperty(file, (caretOffset - 1).coerceAtLeast(0))) {
-            return Result.CONTINUE
+        if (shouldOpenCompletion) {
+            editor.putUserData(HOST_COMPLETION_CARET_OFFSET, caretOffset)
         }
-
-        editor.putUserData(HOST_COMPLETION_CARET_OFFSET, caretOffset)
 
         // The standard auto-popup runs before the character is inserted and does not reliably
         // traverse Angular's HostBindingsScope. Invoke BASIC completion from charTyped instead,
         // after the document contains the actual host binding prefix.
-        return Result.STOP
+        return if (shouldOpenCompletion) Result.STOP else Result.CONTINUE
     }
 
     override fun charTyped(
