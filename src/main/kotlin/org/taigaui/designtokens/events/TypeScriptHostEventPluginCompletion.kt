@@ -151,7 +151,7 @@ internal data class HostEventPluginCompletionContext(
         private fun parseEventChain(eventChain: String): HostEventPluginCompletionContext? {
             if (!eventChain.contains('.')) {
                 return eventChain
-                    .takeIf { prefix -> prefix.all(Char::isEventNameCharacter) }
+                    .takeIf { prefix -> prefix.all { character -> character.isEventNameCharacter() } }
                     ?.let { prefix ->
                         HostEventPluginCompletionContext(
                             prefix = prefix,
