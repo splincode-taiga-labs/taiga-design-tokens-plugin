@@ -61,12 +61,16 @@ internal object AngularHostBindingSupport {
                 false
             } else {
                 val safeOffset = offset.coerceIn(0, file.textLength - 1)
+                val property =
+                    file
+                        .findElementAt(safeOffset)
+                        ?.let { element ->
+                            PsiTreeUtil.getParentOfType(element, JSProperty::class.java, false)
+                        }
+                val nameRange = property?.nameIdentifier?.textRange
 
-                file
-                    .findElementAt(safeOffset)
-                    ?.let { element ->
-                        PsiTreeUtil.getParentOfType(element, JSProperty::class.java, false)
-                    }?.isAngularHostProperty() == true
+                property?.isAngularHostProperty() == true &&
+                    nameRange?.containsOffset(safeOffset) == true
             }
         }
 
