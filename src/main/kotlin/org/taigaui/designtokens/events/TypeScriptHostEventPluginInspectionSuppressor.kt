@@ -12,7 +12,10 @@ class TypeScriptHostEventPluginInspectionSuppressor : InspectionSuppressor {
         toolId == SPELLCHECKING_INSPECTION &&
             AngularHostBindingSupport
                 .findContaining(element)
-                ?.let { binding -> EventPluginBinding.parse(binding.source) != null } == true
+                ?.let { binding ->
+                    EventPluginBinding.parse(binding.source) != null ||
+                        GlobalEventPluginBindingSupport.isValid(binding.source)
+                } == true
 
     override fun getSuppressActions(
         element: PsiElement?,
