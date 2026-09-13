@@ -113,6 +113,66 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
+    fun `completes CSS classes in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                styles: ['.active {} .disabled {}'],
+                host: {'[class.<caret>]': 'active'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("active", ignoreCase = true) })
+        assertTrue(variants.any { variant -> variant.contains("disabled", ignoreCase = true) })
+    }
+
+    @Test
+    fun `completes HTML attributes in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'button[example]',
+                host: {'[attr.<caret>]': 'label'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("aria-label", ignoreCase = true) })
+        assertTrue(variants.any { variant -> variant.contains("title", ignoreCase = true) })
+    }
+
+    @Test
+    fun `completes CSS units after style property in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'[style.width.<caret>]': 'width'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("px", ignoreCase = true) })
+        assertTrue(variants.any { variant -> variant.contains("rem", ignoreCase = true) })
+        assertTrue(variants.any { variant -> variant.contains("em", ignoreCase = true) })
+        assertTrue(variants.any { variant -> variant.contains('%') })
+    }
+
+    @Test
     fun `completes Taiga modifiers in Angular host metadata`() {
         myFixture.configureByText(
             "component.ts",
