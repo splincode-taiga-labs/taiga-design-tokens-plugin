@@ -33,19 +33,20 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         editor: Editor,
         file: PsiFile,
     ): Result {
-        if (charTyped != '.') {
+        if (charTyped != '.' && !charTyped.isLetterOrDigit()) {
             return Result.CONTINUE
         }
 
-        val caretOffset = editor.caretModel.offset
+        val caretOffsetBeforeTyping = editor.caretModel.offset
         val completionContext =
-            HostEventPluginCompletionContext.findBeforeCaret(
+            HostEventPluginCompletionContext.findAfterTyping(
                 text = editor.document.immutableCharSequence,
-                caretOffset = caretOffset,
+                caretOffset = caretOffsetBeforeTyping,
+                charTyped = charTyped,
             ) ?: return Result.CONTINUE
-        val hostOffset = (caretOffset - 2).coerceAtLeast(0)
+        val hostOffset = (caretOffsetBeforeTyping - 1).coerceAtLeast(0)
 
-        if (AngularHostBindingSupport.findAt(file, hostOffset) == null) {
+        if (!AngularHostBindingSupport.isInsideHostProperty(file, hostOffset)) {
             return Result.CONTINUE
         }
 
@@ -53,7 +54,7 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
             project = project,
             editor = editor,
             file = file,
-            expectedCaretOffset = caretOffset,
+            expectedCaretOffset = caretOffsetBeforeTyping + 1,
             expectedContext = completionContext,
         )
 
@@ -80,13 +81,8 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
                     caretOffset = expectedCaretOffset,
                 )?.takeIf { current -> current == expectedContext }
                     ?: return@invokeLater
-            val hostBinding =
-                AngularHostBindingSupport.findAt(
-                    file,
-                    (expectedCaretOffset - 1).coerceAtLeast(0),
-                ) ?: return@invokeLater
 
-            if (expectedCaretOffset !in hostBinding.startOffset..hostBinding.endOffset) {
+            if (!AngularHostBindingSupport.isInsideHostProperty(file, expectedCaretOffset - 1)) {
                 return@invokeLater
             }
 
@@ -112,10 +108,10 @@ private fun CompletionParameters.toHostEventPluginCompletionRequest(): HostEvent
         sequenceOf(position, originalPosition)
             .filterNotNull()
             .any(AngularHostBindingSupport::isInsideHostProperty) ||
-            AngularHostBindingSupport.findAt(
+            AngularHostBindingSupport.isInsideHostProperty(
                 originalFile,
                 (caretOffset - 1).coerceAtLeast(0),
-            ) != null
+            )
 
     return completionContext.takeIf { isHostProperty }
 }
@@ -123,30 +119,67 @@ private fun CompletionParameters.toHostEventPluginCompletionRequest(): HostEvent
 internal data class HostEventPluginCompletionContext(
     val prefix: String,
     val usedModifierIdentities: Set<String>,
+    val kind: Kind,
 ) {
+    enum class Kind {
+        EVENT,
+        MODIFIER,
+    }
+
     companion object {
         fun parse(sourceBeforeCaret: String): HostEventPluginCompletionContext? =
             sourceBeforeCaret
                 .takeIf { source -> source.startsWith('(') }
                 ?.drop(1)
-                ?.let { eventChain ->
-                    eventChain
-                        .lastIndexOf('.')
-                        .takeIf { separatorIndex -> separatorIndex > 0 }
-                        ?.let { separatorIndex ->
-                            parseCompletedChain(eventChain.substring(0, separatorIndex))?.let { usedModifiers ->
-                                HostEventPluginCompletionContext(
-                                    prefix = eventChain.substring(separatorIndex + 1),
-                                    usedModifierIdentities = usedModifiers,
-                                )
-                            }
-                        }
-                }
+                ?.let(::parseEventChain)
 
         fun findBeforeCaret(
             text: CharSequence,
             caretOffset: Int,
-        ): HostEventPluginCompletionContext? {
+        ): HostEventPluginCompletionContext? =
+            sourceBeforeCaret(text, caretOffset)?.let(::parse)
+
+        fun findAfterTyping(
+            text: CharSequence,
+            caretOffset: Int,
+            charTyped: Char,
+        ): HostEventPluginCompletionContext? =
+            sourceBeforeCaret(text, caretOffset)
+                ?.plus(charTyped)
+                ?.let(::parse)
+
+        private fun parseEventChain(eventChain: String): HostEventPluginCompletionContext? {
+            if (!eventChain.contains('.')) {
+                return eventChain
+                    .takeIf { prefix -> prefix.all(Char::isEventNameCharacter) }
+                    ?.let { prefix ->
+                        HostEventPluginCompletionContext(
+                            prefix = prefix,
+                            usedModifierIdentities = emptySet(),
+                            kind = Kind.EVENT,
+                        )
+                    }
+            }
+
+            val separatorIndex = eventChain.lastIndexOf('.')
+
+            return separatorIndex
+                .takeIf { index -> index > 0 }
+                ?.let { index ->
+                    parseCompletedChain(eventChain.substring(0, index))?.let { usedModifiers ->
+                        HostEventPluginCompletionContext(
+                            prefix = eventChain.substring(index + 1),
+                            usedModifierIdentities = usedModifiers,
+                            kind = Kind.MODIFIER,
+                        )
+                    }
+                }
+        }
+
+        private fun sourceBeforeCaret(
+            text: CharSequence,
+            caretOffset: Int,
+        ): String? {
             val safeOffset = caretOffset.coerceIn(0, text.length)
             val searchStart = maxOf(0, safeOffset - MAX_BINDING_LENGTH)
             val openingParenthesis =
@@ -155,7 +188,7 @@ internal data class HostEventPluginCompletionContext(
                     ?.takeIf { index -> text[index] == '(' }
 
             return openingParenthesis?.let { start ->
-                parse(text.subSequence(start, safeOffset).toString())
+                text.subSequence(start, safeOffset).toString()
             }
         }
 
@@ -195,6 +228,9 @@ internal data class HostEventPluginCompletionContext(
             }
         }
 
+        private fun Char.isEventNameCharacter(): Boolean =
+            isLetterOrDigit() || this == '-' || this == '_'
+
         private fun Char.isBindingBoundary(): Boolean =
             isWhitespace() || this == '\'' || this == '"' || this == '{' || this == '}' || this == ',' || this == ':'
 
@@ -206,24 +242,33 @@ private data class EventPluginCompletion(
     val source: String,
     val presentableText: String = source,
     val identity: String = source,
+    val typeText: String = "Taiga UI event modifier",
+    val description: String? = null,
 )
 
 private fun HostEventPluginCompletionContext.toLookupElements(): List<LookupElement> =
-    EVENT_PLUGIN_COMPLETIONS
-        .asSequence()
-        .filterNot { completion -> completion.identity in usedModifierIdentities }
+    when (kind) {
+        HostEventPluginCompletionContext.Kind.EVENT -> EVENT_PLUGIN_EVENT_COMPLETIONS
+        HostEventPluginCompletionContext.Kind.MODIFIER ->
+            EVENT_PLUGIN_MODIFIER_COMPLETIONS.filterNot { completion ->
+                completion.identity in usedModifierIdentities
+            }
+    }.asSequence()
+        .filter { completion -> completion.source.startsWith(prefix, ignoreCase = true) }
         .map(EventPluginCompletion::toLookupElement)
         .toList()
 
 private fun EventPluginCompletion.toLookupElement(): LookupElement {
-    val modifier = EventPluginModifier.parse(source)
+    val modifierDescription = EventPluginModifier.parse(source)?.description
 
     return LookupElementBuilder
         .create(source)
         .withPresentableText(presentableText)
-        .withTypeText("Taiga UI event modifier", true)
+        .withTypeText(typeText, true)
         .let { element ->
-            modifier?.description?.let { description -> element.withTailText(" — $description", true) } ?: element
+            (description ?: modifierDescription)
+                ?.let { text -> element.withTailText(" — $text", true) }
+                ?: element
         }
 }
 
@@ -235,7 +280,21 @@ private fun EventPluginModifier.completionIdentity(): String =
         else -> source
     }
 
-private val EVENT_PLUGIN_COMPLETIONS =
+private val EVENT_PLUGIN_EVENT_COMPLETIONS =
+    listOf(
+        EventPluginCompletion(
+            source = "longtap",
+            typeText = "Taiga UI event",
+            description = "Fires for a long press or context-menu gesture.",
+        ),
+        EventPluginCompletion(
+            source = "resize",
+            typeText = "Taiga UI event",
+            description = "Fires when the element dimensions change using ResizeObserver.",
+        ),
+    )
+
+private val EVENT_PLUGIN_MODIFIER_COMPLETIONS =
     listOf(
         EventPluginCompletion("capture"),
         EventPluginCompletion("once"),
