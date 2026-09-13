@@ -21,6 +21,13 @@ internal data class AngularHostEventBinding(
         get() = startOffset + 1
 }
 
+internal data class AngularHostPropertyContext(
+    val property: JSProperty,
+    val hostObject: JSObjectLiteralExpression,
+    val nameStartOffset: Int,
+    val nameEndOffset: Int,
+)
+
 internal object AngularHostBindingSupport {
     fun findAll(file: PsiFile): List<AngularHostEventBinding> =
         PsiTreeUtil
@@ -45,34 +52,39 @@ internal object AngularHostBindingSupport {
             findContainingInReadAction(element)
         }
 
+    fun findPropertyContext(
+        file: PsiFile,
+        offset: Int,
+    ): AngularHostPropertyContext? =
+        ReadAction.compute<AngularHostPropertyContext?, RuntimeException> {
+            if (file.textLength == 0) {
+                null
+            } else {
+                val safeOffset = offset.coerceIn(0, file.textLength - 1)
+
+                file
+                    .findElementAt(safeOffset)
+                    ?.let { element ->
+                        PsiTreeUtil.getParentOfType(element, JSProperty::class.java, false)
+                    }?.toAngularHostPropertyContext()
+            }
+        }
+
     fun isInsideHostProperty(element: PsiElement): Boolean =
         ReadAction.compute<Boolean, RuntimeException> {
             PsiTreeUtil
                 .getParentOfType(element, JSProperty::class.java, false)
-                ?.isAngularHostProperty() == true
+                ?.toAngularHostPropertyContext() != null
         }
 
     fun isInsideHostProperty(
         file: PsiFile,
         offset: Int,
     ): Boolean =
-        ReadAction.compute<Boolean, RuntimeException> {
-            if (file.textLength == 0) {
-                false
-            } else {
-                val safeOffset = offset.coerceIn(0, file.textLength - 1)
-                val property =
-                    file
-                        .findElementAt(safeOffset)
-                        ?.let { element ->
-                            PsiTreeUtil.getParentOfType(element, JSProperty::class.java, false)
-                        }
-                val nameRange = property?.nameIdentifier?.textRange
-
-                property?.isAngularHostProperty() == true &&
-                    nameRange?.containsOffset(safeOffset) == true
-            }
-        }
+        findPropertyContext(file, offset)
+            ?.let { context ->
+                offset in context.nameStartOffset..context.nameEndOffset
+            } == true
 
     private fun findContainingInReadAction(element: PsiElement): AngularHostEventBinding? =
         PsiTreeUtil
@@ -93,6 +105,21 @@ internal object AngularHostBindingSupport {
                         endOffset = identifier.textRange.startOffset + valueRange.endOffset,
                     )
                 }
+            }
+
+    private fun JSProperty.toAngularHostPropertyContext(): AngularHostPropertyContext? =
+        takeIf { property -> property.isAngularHostProperty() }
+            ?.let { property ->
+                val hostObject = property.context as? JSObjectLiteralExpression ?: return@let null
+                val identifier = property.nameIdentifier ?: return@let null
+                val valueRange = ElementManipulators.getValueTextRange(identifier)
+
+                AngularHostPropertyContext(
+                    property = property,
+                    hostObject = hostObject,
+                    nameStartOffset = identifier.textRange.startOffset + valueRange.startOffset,
+                    nameEndOffset = identifier.textRange.startOffset + valueRange.endOffset,
+                )
             }
 
     private fun JSProperty.isAngularHostProperty(): Boolean {
