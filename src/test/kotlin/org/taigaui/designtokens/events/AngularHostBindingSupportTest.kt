@@ -151,13 +151,15 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 .findInEventName(
                     bindings[0].eventName,
                     bindings[0].eventNameStartOffset,
-                ).single()
+                )
+                .single()
         val duplicate =
             EventPluginDuplicateModifierFinder
                 .findInEventName(
                     bindings[1].eventName,
                     bindings[1].eventNameStartOffset,
-                ).single()
+                )
+                .single()
 
         assertEquals("captre", file.text.substring(unknown.startOffset, unknown.endOffset))
         assertEquals("zoneless", file.text.substring(duplicate.startOffset, duplicate.endOffset))
