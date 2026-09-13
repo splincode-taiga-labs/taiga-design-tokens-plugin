@@ -10,6 +10,7 @@ import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 
@@ -33,38 +34,78 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         editor: Editor,
         file: PsiFile,
     ): Result {
-        if (charTyped != '.' && !charTyped.isLetterOrDigit()) {
+        editor.putUserData(HOST_COMPLETION_CARET_OFFSET, null)
+
+        if (!charTyped.isCompletionTrigger()) {
             return Result.CONTINUE
         }
 
-        val caretOffsetBeforeTyping = editor.caretModel.offset
+        val caretOffset = editor.caretModel.offset
         val completionContext =
             HostEventPluginCompletionContext.findAfterTyping(
                 text = editor.document.immutableCharSequence,
-                caretOffset = caretOffsetBeforeTyping,
+                caretOffset = caretOffset,
                 charTyped = charTyped,
             ) ?: return Result.CONTINUE
-        val hostOffset = (caretOffsetBeforeTyping - 1).coerceAtLeast(0)
 
-        if (!AngularHostBindingSupport.isInsideHostProperty(file, hostOffset)) {
+        if (completionContext.toLookupElements().isEmpty()) {
+            return Result.CONTINUE
+        }
+
+        PsiDocumentManager.getInstance(project).commitDocument(editor.document)
+
+        if (!AngularHostBindingSupport.isInsideHostProperty(file, (caretOffset - 1).coerceAtLeast(0))) {
+            return Result.CONTINUE
+        }
+
+        editor.putUserData(HOST_COMPLETION_CARET_OFFSET, caretOffset)
+
+        // Suppress the standard auto-popup for this keystroke. Our lookup is opened from charTyped,
+        // after the character has actually been inserted into the document.
+        return Result.STOP
+    }
+
+    override fun charTyped(
+        charTyped: Char,
+        project: Project,
+        editor: Editor,
+        file: PsiFile,
+    ): Result {
+        val caretOffsetBeforeTyping = editor.getUserData(HOST_COMPLETION_CARET_OFFSET)
+        editor.putUserData(HOST_COMPLETION_CARET_OFFSET, null)
+
+        if (
+            caretOffsetBeforeTyping == null ||
+            !charTyped.isCompletionTrigger() ||
+            editor.caretModel.offset != caretOffsetBeforeTyping + 1
+        ) {
+            return Result.CONTINUE
+        }
+
+        val caretOffset = editor.caretModel.offset
+        val completionContext =
+            HostEventPluginCompletionContext.findBeforeCaret(
+                text = editor.document.immutableCharSequence,
+                caretOffset = caretOffset,
+            ) ?: return Result.CONTINUE
+
+        if (completionContext.toLookupElements().isEmpty()) {
             return Result.CONTINUE
         }
 
         showLookupLater(
             project = project,
             editor = editor,
-            file = file,
-            expectedCaretOffset = caretOffsetBeforeTyping + 1,
+            expectedCaretOffset = caretOffset,
             expectedContext = completionContext,
         )
 
-        return Result.STOP
+        return Result.CONTINUE
     }
 
     private fun showLookupLater(
         project: Project,
         editor: Editor,
-        file: PsiFile,
         expectedCaretOffset: Int,
         expectedContext: HostEventPluginCompletionContext,
     ) {
@@ -73,22 +114,16 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
                 return@invokeLater
             }
 
-            PsiDocumentManager.getInstance(project).commitDocument(editor.document)
-
             val context =
                 HostEventPluginCompletionContext.findBeforeCaret(
                     text = editor.document.immutableCharSequence,
                     caretOffset = expectedCaretOffset,
                 )?.takeIf { current -> current == expectedContext }
                     ?: return@invokeLater
-
-            if (!AngularHostBindingSupport.isInsideHostProperty(file, expectedCaretOffset - 1)) {
-                return@invokeLater
-            }
-
             val lookupElements = context.toLookupElements().toTypedArray()
 
             if (lookupElements.isNotEmpty()) {
+                LookupManager.hideActiveLookup(project)
                 LookupManager
                     .getInstance(project)
                     .showLookup(editor, lookupElements, context.prefix)
@@ -280,6 +315,9 @@ private fun EventPluginModifier.completionIdentity(): String =
         else -> source
     }
 
+private fun Char.isCompletionTrigger(): Boolean =
+    this == '.' || isLetterOrDigit()
+
 private val EVENT_PLUGIN_EVENT_COMPLETIONS =
     listOf(
         EventPluginCompletion(
@@ -309,3 +347,6 @@ private val EVENT_PLUGIN_MODIFIER_COMPLETIONS =
         EventPluginCompletion("throttle~300ms", "throttle~<delay>ms", "throttle"),
         EventPluginCompletion("throttle~2s", "throttle~<delay>s", "throttle"),
     )
+
+private val HOST_COMPLETION_CARET_OFFSET =
+    Key.create<Int>("taiga.ui.event.plugins.host.completion.caret.offset")
