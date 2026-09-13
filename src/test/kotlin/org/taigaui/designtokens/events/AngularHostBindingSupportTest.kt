@@ -77,6 +77,45 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
+    fun `completes Taiga custom events in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(r<caret>)': 'onResize()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue("resize" in variants)
+    }
+
+    @Test
+    fun `builds popup context before typed character is inserted`() {
+        val eventContext =
+            HostEventPluginCompletionContext.findAfterTyping(
+                text = "(",
+                caretOffset = 1,
+                charTyped = 'r',
+            )
+        val modifierContext =
+            HostEventPluginCompletionContext.findAfterTyping(
+                text = "(click",
+                caretOffset = 6,
+                charTyped = '.',
+            )
+
+        assertEquals(HostEventPluginCompletionContext.Kind.EVENT, eventContext?.kind)
+        assertEquals("r", eventContext?.prefix)
+        assertEquals(HostEventPluginCompletionContext.Kind.MODIFIER, modifierContext?.kind)
+        assertEquals("", modifierContext?.prefix)
+    }
+
+    @Test
     fun `does not repeat already used Taiga modifier in host completion`() {
         myFixture.configureByText(
             "component.ts",
