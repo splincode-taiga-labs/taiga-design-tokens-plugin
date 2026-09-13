@@ -32,8 +32,8 @@
         />
         <completion.contributor
             id="TaigaUIEventPluginHostCompletionContributor"
-            language="any"
-            order="first"
+            language="JavaScript"
+            order="first, before JSPatternBasedCompletionContributor, before JSCompletionContributor"
             implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginCompletionContributor"
         />
         <completion.contributor
