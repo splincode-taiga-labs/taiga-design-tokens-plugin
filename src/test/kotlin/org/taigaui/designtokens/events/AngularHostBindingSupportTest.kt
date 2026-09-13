@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.events
 
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
+import com.intellij.util.ui.UIUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -113,6 +114,47 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         assertEquals("r", eventContext?.prefix)
         assertEquals(HostEventPluginCompletionContext.Kind.MODIFIER, modifierContext?.kind)
         assertEquals("", modifierContext?.prefix)
+    }
+
+    @Test
+    fun `opens auto popup for Taiga custom event while typing host key`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(<caret>)': 'onResize()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        myFixture.type("r")
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertNotNull(myFixture.lookup)
+        assertTrue("resize" in myFixture.lookupElementStrings.orEmpty())
+    }
+
+    @Test
+    fun `opens auto popup for Taiga modifiers after event separator`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(click<caret>)': 'onClick()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        myFixture.type(".")
+        UIUtil.dispatchAllInvocationEvents()
+
+        assertNotNull(myFixture.lookup)
+        assertTrue("zoneless" in myFixture.lookupElementStrings.orEmpty())
+        assertTrue("stop" in myFixture.lookupElementStrings.orEmpty())
     }
 
     @Test
