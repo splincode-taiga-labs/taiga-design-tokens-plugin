@@ -99,6 +99,7 @@
         />
         <typedHandler
             implementation="org.taigaui.designtokens.events.TypeScriptHostEventPluginCompletionAutoPopupHandler"
+            order="first, before completionAutoPopup"
         />
         <codeInsight.declarativeInlayProvider
             group="VALUES_GROUP"
