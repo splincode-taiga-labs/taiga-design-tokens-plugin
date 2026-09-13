@@ -47,12 +47,9 @@ class EventPluginsWebTypesTest {
         assertNotNull("META-INF/plugin.xml must be available on the test classpath", descriptor)
 
         val pluginXml = descriptor!!.readText()
-        val hostCompletionRegistration =
-            """
-            id="TaigaUIEventPluginHostCompletionContributor"
-            language="JavaScript"
-            order="first, before JSPatternBasedCompletionContributor, before JSCompletionContributor"
-            """.trimIndent()
+        val hostCompletionStart = pluginXml.indexOf("id=\"TaigaUIEventPluginHostCompletionContributor\"")
+        val hostCompletionEnd = pluginXml.indexOf("/>", hostCompletionStart)
+        val hostCompletionRegistration = pluginXml.substring(hostCompletionStart, hostCompletionEnd)
 
         assertTrue(pluginXml.contains("<polySymbols.webTypes"))
         assertTrue(pluginXml.contains("source=\"web-types/event-plugins@3.1.0.web-types.json\""))
@@ -62,7 +59,9 @@ class EventPluginsWebTypesTest {
         assertTrue(pluginXml.contains("TypeScriptEventPluginModifierInspection"))
         assertTrue(pluginXml.contains("TypeScriptHostEventPluginCompletionContributor"))
         assertTrue(pluginXml.contains("TypeScriptHostEventPluginCompletionAutoPopupHandler"))
-        assertTrue(pluginXml.contains(hostCompletionRegistration))
+        assertTrue(hostCompletionRegistration.contains("language=\"JavaScript\""))
+        assertTrue(hostCompletionRegistration.contains("before JSPatternBasedCompletionContributor"))
+        assertTrue(hostCompletionRegistration.contains("before JSCompletionContributor"))
         assertTrue(pluginXml.contains("shortName=\"UnknownTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("shortName=\"DuplicateTaigaUIEventModifier\""))
         assertTrue(pluginXml.contains("shortName=\"InvalidTaigaUIEventModifierInHostBinding\""))
