@@ -11,6 +11,7 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.json</depends>
     <depends>JavaScript</depends>
+    <depends>AngularJS</depends>
     <depends>com.intellij.css</depends>
 
     <extensions defaultExtensionNs="com.intellij">
