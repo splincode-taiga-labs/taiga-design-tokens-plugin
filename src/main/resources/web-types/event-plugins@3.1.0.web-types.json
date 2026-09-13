@@ -28,6 +28,87 @@
           }
         },
         {
+          "name": "Global event target",
+          "description": "Listens on an object reachable from `window` using the `target>event` syntax provided by `@taiga-ui/event-plugins`.",
+          "priority": "high",
+          "pattern": {
+            "template": [
+              {
+                "items": "ng-event-plugins-global-targets",
+                "template": [
+                  "#item:global target"
+                ]
+              },
+              ">",
+              {
+                "or": [
+                  {
+                    "items": {
+                      "path": "/js/events",
+                      "includeVirtual": false
+                    },
+                    "template": [
+                      "#item:event"
+                    ]
+                  },
+                  {
+                    "items": "ng-event-plugins-global-events",
+                    "template": [
+                      "#item:event"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "ng-event-plugins-global-targets": [
+            {
+              "name": "visualViewport",
+              "description": "The browser's `window.visualViewport` event target."
+            },
+            {
+              "name": "window",
+              "description": "The global `window` event target."
+            },
+            {
+              "name": "document",
+              "description": "The global `window.document` event target."
+            },
+            {
+              "name": "document.body",
+              "description": "The document body event target."
+            },
+            {
+              "name": "Global object path",
+              "priority": "lowest",
+              "pattern": "[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*",
+              "doc-hide-pattern": true,
+              "hide-from-completion": true
+            }
+          ],
+          "ng-event-plugins-global-events": [
+            {
+              "name": "resize",
+              "description": "Fires when the global target is resized."
+            },
+            {
+              "name": "scroll",
+              "description": "Fires when the global target is scrolled."
+            },
+            {
+              "name": "scrollend",
+              "description": "Fires when scrolling on the global target has completed."
+            },
+            {
+              "name": "Global event name",
+              "priority": "lowest",
+              "pattern": "[A-Za-z0-9_$:-]+(?:\\.[A-Za-z0-9_$~:-]+)*",
+              "doc-hide-pattern": true,
+              "hide-from-completion": true
+            }
+          ]
+        },
+        {
           "name": "Custom modifiers for declarative events handling",
           "priority": "high",
           "pattern": {
