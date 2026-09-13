@@ -58,6 +58,60 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
+    fun `completes native browser events in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(cl<caret>)': 'onClick()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("click", ignoreCase = true) })
+    }
+
+    @Test
+    fun `completes Angular style bindings in host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'[style.w<caret>]': 'width'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("width", ignoreCase = true) })
+    }
+
+    @Test
+    fun `completes Angular style binding prefix in host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'[st<caret>]': 'width'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("style", ignoreCase = true) })
+    }
+
+    @Test
     fun `completes Taiga modifiers in Angular host metadata`() {
         myFixture.configureByText(
             "component.ts",
@@ -93,6 +147,42 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
 
         assertTrue("resize" in variants)
+    }
+
+    @Test
+    fun `completes global event target in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(vis<caret>)': 'onResize()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue("visualViewport" in variants)
+    }
+
+    @Test
+    fun `completes events after global event target`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'example',
+                host: {'(visualViewport>r<caret>)': 'onResize()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("resize", ignoreCase = true) })
     }
 
     @Test
@@ -232,15 +322,13 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 .findInEventName(
                     bindings[0].eventName,
                     bindings[0].eventNameStartOffset,
-                )
-                .single()
+                ).single()
         val duplicate =
             EventPluginDuplicateModifierFinder
                 .findInEventName(
                     bindings[1].eventName,
                     bindings[1].eventNameStartOffset,
-                )
-                .single()
+                ).single()
 
         assertEquals("captre", file.text.substring(unknown.startOffset, unknown.endOffset))
         assertEquals("zoneless", file.text.substring(duplicate.startOffset, duplicate.endOffset))
