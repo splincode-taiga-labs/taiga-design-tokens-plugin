@@ -45,6 +45,13 @@ internal object AngularHostBindingSupport {
             findContainingInReadAction(element)
         }
 
+    fun isInsideHostProperty(element: PsiElement): Boolean =
+        ReadAction.compute<Boolean, RuntimeException> {
+            PsiTreeUtil
+                .getParentOfType(element, JSProperty::class.java, false)
+                ?.isAngularHostProperty() == true
+        }
+
     private fun findContainingInReadAction(element: PsiElement): AngularHostEventBinding? =
         PsiTreeUtil
             .getParentOfType(element, JSProperty::class.java, false)
