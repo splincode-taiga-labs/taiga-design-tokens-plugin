@@ -83,6 +83,10 @@
             level="ERROR"
             implementationClass="org.taigaui.designtokens.events.TypeScriptEventPluginModifierInspection"
         />
+        <lang.inspectionSuppressor
+            language="JavaScript"
+            implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginInspectionSuppressor"
+        />
         <daemon.highlightInfoFilter
             implementation="org.taigaui.designtokens.events.EventPluginKeyEventHighlightInfoFilter"
         />
