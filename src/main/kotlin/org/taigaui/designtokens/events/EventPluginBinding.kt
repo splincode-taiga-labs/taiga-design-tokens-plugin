@@ -100,7 +100,9 @@ internal data class EventPluginModifier(
                 "passive" ->
                     EventPluginModifier(
                         source = source,
-                        description = "Registers a passive event listener, allowing the browser to optimize input handling.",
+                        description =
+                            "Registers a passive event listener, " +
+                                "allowing the browser to optimize input handling.",
                         behavior = "registers the listener as passive",
                     )
 
