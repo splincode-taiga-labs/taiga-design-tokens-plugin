@@ -3,6 +3,7 @@ package org.taigaui.designtokens.events
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoFilter
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiFile
 
 class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
@@ -23,24 +24,44 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
         highlightInfo: HighlightInfo,
         psiFile: PsiFile,
     ): Boolean =
-        isSuppressibleHostInspection(highlightInfo) &&
-            hostBindingAtHighlight(highlightInfo, psiFile)
-                ?.takeIf { hostBinding -> EventPluginBinding.parse(hostBinding.source) != null }
-                ?.let { hostBinding ->
-                    rangesIntersect(
-                        highlightInfo.startOffset,
-                        highlightInfo.endOffset,
-                        hostBinding.startOffset,
-                        hostBinding.endOffset,
-                    )
-                } == true
+        hostBindingAtHighlight(highlightInfo, psiFile)
+            ?.let { hostBinding ->
+                EventPluginBinding.parse(hostBinding.source)?.let { binding ->
+                    when {
+                        highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 ->
+                            modifierRanges(hostBinding, binding).any { range ->
+                                rangesIntersect(
+                                    highlightInfo.startOffset,
+                                    highlightInfo.endOffset,
+                                    range.startOffset,
+                                    range.endOffset,
+                                )
+                            }
 
-    private fun isSuppressibleHostInspection(highlightInfo: HighlightInfo): Boolean {
-        val inspectionToolId = highlightInfo.inspectionToolId
+                        isPotentiallyConflictingInspection(highlightInfo) ->
+                            rangesIntersect(
+                                highlightInfo.startOffset,
+                                highlightInfo.endOffset,
+                                hostBinding.startOffset,
+                                hostBinding.endOffset,
+                            )
 
-        return inspectionToolId == SPELLCHECKING_INSPECTION ||
-            highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) >= 0 &&
-            (inspectionToolId == null || inspectionToolId in CONFLICTING_INSPECTIONS)
+                        else -> false
+                    }
+                }
+            } == true
+
+    private fun modifierRanges(
+        hostBinding: AngularHostEventBinding,
+        binding: EventPluginBinding,
+    ): List<TextRange> {
+        var startOffset = hostBinding.startOffset + 1 + binding.event.length + 1
+
+        return binding.modifiers.map { modifier ->
+            TextRange(startOffset, startOffset + modifier.source.length).also { range ->
+                startOffset = range.endOffset + 1
+            }
+        }
     }
 
     private fun hostBindingAtHighlight(
@@ -89,7 +110,6 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
     ): Boolean = firstStart < secondEnd && firstEnd > secondStart
 
     private companion object {
-        const val SPELLCHECKING_INSPECTION = "SpellCheckingInspection"
         val CONFLICTING_INSPECTIONS =
             setOf(
                 "AngularUndefinedBinding",
