@@ -49,7 +49,8 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
         highlightInfo: HighlightInfo,
         hostBinding: AngularHostEventBinding,
     ): Boolean =
-        EventPluginBinding.parse(hostBinding.source)
+        EventPluginBinding
+            .parse(hostBinding.source)
             ?.let { binding ->
                 when {
                     highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 ->
