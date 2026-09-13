@@ -68,7 +68,7 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         expectedContext: HostEventPluginCompletionContext,
     ) {
         ApplicationManager.getApplication().invokeLater {
-            if (project.isDisposed || !file.isValid || editor.caretModel.offset != expectedCaretOffset) {
+            if (project.isDisposed || editor.caretModel.offset != expectedCaretOffset) {
                 return@invokeLater
             }
 
