@@ -52,6 +52,24 @@ internal object AngularHostBindingSupport {
                 ?.isAngularHostProperty() == true
         }
 
+    fun isInsideHostProperty(
+        file: PsiFile,
+        offset: Int,
+    ): Boolean =
+        ReadAction.compute<Boolean, RuntimeException> {
+            if (file.textLength == 0) {
+                false
+            } else {
+                val safeOffset = offset.coerceIn(0, file.textLength - 1)
+
+                file
+                    .findElementAt(safeOffset)
+                    ?.let { element ->
+                        PsiTreeUtil.getParentOfType(element, JSProperty::class.java, false)
+                    }?.isAngularHostProperty() == true
+            }
+        }
+
     private fun findContainingInReadAction(element: PsiElement): AngularHostEventBinding? =
         PsiTreeUtil
             .getParentOfType(element, JSProperty::class.java, false)
