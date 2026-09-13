@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.events
 
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
 import com.intellij.util.ui.UIUtil
 import org.junit.Assert.assertEquals
@@ -183,6 +184,35 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
 
         assertTrue(variants.any { variant -> variant.contains("resize", ignoreCase = true) })
+    }
+
+    @Test
+    fun `does not highlight global event binding in Angular host metadata`() {
+        val binding = "(visualViewport>resize)"
+        val file =
+            myFixture.configureByText(
+                "component.ts",
+                """
+                @Component({
+                    selector: 'example',
+                    host: {'$binding': 'onResize()'},
+                })
+                export class ExampleComponent {}
+                """.trimIndent(),
+            )
+        val startOffset = file.text.indexOf(binding)
+        val endOffset = startOffset + binding.length
+        val highlights =
+            myFixture.doHighlighting().filter { highlight ->
+                highlight.severity.compareTo(HighlightSeverity.WEAK_WARNING) >= 0 &&
+                    highlight.startOffset < endOffset &&
+                    highlight.endOffset > startOffset
+            }
+
+        assertTrue(
+            highlights.joinToString(separator = "\n") { highlight -> highlight.toString() },
+            highlights.isEmpty(),
+        )
     }
 
     @Test
