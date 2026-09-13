@@ -26,42 +26,53 @@ class EventPluginKeyEventHighlightInfoFilter : HighlightInfoFilter {
     ): Boolean =
         hostBindingAtHighlight(highlightInfo, psiFile)
             ?.let { hostBinding ->
+                if (GlobalEventPluginBindingSupport.isValid(hostBinding.source)) {
+                    shouldSuppressGlobalEventDiagnostic(highlightInfo, hostBinding)
+                } else {
+                    shouldSuppressEventPluginDiagnostic(highlightInfo, hostBinding)
+                }
+            } == true
+
+    private fun shouldSuppressGlobalEventDiagnostic(
+        highlightInfo: HighlightInfo,
+        hostBinding: AngularHostEventBinding,
+    ): Boolean =
+        isPotentiallyConflictingInspection(highlightInfo) &&
+            rangesIntersect(
+                highlightInfo.startOffset,
+                highlightInfo.endOffset,
+                hostBinding.startOffset,
+                hostBinding.endOffset,
+            )
+
+    private fun shouldSuppressEventPluginDiagnostic(
+        highlightInfo: HighlightInfo,
+        hostBinding: AngularHostEventBinding,
+    ): Boolean =
+        EventPluginBinding.parse(hostBinding.source)
+            ?.let { binding ->
                 when {
-                    GlobalEventPluginBindingSupport.isValid(hostBinding.source) ->
-                        isPotentiallyConflictingInspection(highlightInfo) &&
+                    highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 ->
+                        modifierRanges(hostBinding, binding).any { range ->
                             rangesIntersect(
                                 highlightInfo.startOffset,
                                 highlightInfo.endOffset,
-                                hostBinding.startOffset,
-                                hostBinding.endOffset,
+                                range.startOffset,
+                                range.endOffset,
                             )
+                        }
 
-                    else ->
-                        EventPluginBinding.parse(hostBinding.source)?.let { binding ->
-                            when {
-                                highlightInfo.severity.compareTo(HighlightSeverity.WEAK_WARNING) < 0 ->
-                                    modifierRanges(hostBinding, binding).any { range ->
-                                        rangesIntersect(
-                                            highlightInfo.startOffset,
-                                            highlightInfo.endOffset,
-                                            range.startOffset,
-                                            range.endOffset,
-                                        )
-                                    }
+                    isPotentiallyConflictingInspection(highlightInfo) ->
+                        rangesIntersect(
+                            highlightInfo.startOffset,
+                            highlightInfo.endOffset,
+                            hostBinding.startOffset,
+                            hostBinding.endOffset,
+                        )
 
-                                isPotentiallyConflictingInspection(highlightInfo) ->
-                                    rangesIntersect(
-                                        highlightInfo.startOffset,
-                                        highlightInfo.endOffset,
-                                        hostBinding.startOffset,
-                                        hostBinding.endOffset,
-                                    )
-
-                                else -> false
-                            }
-                        } ?: false
+                    else -> false
                 }
-            } == true
+            } ?: false
 
     private fun modifierRanges(
         hostBinding: AngularHostEventBinding,
