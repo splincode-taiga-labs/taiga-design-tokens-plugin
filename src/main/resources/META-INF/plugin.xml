@@ -32,7 +32,7 @@
         />
         <completion.contributor
             id="TaigaUIEventPluginHostCompletionContributor"
-            language="JavaScript"
+            language="TypeScript"
             order="first, before JSPatternBasedCompletionContributor, before JSCompletionContributor"
             implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginCompletionContributor"
         />
@@ -84,7 +84,7 @@
             implementationClass="org.taigaui.designtokens.events.TypeScriptEventPluginModifierInspection"
         />
         <lang.inspectionSuppressor
-            language="JavaScript"
+            language="TypeScript"
             implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginInspectionSuppressor"
         />
         <daemon.highlightInfoFilter
