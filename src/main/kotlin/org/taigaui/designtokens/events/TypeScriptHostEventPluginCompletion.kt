@@ -1,13 +1,16 @@
 package org.taigaui.designtokens.events
 
-import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 
 class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
@@ -16,14 +19,9 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
         result: CompletionResultSet,
     ) {
         parameters.toHostEventPluginCompletionRequest()?.let { request ->
-            val matchingResult = result.withPrefixMatcher(request.prefix)
-
-            EVENT_PLUGIN_COMPLETIONS
-                .asSequence()
-                .filterNot { completion -> completion.identity in request.usedModifierIdentities }
-                .map(EventPluginCompletion::toLookupElement)
-                .toList()
-                .let(matchingResult::addAllElements)
+            result
+                .withPrefixMatcher(request.prefix)
+                .addAllElements(request.toLookupElements())
         }
     }
 }
@@ -35,17 +33,71 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         editor: Editor,
         file: PsiFile,
     ): Result {
-        if (
-            charTyped == '.' &&
-            HostEventPluginCompletionContext.findBeforeCaret(
-                text = editor.document.immutableCharSequence,
-                caretOffset = editor.caretModel.offset,
-            ) != null
-        ) {
-            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
+        if (charTyped != '.') {
+            return Result.CONTINUE
         }
 
-        return Result.CONTINUE
+        val caretOffset = editor.caretModel.offset
+        val completionContext =
+            HostEventPluginCompletionContext.findBeforeCaret(
+                text = editor.document.immutableCharSequence,
+                caretOffset = caretOffset,
+            ) ?: return Result.CONTINUE
+        val hostOffset = (caretOffset - 2).coerceAtLeast(0)
+
+        if (AngularHostBindingSupport.findAt(file, hostOffset) == null) {
+            return Result.CONTINUE
+        }
+
+        showLookupLater(
+            project = project,
+            editor = editor,
+            file = file,
+            expectedCaretOffset = caretOffset,
+            expectedContext = completionContext,
+        )
+
+        return Result.STOP
+    }
+
+    private fun showLookupLater(
+        project: Project,
+        editor: Editor,
+        file: PsiFile,
+        expectedCaretOffset: Int,
+        expectedContext: HostEventPluginCompletionContext,
+    ) {
+        ApplicationManager.getApplication().invokeLater {
+            if (project.isDisposed || !file.isValid || editor.caretModel.offset != expectedCaretOffset) {
+                return@invokeLater
+            }
+
+            PsiDocumentManager.getInstance(project).commitDocument(editor.document)
+
+            val context =
+                HostEventPluginCompletionContext.findBeforeCaret(
+                    text = editor.document.immutableCharSequence,
+                    caretOffset = expectedCaretOffset,
+                )?.takeIf { current -> current == expectedContext }
+                    ?: return@invokeLater
+            val hostBinding =
+                AngularHostBindingSupport.findAt(
+                    file,
+                    (expectedCaretOffset - 1).coerceAtLeast(0),
+                ) ?: return@invokeLater
+
+            if (expectedCaretOffset !in hostBinding.startOffset..hostBinding.endOffset) {
+                return@invokeLater
+            }
+
+            val lookupElements = context.toLookupElements().toTypedArray()
+
+            if (lookupElements.isNotEmpty()) {
+                LookupManager
+                    .getInstance(project)
+                    .showLookup(editor, lookupElements, context.prefix)
+            }
+        }
     }
 }
 
@@ -156,7 +208,14 @@ private data class EventPluginCompletion(
     val identity: String = source,
 )
 
-private fun EventPluginCompletion.toLookupElement(): LookupElementBuilder {
+private fun HostEventPluginCompletionContext.toLookupElements(): List<LookupElement> =
+    EVENT_PLUGIN_COMPLETIONS
+        .asSequence()
+        .filterNot { completion -> completion.identity in usedModifierIdentities }
+        .map(EventPluginCompletion::toLookupElement)
+        .toList()
+
+private fun EventPluginCompletion.toLookupElement(): LookupElement {
     val modifier = EventPluginModifier.parse(source)
 
     return LookupElementBuilder
