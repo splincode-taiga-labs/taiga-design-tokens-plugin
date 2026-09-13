@@ -31,6 +31,24 @@ class EventPluginBindingTest {
     }
 
     @Test
+    fun `recognizes global event plugin bindings`() {
+        val binding = requireNotNull(GlobalEventPluginBindingSupport.parse("(visualViewport>resize)"))
+
+        assertEquals("visualViewport", binding.target)
+        assertEquals("resize", binding.event)
+        assertTrue(GlobalEventPluginBindingSupport.isValid("(document.body>click)"))
+        assertTrue(GlobalEventPluginBindingSupport.isValid("(visualViewport>resize.zoneless)"))
+    }
+
+    @Test
+    fun `rejects malformed global event plugin bindings`() {
+        assertFalse(GlobalEventPluginBindingSupport.isValid("(visualViewport>)"))
+        assertFalse(GlobalEventPluginBindingSupport.isValid("(>resize)"))
+        assertFalse(GlobalEventPluginBindingSupport.isValid("(visualViewport>>resize)"))
+        assertFalse(GlobalEventPluginBindingSupport.isValid("(visual viewport>resize)"))
+    }
+
+    @Test
     fun `rejects unknown and duplicate taiga modifiers`() {
         assertNull(EventPluginBinding.parse("(click.captre)"))
         assertNull(EventPluginBinding.parse("(click.zoneless.captre)"))
