@@ -39,6 +39,46 @@ internal data class EventPluginBinding(
     }
 }
 
+internal data class GlobalEventPluginBinding(
+    val source: String,
+    val target: String,
+    val event: String,
+)
+
+internal object GlobalEventPluginBindingSupport {
+    fun parse(attributeName: String): GlobalEventPluginBinding? {
+        if (!attributeName.startsWith('(') || !attributeName.endsWith(')')) {
+            return null
+        }
+
+        val source = attributeName.substring(1, attributeName.lastIndex)
+        val separatorIndex = source.indexOf('>')
+
+        if (separatorIndex <= 0 || separatorIndex != source.lastIndexOf('>')) {
+            return null
+        }
+
+        val target = source.substring(0, separatorIndex)
+        val event = source.substring(separatorIndex + 1)
+
+        return GlobalEventPluginBinding(
+            source = attributeName,
+            target = target,
+            event = event,
+        ).takeIf {
+            target.matches(GLOBAL_TARGET) &&
+                event.matches(GLOBAL_EVENT)
+        }
+    }
+
+    fun isValid(attributeName: String): Boolean = parse(attributeName) != null
+
+    private val GLOBAL_TARGET =
+        Regex("[A-Za-z_${'$'}][A-Za-z0-9_${'$'}]*(?:\\.[A-Za-z_${'$'}][A-Za-z0-9_${'$'}]*)*")
+    private val GLOBAL_EVENT =
+        Regex("[A-Za-z0-9_${'$'}:-]+(?:\\.[A-Za-z0-9_${'$'}~:-]+)*")
+}
+
 internal data class EventPluginModifier(
     val source: String,
     val description: String,
