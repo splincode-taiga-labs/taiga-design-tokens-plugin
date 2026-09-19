@@ -21,24 +21,20 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         editor.hostCompletionAlarm(project).cancelAllRequests()
         editor.putUserData(HOST_COMPLETION_CARET_OFFSET, null)
 
-        if (!charTyped.isCompletionTrigger() || LookupManager.getActiveLookup(editor) != null) {
-            return Result.CONTINUE
-        }
-
         val caretOffset = editor.caretModel.offset
-        val isInsideHost =
-            AngularHostBindingSupport.isInsideHostProperty(
-                file,
-                (caretOffset - 1).coerceAtLeast(0),
-            )
+        val shouldScheduleCompletion =
+            charTyped.isCompletionTrigger() &&
+                LookupManager.getActiveLookup(editor) == null &&
+                AngularHostBindingSupport.isInsideHostProperty(
+                    file,
+                    (caretOffset - 1).coerceAtLeast(0),
+                )
 
-        if (!isInsideHost) {
-            return Result.CONTINUE
+        if (shouldScheduleCompletion) {
+            editor.putUserData(HOST_COMPLETION_CARET_OFFSET, caretOffset)
         }
 
-        editor.putUserData(HOST_COMPLETION_CARET_OFFSET, caretOffset)
-
-        return Result.STOP
+        return if (shouldScheduleCompletion) Result.STOP else Result.CONTINUE
     }
 
     override fun charTyped(
