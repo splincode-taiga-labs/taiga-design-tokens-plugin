@@ -9,7 +9,6 @@ import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
-import com.intellij.lang.javascript.psi.ecma6.ES6Decorator
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
@@ -17,14 +16,10 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.polySymbols.PolySymbol
 import com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem
-import com.intellij.polySymbols.html.HTML_ATTRIBUTES
 import com.intellij.polySymbols.js.JS_PROPERTIES
 import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
-import com.intellij.psi.util.PsiTreeUtil
-import org.angular2.Angular2Framework
-import org.angular2.web.scopes.HostBindingsScope
 
 class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(
@@ -32,22 +27,8 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
         result: CompletionResultSet,
     ) {
         val request = parameters.toAngularHostCompletionRequest() ?: return
-        val decorator =
-            PsiTreeUtil.getParentOfType(
-                request.context.hostObject,
-                ES6Decorator::class.java,
-                false,
-            ) ?: return
         val queryExecutor =
-            PolySymbolQueryExecutorFactory.createCustom {
-                setFramework(Angular2Framework.ID)
-                addRootScope(
-                    HostBindingsScope(
-                        mapOf(JS_PROPERTIES to HTML_ATTRIBUTES),
-                        decorator,
-                    ),
-                )
-            }
+            PolySymbolQueryExecutorFactory.create(request.context.hostObject)
         val patchedResult =
             result.withPrefixMatcher(
                 result.prefixMatcher.cloneWithPrefix(request.nameBeforeCaret),
