@@ -146,7 +146,35 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
 
         val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
 
-        assertTrue(variants.any { variant -> variant.contains("value", ignoreCase = true) })
+        assertTrue("value" in variants)
+        assertFalse(variants.any { variant -> variant.startsWith('[') })
+    }
+
+    @Test
+    fun `does not force host completion on every typed letter`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'input[example]',
+                host: {'val<caret>': ''},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val result =
+            TypeScriptHostEventPluginCompletionAutoPopupHandler().checkAutoPopup(
+                'u',
+                project,
+                myFixture.editor,
+                myFixture.file,
+            )
+
+        assertEquals(
+            com.intellij.codeInsight.editorActions.TypedHandlerDelegate.Result.CONTINUE,
+            result,
+        )
     }
 
     @Test
