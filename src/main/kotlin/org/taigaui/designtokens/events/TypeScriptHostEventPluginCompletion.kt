@@ -23,6 +23,7 @@ import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
+import org.angular2.Angular2Framework
 import org.angular2.web.scopes.HostBindingsScope
 
 class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
@@ -39,6 +40,7 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
             ) ?: return
         val queryExecutor =
             PolySymbolQueryExecutorFactory.createCustom {
+                setFramework(Angular2Framework.ID)
                 addRootScope(
                     HostBindingsScope(
                         mapOf(JS_PROPERTIES to HTML_ATTRIBUTES),
@@ -244,11 +246,20 @@ internal data class HostEventPluginCompletionContext(
 
         private fun parseEventChain(eventChain: String): HostEventPluginCompletionContext? {
             if (!eventChain.contains('.')) {
-                return eventChain
-                    .takeIf { prefix -> prefix.all { character -> character.isEventNameCharacter() } }
-                    ?.let { prefix ->
+                val prefix = eventChain.substringAfterLast('>')
+                val targetIsValid =
+                    '>' !in eventChain ||
+                        eventChain.substringBeforeLast('>').all { character ->
+                            character.isEventNameCharacter() && character != '>'
+                        }
+
+                return prefix
+                    .takeIf { value ->
+                        targetIsValid &&
+                            value.all { character -> character.isEventNameCharacter() }
+                    }?.let { value ->
                         HostEventPluginCompletionContext(
-                            prefix = prefix,
+                            prefix = value,
                             usedModifierIdentities = emptySet(),
                             kind = Kind.EVENT,
                         )
