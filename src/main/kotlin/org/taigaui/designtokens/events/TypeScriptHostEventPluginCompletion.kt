@@ -56,7 +56,9 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
                 ).run()
 
         nativeItems.forEach { item ->
-            item.addToResult(parameters, patchedResult)
+            item
+                .withHostClosingDelimiterDeduplication(parameters, request)
+                .addToResult(parameters, patchedResult)
         }
 
         HostEventPluginCompletionContext
@@ -144,6 +146,45 @@ private data class AngularHostCompletionRequest(
     val context: AngularHostPropertyContext,
     val nameBeforeCaret: String,
 )
+
+private fun com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem.withHostClosingDelimiterDeduplication(
+    parameters: CompletionParameters,
+    request: AngularHostCompletionRequest,
+): com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem {
+    val closingDelimiter =
+        when (request.nameBeforeCaret.firstOrNull()) {
+            '(' -> ')'
+            '[' -> ']'
+            else -> null
+        } ?: return this
+    val caretOffset = parameters.editor.caretModel.offset
+    val document = parameters.editor.document
+
+    if (document.charsSequence.getOrNull(caretOffset) != closingDelimiter) {
+        return this
+    }
+
+    return withInsertHandlerAdded(
+        InsertHandler { context, _ ->
+            val text = context.document.charsSequence
+            val tailOffset = context.tailOffset.coerceIn(0, text.length)
+
+            when {
+                tailOffset > 0 &&
+                    tailOffset < text.length &&
+                    text[tailOffset - 1] == closingDelimiter &&
+                    text[tailOffset] == closingDelimiter ->
+                    context.document.deleteString(tailOffset, tailOffset + 1)
+
+                tailOffset + 1 < text.length &&
+                    text[tailOffset] == closingDelimiter &&
+                    text[tailOffset + 1] == closingDelimiter ->
+                    context.document.deleteString(tailOffset + 1, tailOffset + 2)
+            }
+        },
+        PolySymbol.Priority.LOWEST,
+    )
+}
 
 private fun CompletionParameters.toAngularHostCompletionRequest(): AngularHostCompletionRequest? {
     val caretOffset = editor.caretModel.offset
