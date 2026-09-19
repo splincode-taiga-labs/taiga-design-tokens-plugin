@@ -61,7 +61,7 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
     }
 
     private class InjectedContentCollector(
-        file: PsiFile,
+        private val file: PsiFile,
     ) : SharedBypassCollector {
         private val injectionManager = InjectedLanguageManager.getInstance(file.project)
 
@@ -69,6 +69,13 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
             element: PsiElement,
             sink: InlayTreeSink,
         ) {
+            if (element === file) {
+                addAngularHostHints(
+                    file = file,
+                    sink = sink,
+                )
+            }
+
             val host = element as? PsiLanguageInjectionHost ?: return
 
             injectionManager.enumerate(host) { injectedFile, _ ->
@@ -128,6 +135,17 @@ private fun addAngularTemplateHints(
     mapOffset: (Int) -> Int,
 ) {
     addHints(AngularRemStyleBindingHintCollector.collect(content), sink, mapOffset)
+}
+
+private fun addAngularHostHints(
+    file: PsiFile,
+    sink: InlayTreeSink,
+) {
+    addHints(
+        hints = AngularHostRemStyleBindingHintCollector.collect(file),
+        sink = sink,
+        mapOffset = { it },
+    )
 }
 
 private fun addHints(
