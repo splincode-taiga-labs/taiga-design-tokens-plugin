@@ -5,6 +5,7 @@ import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
@@ -14,6 +15,8 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
+import com.intellij.polySymbols.PolySymbol
+import PolySymbolCodeCompletionItem
 import com.intellij.polySymbols.html.HTML_ATTRIBUTES
 import com.intellij.polySymbols.js.JS_PROPERTIES
 import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
@@ -147,10 +150,10 @@ private data class AngularHostCompletionRequest(
     val nameBeforeCaret: String,
 )
 
-private fun com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem.withHostClosingDelimiterDeduplication(
+private fun PolySymbolCodeCompletionItem.withHostClosingDelimiterDeduplication(
     parameters: CompletionParameters,
     request: AngularHostCompletionRequest,
-): com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem {
+): PolySymbolCodeCompletionItem {
     val closingDelimiter =
         when (request.nameBeforeCaret.firstOrNull()) {
             '(' -> ')'
@@ -199,9 +202,7 @@ private fun CompletionParameters.toAngularHostCompletionRequest(): AngularHostCo
             TextRange(context.nameStartOffset, endOffset),
         )
 
-    return nameBeforeCaret
-        .takeIf { name -> name.startsWith('(') || name.startsWith('[') }
-        ?.let { name -> AngularHostCompletionRequest(context, name) }
+    return AngularHostCompletionRequest(context, nameBeforeCaret)
 }
 
 internal data class HostEventPluginCompletionContext(
