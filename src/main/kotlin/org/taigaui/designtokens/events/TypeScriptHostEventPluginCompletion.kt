@@ -1,24 +1,20 @@
 package org.taigaui.designtokens.events
 
-import com.intellij.codeInsight.completion.CodeCompletionHandlerBase
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
-import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.polySymbols.PolySymbol
 import com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem
 import com.intellij.polySymbols.js.JS_PROPERTIES
 import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
-import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 
 class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
@@ -143,61 +139,33 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         editor: Editor,
         file: PsiFile,
     ): Result {
-        editor.putUserData(HOST_COMPLETION_CARET_OFFSET, null)
-
-        val caretOffset = editor.caretModel.offset
-        val shouldOpenCompletion =
-            if (charTyped.isCompletionTrigger()) {
-                PsiDocumentManager.getInstance(project).commitDocument(editor.document)
-                AngularHostBindingSupport.isInsideHostProperty(
-                    file,
-                    (caretOffset - 1).coerceAtLeast(0),
-                )
-            } else {
-                false
-            }
-
-        if (shouldOpenCompletion) {
-            editor.putUserData(HOST_COMPLETION_CARET_OFFSET, caretOffset)
-        }
-
-        // The standard auto-popup runs before the character is inserted and does not reliably
-        // traverse Angular's HostBindingsScope. Invoke BASIC completion from charTyped instead,
-        // after the document contains the actual host binding prefix.
-        return if (shouldOpenCompletion) Result.STOP else Result.CONTINUE
-    }
-
-    override fun charTyped(
-        charTyped: Char,
-        project: Project,
-        editor: Editor,
-        file: PsiFile,
-    ): Result {
-        val caretOffsetBeforeTyping = editor.getUserData(HOST_COMPLETION_CARET_OFFSET)
-        editor.putUserData(HOST_COMPLETION_CARET_OFFSET, null)
-
-        if (
-            caretOffsetBeforeTyping == null ||
-            !charTyped.isCompletionTrigger() ||
-            editor.caretModel.offset != caretOffsetBeforeTyping + 1
-        ) {
+        if (!charTyped.isCompletionTrigger()) {
             return Result.CONTINUE
         }
 
-        val expectedCaretOffset = editor.caretModel.offset
+        val caretOffset = editor.caretModel.offset
+        val isInsideHost =
+            AngularHostBindingSupport.isInsideHostProperty(
+                file,
+                (caretOffset - 1).coerceAtLeast(0),
+            )
 
-        ApplicationManager.getApplication().invokeLater {
-            if (project.isDisposed || editor.caretModel.offset != expectedCaretOffset) {
-                return@invokeLater
-            }
-
-            PsiDocumentManager.getInstance(project).commitDocument(editor.document)
-
-            CodeCompletionHandlerBase(CompletionType.BASIC, false, false, true)
-                .invokeCompletion(project, editor)
+        if (!isInsideHost) {
+            return Result.CONTINUE
         }
 
-        return Result.CONTINUE
+        AutoPopupController
+            .getInstance(project)
+            .scheduleAutoPopup(editor) { psiFile ->
+                val currentOffset = editor.caretModel.offset
+
+                AngularHostBindingSupport.isInsideHostProperty(
+                    psiFile,
+                    (currentOffset - 1).coerceAtLeast(0),
+                )
+            }
+
+        return Result.STOP
     }
 }
 
@@ -442,7 +410,7 @@ private fun EventPluginModifier.completionIdentity(): String =
     }
 
 private fun Char.isCompletionTrigger(): Boolean =
-    this == '.' || this == '>'
+    isLetterOrDigit() || this == '.' || this == '>' || this == '-' || this == '_'
 
 private val EVENT_PLUGIN_EVENT_COMPLETIONS =
     listOf(
@@ -481,5 +449,3 @@ private val EVENT_PLUGIN_MODIFIER_COMPLETIONS =
 
 private const val HOST_BINDING_COMPLETION_SCAN_LENGTH = 200
 
-private val HOST_COMPLETION_CARET_OFFSET =
-    Key.create<Int>("taiga.ui.event.plugins.host.completion.caret.offset")
