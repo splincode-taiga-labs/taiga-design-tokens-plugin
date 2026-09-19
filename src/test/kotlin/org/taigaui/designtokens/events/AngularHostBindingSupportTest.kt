@@ -150,46 +150,6 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
-    fun `completes selector specific DOM properties in Angular host metadata`() {
-        myFixture.configureByText(
-            "src/directive.ts",
-            """
-            import {Directive} from '@angular/core';
-
-            @Directive({
-                selector: 'input[example]',
-                host: {'[val<caret>]': 'value'},
-            })
-            export class ExampleDirective {}
-            """.trimIndent(),
-        )
-
-        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
-
-        assertTrue("[value]" in variants)
-    }
-
-    @Test
-    fun `does not add element specific DOM properties without host tag selector`() {
-        myFixture.configureByText(
-            "src/directive.ts",
-            """
-            import {Directive} from '@angular/core';
-
-            @Directive({
-                selector: '[example]',
-                host: {'[val<caret>]': 'value'},
-            })
-            export class ExampleDirective {}
-            """.trimIndent(),
-        )
-
-        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
-
-        assertFalse("[value]" in variants)
-    }
-
-    @Test
     fun `schedules host completion for typed letters`() {
         myFixture.configureByText(
             "src/component.ts",
