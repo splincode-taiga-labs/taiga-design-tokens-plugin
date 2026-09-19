@@ -159,34 +159,34 @@ private fun PolySymbolCodeCompletionItem.withHostClosingDelimiterDeduplication(
             '(' -> ')'
             '[' -> ']'
             else -> null
-        } ?: return this
+        }
     val caretOffset = parameters.editor.caretModel.offset
     val document = parameters.editor.document
 
-    if (document.charsSequence.getOrNull(caretOffset) != closingDelimiter) {
-        return this
-    }
+    return closingDelimiter
+        ?.takeIf { delimiter -> document.charsSequence.getOrNull(caretOffset) == delimiter }
+        ?.let { delimiter ->
+            withInsertHandlerAdded(
+                InsertHandler { context, _ ->
+                    val text = context.document.charsSequence
+                    val tailOffset = context.tailOffset.coerceIn(0, text.length)
 
-    return withInsertHandlerAdded(
-        InsertHandler { context, _ ->
-            val text = context.document.charsSequence
-            val tailOffset = context.tailOffset.coerceIn(0, text.length)
+                    when {
+                        tailOffset > 0 &&
+                            tailOffset < text.length &&
+                            text[tailOffset - 1] == delimiter &&
+                            text[tailOffset] == delimiter ->
+                            context.document.deleteString(tailOffset, tailOffset + 1)
 
-            when {
-                tailOffset > 0 &&
-                    tailOffset < text.length &&
-                    text[tailOffset - 1] == closingDelimiter &&
-                    text[tailOffset] == closingDelimiter ->
-                    context.document.deleteString(tailOffset, tailOffset + 1)
-
-                tailOffset + 1 < text.length &&
-                    text[tailOffset] == closingDelimiter &&
-                    text[tailOffset + 1] == closingDelimiter ->
-                    context.document.deleteString(tailOffset + 1, tailOffset + 2)
-            }
-        },
-        PolySymbol.Priority.LOWEST,
-    )
+                        tailOffset + 1 < text.length &&
+                            text[tailOffset] == delimiter &&
+                            text[tailOffset + 1] == delimiter ->
+                            context.document.deleteString(tailOffset + 1, tailOffset + 2)
+                    }
+                },
+                PolySymbol.Priority.LOWEST,
+            )
+        } ?: this
 }
 
 private fun CompletionParameters.toAngularHostCompletionRequest(): AngularHostCompletionRequest? {
