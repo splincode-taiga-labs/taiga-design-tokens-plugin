@@ -58,9 +58,11 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
                     request.nameBeforeCaret.length,
                 ).run()
 
+        val existingClosingDelimiter = request.existingClosingDelimiter(parameters)
+
         nativeItems.forEach { item ->
             item
-                .withHostClosingDelimiterDeduplication(parameters, request)
+                .withHostClosingDelimiterDeduplication(existingClosingDelimiter)
                 .addToResult(parameters, patchedResult)
         }
 
@@ -70,7 +72,7 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
                 val nativeNames = nativeItems.map { item -> item.name }.toSet()
                 val fallbackItems =
                     context
-                        .toLookupElements()
+                        .toLookupElements(existingClosingDelimiter)
                         .filterNot { item -> item.lookupString in nativeNames }
 
                 result
@@ -150,44 +152,51 @@ private data class AngularHostCompletionRequest(
     val nameBeforeCaret: String,
 )
 
-private fun PolySymbolCodeCompletionItem.withHostClosingDelimiterDeduplication(
+private fun AngularHostCompletionRequest.existingClosingDelimiter(
     parameters: CompletionParameters,
-    request: AngularHostCompletionRequest,
-): PolySymbolCodeCompletionItem {
-    val closingDelimiter =
-        when (request.nameBeforeCaret.firstOrNull()) {
+): Char? {
+    val delimiter =
+        when (nameBeforeCaret.firstOrNull()) {
             '(' -> ')'
             '[' -> ']'
             else -> null
         }
     val caretOffset = parameters.editor.caretModel.offset
-    val document = parameters.editor.document
 
-    return closingDelimiter
-        ?.takeIf { delimiter -> document.charsSequence.getOrNull(caretOffset) == delimiter }
+    return delimiter?.takeIf { candidate ->
+        parameters.editor.document.charsSequence.getOrNull(caretOffset) == candidate
+    }
+}
+
+private fun PolySymbolCodeCompletionItem.withHostClosingDelimiterDeduplication(
+    closingDelimiter: Char?,
+): PolySymbolCodeCompletionItem =
+    closingDelimiter
         ?.let { delimiter ->
             withInsertHandlerAdded(
-                InsertHandler { context, _ ->
-                    val text = context.document.charsSequence
-                    val tailOffset = context.tailOffset.coerceIn(0, text.length)
-
-                    when {
-                        tailOffset > 0 &&
-                            tailOffset < text.length &&
-                            text[tailOffset - 1] == delimiter &&
-                            text[tailOffset] == delimiter ->
-                            context.document.deleteString(tailOffset, tailOffset + 1)
-
-                        tailOffset + 1 < text.length &&
-                            text[tailOffset] == delimiter &&
-                            text[tailOffset + 1] == delimiter ->
-                            context.document.deleteString(tailOffset + 1, tailOffset + 2)
-                    }
-                },
+                hostClosingDelimiterDeduplicationHandler(delimiter),
                 PolySymbol.Priority.LOWEST,
             )
         } ?: this
-}
+
+private fun hostClosingDelimiterDeduplicationHandler(
+    closingDelimiter: Char,
+): InsertHandler<LookupElement> =
+    InsertHandler { context, _ ->
+        val text = context.document.charsSequence
+        val startOffset = context.startOffset.coerceIn(0, text.length)
+        val endOffset = minOf(text.length, startOffset + HOST_BINDING_COMPLETION_SCAN_LENGTH)
+        val duplicateOffset =
+            (startOffset until (endOffset - 1).coerceAtLeast(startOffset))
+                .takeWhile { index -> text[index] != '\'' && text[index] != '"' }
+                .firstOrNull { index ->
+                    text[index] == closingDelimiter && text[index + 1] == closingDelimiter
+                }
+
+        duplicateOffset?.let { offset ->
+            context.document.deleteString(offset + 1, offset + 2)
+        }
+    }
 
 private fun CompletionParameters.toAngularHostCompletionRequest(): AngularHostCompletionRequest? {
     val caretOffset = editor.caretModel.offset
@@ -334,7 +343,9 @@ private data class EventPluginCompletion(
     val description: String? = null,
 )
 
-private fun HostEventPluginCompletionContext.toLookupElements(): List<LookupElement> =
+private fun HostEventPluginCompletionContext.toLookupElements(
+    closingDelimiter: Char?,
+): List<LookupElement> =
     when (kind) {
         HostEventPluginCompletionContext.Kind.EVENT -> EVENT_PLUGIN_EVENT_COMPLETIONS
         HostEventPluginCompletionContext.Kind.MODIFIER ->
@@ -343,10 +354,12 @@ private fun HostEventPluginCompletionContext.toLookupElements(): List<LookupElem
             }
     }.asSequence()
         .filter { completion -> completion.source.startsWith(prefix, ignoreCase = true) }
-        .map(EventPluginCompletion::toLookupElement)
+        .map { completion -> completion.toLookupElement(closingDelimiter) }
         .toList()
 
-private fun EventPluginCompletion.toLookupElement(): LookupElement {
+private fun EventPluginCompletion.toLookupElement(
+    closingDelimiter: Char?,
+): LookupElement {
     val modifierDescription = EventPluginModifier.parse(source)?.description
 
     return LookupElementBuilder
@@ -354,6 +367,10 @@ private fun EventPluginCompletion.toLookupElement(): LookupElement {
         .withPresentableText(presentableText)
         .withTypeText(typeText, true)
         .let { element ->
+            closingDelimiter
+                ?.let { delimiter -> element.withInsertHandler(hostClosingDelimiterDeduplicationHandler(delimiter)) }
+                ?: element
+        }.let { element ->
             (description ?: modifierDescription)
                 ?.let { text -> element.withTailText(" — $text", true) }
                 ?: element
@@ -405,6 +422,8 @@ private val EVENT_PLUGIN_MODIFIER_COMPLETIONS =
         EventPluginCompletion("throttle~300ms", "throttle~<delay>ms", "throttle"),
         EventPluginCompletion("throttle~2s", "throttle~<delay>s", "throttle"),
     )
+
+private const val HOST_BINDING_COMPLETION_SCAN_LENGTH = 200
 
 private val HOST_COMPLETION_CARET_OFFSET =
     Key.create<Int>("taiga.ui.event.plugins.host.completion.caret.offset")
