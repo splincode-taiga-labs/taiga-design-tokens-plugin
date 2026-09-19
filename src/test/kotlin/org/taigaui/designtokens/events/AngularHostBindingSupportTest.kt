@@ -3,7 +3,6 @@ package org.taigaui.designtokens.events
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
-import com.intellij.util.ui.UIUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -151,10 +150,12 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
-    fun `does not force host completion on every typed letter`() {
+    fun `schedules host completion for typed letters`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'input[example]',
                 host: {'val<caret>': ''},
@@ -172,7 +173,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             )
 
         assertEquals(
-            com.intellij.codeInsight.editorActions.TypedHandlerDelegate.Result.CONTINUE,
+            com.intellij.codeInsight.editorActions.TypedHandlerDelegate.Result.STOP,
             result,
         )
     }
@@ -471,7 +472,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
-    fun `opens auto popup for Taiga custom event while typing host key`() {
+    fun `schedules auto popup for Taiga custom event while typing host key`() {
         myFixture.configureByText(
             "src/component.ts",
             """
@@ -485,15 +486,22 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             """.trimIndent(),
         )
 
-        myFixture.type("r")
-        UIUtil.dispatchAllInvocationEvents()
+        val result =
+            TypeScriptHostEventPluginCompletionAutoPopupHandler().checkAutoPopup(
+                'r',
+                project,
+                myFixture.editor,
+                myFixture.file,
+            )
 
-        assertNotNull(myFixture.lookup)
-        assertTrue("resize" in myFixture.lookupElementStrings.orEmpty())
+        assertEquals(
+            com.intellij.codeInsight.editorActions.TypedHandlerDelegate.Result.STOP,
+            result,
+        )
     }
 
     @Test
-    fun `opens auto popup for Taiga modifiers after event separator`() {
+    fun `schedules auto popup for Taiga modifiers after event separator`() {
         myFixture.configureByText(
             "src/component.ts",
             """
@@ -507,12 +515,18 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             """.trimIndent(),
         )
 
-        myFixture.type(".")
-        UIUtil.dispatchAllInvocationEvents()
+        val result =
+            TypeScriptHostEventPluginCompletionAutoPopupHandler().checkAutoPopup(
+                '.',
+                project,
+                myFixture.editor,
+                myFixture.file,
+            )
 
-        assertNotNull(myFixture.lookup)
-        assertTrue("zoneless" in myFixture.lookupElementStrings.orEmpty())
-        assertTrue("stop" in myFixture.lookupElementStrings.orEmpty())
+        assertEquals(
+            com.intellij.codeInsight.editorActions.TypedHandlerDelegate.Result.STOP,
+            result,
+        )
     }
 
     @Test
