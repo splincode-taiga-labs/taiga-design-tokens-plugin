@@ -60,9 +60,11 @@ dependencies {
         bundledPlugin("AngularJS")
         bundledPlugin("com.intellij.css")
         bundledPlugin("com.intellij.modules.json")
-        testBundledPlugin("org.jetbrains.plugins.vue")
-        testBundledModule("intellij.vuejs.backend")
+        testBundledPlugin("JavaScript")
+        testBundledPlugin("AngularJS")
+        testBundledPlugin("com.intellij.css")
         testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.Plugin.JavaScript)
     }
 }
 
