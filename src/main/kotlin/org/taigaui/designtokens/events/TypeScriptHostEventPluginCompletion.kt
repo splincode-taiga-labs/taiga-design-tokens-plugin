@@ -40,6 +40,8 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
             else ->
                 addHtmlAttributeCompletions(parameters, result, request)
         }
+
+        result.stopHere()
     }
 }
 
