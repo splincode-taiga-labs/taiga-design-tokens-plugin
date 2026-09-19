@@ -99,7 +99,7 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
         isLetterOrDigit() || this == '.' || this == '>' || this == '-' || this == '_'
 }
 
-private const val HOST_COMPLETION_DEBOUNCE_MS = 150
+private const val HOST_COMPLETION_DEBOUNCE_MS = 250
 
 private val HOST_COMPLETION_CARET_OFFSET =
     Key.create<Int>("taiga.ui.event.plugins.host.completion.caret.offset")
