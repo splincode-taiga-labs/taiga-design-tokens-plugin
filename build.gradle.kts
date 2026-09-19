@@ -61,6 +61,7 @@ dependencies {
         bundledPlugin("com.intellij.css")
         bundledPlugin("com.intellij.modules.json")
         testBundledPlugin("org.jetbrains.plugins.vue")
+        testBundledModule("intellij.vuejs.backend")
         testFramework(TestFrameworkType.Platform)
     }
 }
