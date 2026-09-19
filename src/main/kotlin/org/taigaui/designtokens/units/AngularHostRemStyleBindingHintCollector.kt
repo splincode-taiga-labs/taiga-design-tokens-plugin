@@ -12,8 +12,7 @@ internal object AngularHostRemStyleBindingHintCollector {
                 ?.name == binding
         }
 
-    internal fun collect(content: CharSequence): List<RemInlayHint> =
-        collect(content) { _, _ -> true }
+    internal fun collect(content: CharSequence): List<RemInlayHint> = collect(content) { _, _ -> true }
 
     private fun collect(
         content: CharSequence,
