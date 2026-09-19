@@ -218,6 +218,32 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
+    fun `does not duplicate closing parenthesis when accepting Taiga modifier completion`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'button[example]',
+                host: {'(click.ca<caret>)': 'onClick()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val capture =
+            myFixture
+                .completeBasic()
+                .orEmpty()
+                .first { element -> element.lookupString == "capture" }
+
+        myFixture.lookup.currentItem = capture
+        myFixture.finishLookup('\n')
+
+        assertTrue(myFixture.file.text.contains("'(click.capture)': 'onClick()'"))
+        assertFalse(myFixture.file.text.contains("(click.capture))"))
+    }
+
+    @Test
     fun `completes Taiga modifiers in Angular host metadata`() {
         myFixture.configureByText(
             "component.ts",
