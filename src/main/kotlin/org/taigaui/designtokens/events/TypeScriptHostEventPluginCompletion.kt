@@ -152,9 +152,7 @@ private data class AngularHostCompletionRequest(
     val nameBeforeCaret: String,
 )
 
-private fun AngularHostCompletionRequest.existingClosingDelimiter(
-    parameters: CompletionParameters,
-): Char? {
+private fun AngularHostCompletionRequest.existingClosingDelimiter(parameters: CompletionParameters): Char? {
     val delimiter =
         when (nameBeforeCaret.firstOrNull()) {
             '(' -> ')'
@@ -164,7 +162,8 @@ private fun AngularHostCompletionRequest.existingClosingDelimiter(
     val caretOffset = parameters.editor.caretModel.offset
 
     return delimiter?.takeIf { candidate ->
-        parameters.editor.document.charsSequence.getOrNull(caretOffset) == candidate
+        parameters.editor.document.charsSequence
+            .getOrNull(caretOffset) == candidate
     }
 }
 
@@ -179,9 +178,7 @@ private fun PolySymbolCodeCompletionItem.withHostClosingDelimiterDeduplication(
             )
         } ?: this
 
-private fun hostClosingDelimiterDeduplicationHandler(
-    closingDelimiter: Char,
-): InsertHandler<LookupElement> =
+private fun hostClosingDelimiterDeduplicationHandler(closingDelimiter: Char): InsertHandler<LookupElement> =
     InsertHandler { context, _ ->
         val text = context.document.charsSequence
         val startOffset = context.startOffset.coerceIn(0, text.length)
@@ -343,9 +340,7 @@ private data class EventPluginCompletion(
     val description: String? = null,
 )
 
-private fun HostEventPluginCompletionContext.toLookupElements(
-    closingDelimiter: Char?,
-): List<LookupElement> =
+private fun HostEventPluginCompletionContext.toLookupElements(closingDelimiter: Char?): List<LookupElement> =
     when (kind) {
         HostEventPluginCompletionContext.Kind.EVENT -> EVENT_PLUGIN_EVENT_COMPLETIONS
         HostEventPluginCompletionContext.Kind.MODIFIER ->
@@ -357,9 +352,7 @@ private fun HostEventPluginCompletionContext.toLookupElements(
         .map { completion -> completion.toLookupElement(closingDelimiter) }
         .toList()
 
-private fun EventPluginCompletion.toLookupElement(
-    closingDelimiter: Char?,
-): LookupElement {
+private fun EventPluginCompletion.toLookupElement(closingDelimiter: Char?): LookupElement {
     val modifierDescription = EventPluginModifier.parse(source)?.description
 
     return LookupElementBuilder
