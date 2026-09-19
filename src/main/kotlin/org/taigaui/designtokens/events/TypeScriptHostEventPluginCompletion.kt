@@ -87,8 +87,7 @@ private fun addEventCompletions(
                                     )
                                 } ?: element
                         }
-                }
-                .toList()
+                }.toList()
         } else {
             emptyList()
         }
@@ -119,8 +118,7 @@ private fun addHtmlAttributeCompletions(
                 LookupElementBuilder
                     .create(attribute)
                     .withTypeText("HTML attribute", true)
-            }
-            .toList()
+            }.toList()
 
     result
         .withPrefixMatcher(prefix)
@@ -403,4 +401,3 @@ private val EVENT_PLUGIN_MODIFIER_COMPLETIONS =
     )
 
 private const val HOST_BINDING_COMPLETION_SCAN_LENGTH = 200
-
