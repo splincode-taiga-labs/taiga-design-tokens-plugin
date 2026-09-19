@@ -16,6 +16,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.TextRange
 import com.intellij.polySymbols.PolySymbol
 import com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem
+import com.intellij.polySymbols.html.HtmlDescriptorUtils
 import com.intellij.polySymbols.js.JS_PROPERTIES
 import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
 import com.intellij.psi.PsiDocumentManager
@@ -27,42 +28,153 @@ class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
         result: CompletionResultSet,
     ) {
         val request = parameters.toAngularHostCompletionRequest() ?: return
-        val queryExecutor =
-            PolySymbolQueryExecutorFactory.create(request.context.hostObject)
-        val patchedResult =
-            result.withPrefixMatcher(
-                result.prefixMatcher.cloneWithPrefix(request.nameBeforeCaret),
-            )
-        val nativeItems =
-            queryExecutor
-                .codeCompletionQuery(
-                    JS_PROPERTIES,
-                    request.nameBeforeCaret,
-                    request.nameBeforeCaret.length,
-                ).run()
+        val eventContext = HostEventPluginCompletionContext.parse(request.nameBeforeCaret)
 
-        val existingClosingDelimiter = request.existingClosingDelimiter(parameters)
+        when {
+            request.nameBeforeCaret.startsWith('[') ->
+                addAngularBindingCompletions(parameters, result, request)
 
-        nativeItems.forEach { item ->
-            item
-                .withHostClosingDelimiterDeduplication(existingClosingDelimiter)
-                .addToResult(parameters, patchedResult)
+            eventContext != null ->
+                addEventCompletions(parameters, result, request, eventContext)
+
+            else ->
+                addHtmlAttributeCompletions(parameters, result, request)
+        }
+    }
+}
+
+private fun addAngularBindingCompletions(
+    parameters: CompletionParameters,
+    result: CompletionResultSet,
+    request: AngularHostCompletionRequest,
+) {
+    val queryExecutor = PolySymbolQueryExecutorFactory.create(request.context.hostObject)
+    val patchedResult =
+        result.withPrefixMatcher(
+            result.prefixMatcher.cloneWithPrefix(request.nameBeforeCaret),
+        )
+    val nativeItems =
+        queryExecutor
+            .codeCompletionQuery(
+                JS_PROPERTIES,
+                request.nameBeforeCaret,
+                request.nameBeforeCaret.length,
+            ).run()
+    val existingClosingDelimiter = request.existingClosingDelimiter(parameters)
+
+    nativeItems.forEach { item ->
+        item
+            .withHostClosingDelimiterDeduplication(existingClosingDelimiter)
+            .addToResult(parameters, patchedResult)
+    }
+}
+
+private fun addEventCompletions(
+    parameters: CompletionParameters,
+    result: CompletionResultSet,
+    request: AngularHostCompletionRequest,
+    context: HostEventPluginCompletionContext,
+) {
+    val existingClosingDelimiter = request.existingClosingDelimiter(parameters)
+    val standardEvents =
+        if (context.kind == HostEventPluginCompletionContext.Kind.EVENT) {
+            parameters.originalFile.project
+                .standardHtmlHostCompletions()
+                .events
+                .asSequence()
+                .filter { event -> event.startsWith(context.prefix, ignoreCase = true) }
+                .map { event ->
+                    LookupElementBuilder
+                        .create(event)
+                        .withTypeText("DOM event", true)
+                        .let { element ->
+                            existingClosingDelimiter
+                                ?.let { delimiter ->
+                                    element.withInsertHandler(
+                                        hostClosingDelimiterDeduplicationHandler(delimiter),
+                                    )
+                                } ?: element
+                        }
+                }
+                .toList()
+        } else {
+            emptyList()
+        }
+    val standardNames = standardEvents.map(LookupElement::getLookupString).toSet()
+    val taigaItems =
+        context
+            .toLookupElements(existingClosingDelimiter)
+            .filterNot { item -> item.lookupString in standardNames }
+
+    result
+        .withPrefixMatcher(context.prefix)
+        .addAllElements(standardEvents + taigaItems)
+}
+
+private fun addHtmlAttributeCompletions(
+    parameters: CompletionParameters,
+    result: CompletionResultSet,
+    request: AngularHostCompletionRequest,
+) {
+    val prefix = request.nameBeforeCaret
+    val items =
+        parameters.originalFile.project
+            .standardHtmlHostCompletions()
+            .attributes
+            .asSequence()
+            .filter { attribute -> attribute.startsWith(prefix, ignoreCase = true) }
+            .map { attribute ->
+                LookupElementBuilder
+                    .create(attribute)
+                    .withTypeText("HTML attribute", true)
+            }
+            .toList()
+
+    result
+        .withPrefixMatcher(prefix)
+        .addAllElements(items)
+}
+
+private data class StandardHtmlHostCompletions(
+    val attributes: List<String>,
+    val events: List<String>,
+)
+
+private fun Project.standardHtmlHostCompletions(): StandardHtmlHostCompletions =
+    getUserData(STANDARD_HTML_HOST_COMPLETIONS_KEY)
+        ?: buildStandardHtmlHostCompletions().also { completions ->
+            putUserData(STANDARD_HTML_HOST_COMPLETIONS_KEY, completions)
         }
 
-        HostEventPluginCompletionContext
-            .parse(request.nameBeforeCaret)
-            ?.let { context ->
-                val nativeNames = nativeItems.map { item -> item.name }.toSet()
-                val fallbackItems =
-                    context
-                        .toLookupElements(existingClosingDelimiter)
-                        .filterNot { item -> item.lookupString in nativeNames }
+private fun Project.buildStandardHtmlHostCompletions(): StandardHtmlHostCompletions {
+    val attributes =
+        HtmlDescriptorUtils
+            .getHtmlNSDescriptor(this)
+            ?.getAllElementsDescriptors(null)
+            ?.asSequence()
+            ?.flatMap { descriptor ->
+                descriptor
+                    .getDefaultAttributeDescriptors(null)
+                    .asSequence()
+            }?.map { descriptor -> descriptor.name }
+            ?.filterNot { name -> ':' in name }
+            ?.distinct()
+            ?.sorted()
+            ?.toList()
+            .orEmpty()
+    val events =
+        attributes
+            .asSequence()
+            .filter { name -> name.length > 2 && name.startsWith("on", ignoreCase = true) }
+            .map { name -> name.drop(2) }
+            .distinct()
+            .sorted()
+            .toList()
 
-                result
-                    .withPrefixMatcher(context.prefix)
-                    .addAllElements(fallbackItems)
-            }
-    }
+    return StandardHtmlHostCompletions(
+        attributes = attributes,
+        events = events,
+    )
 }
 
 class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate() {
@@ -371,7 +483,7 @@ private fun EventPluginModifier.completionIdentity(): String =
     }
 
 private fun Char.isCompletionTrigger(): Boolean =
-    isLetterOrDigit() || this == '.' || this == '>' || this == '-' || this == '_'
+    this == '.' || this == '>'
 
 private val EVENT_PLUGIN_EVENT_COMPLETIONS =
     listOf(
@@ -409,6 +521,9 @@ private val EVENT_PLUGIN_MODIFIER_COMPLETIONS =
     )
 
 private const val HOST_BINDING_COMPLETION_SCAN_LENGTH = 200
+
+private val STANDARD_HTML_HOST_COMPLETIONS_KEY =
+    Key.create<StandardHtmlHostCompletions>("taiga.ui.standard.html.host.completions")
 
 private val HOST_COMPLETION_CARET_OFFSET =
     Key.create<Int>("taiga.ui.event.plugins.host.completion.caret.offset")
