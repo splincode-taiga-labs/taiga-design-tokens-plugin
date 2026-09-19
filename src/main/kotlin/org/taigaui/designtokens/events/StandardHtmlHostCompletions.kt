@@ -23,7 +23,7 @@ private fun Project.buildStandardHtmlHostCompletions(): StandardHtmlHostCompleti
             ?.asSequence()
             ?.flatMap { descriptor ->
                 descriptor
-                    .getDefaultAttributeDescriptors(null)
+                    .getAttributesDescriptors(null)
                     .asSequence()
             }?.map { descriptor -> descriptor.name }
             ?.filterNot { name -> ':' in name }
