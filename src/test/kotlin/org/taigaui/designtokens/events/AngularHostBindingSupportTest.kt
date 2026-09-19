@@ -623,21 +623,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         assertEquals("zoneless", file.text.substring(duplicate.startOffset, duplicate.endOffset))
     }
 
-    private companion object {
-        const val DOLLAR = '        fileName: String,
-        text: String,
-    ): PsiFile {
-        val file = myFixture.addFileToProject("src/$fileName", text)
-
-        myFixture.configureFromExistingVirtualFile(file.virtualFile)
-
-        return myFixture.file
-    }
-}
-
-    }
-
-    private fun configureAngularFile(
+private fun configureAngularFile(
         fileName: String,
         text: String,
     ): PsiFile {
@@ -648,4 +634,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         return myFixture.file
     }
 
+    private companion object {
+        const val DOLLAR = '$'
+    }
 }
