@@ -51,9 +51,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 """
                 import {Directive} from '@angular/core';
 
-                import {Directive} from '@angular/core';
-
-            @Directive({
+                @Directive({
                     selector: '[example]',
                     host: {
                         '(mousemove.zoneless)': 'onMove(${DOLLAR}event)',
@@ -83,9 +81,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 """
                 import {Component} from '@angular/core';
 
-                import {Component} from '@angular/core';
-
-            @Component({
+                @Component({
                     selector: 'example',
                     host: {'(click.zoneless.capture)': 'onClick()'},
                 })
@@ -392,9 +388,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 """
                 import {Component} from '@angular/core';
 
-                import {Component} from '@angular/core';
-
-            @Component({
+                @Component({
                     selector: 'example',
                     host: {'$binding': 'onResize()'},
                 })
@@ -510,9 +504,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
 
                 import {Directive} from '@angular/core';
 
-                import {Directive} from '@angular/core';
-
-            @Directive({
+                @Directive({
                     selector: '[example]',
                     options: {
                         host: {'(click.stop)': 'notAngularHost'},
@@ -546,9 +538,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 """
                 import {Directive} from '@angular/core';
 
-                import {Directive} from '@angular/core';
-
-            @Directive({
+                @Directive({
                     selector: '[example]',
                     host: {
                         '(click.captre)': 'onClick()',
