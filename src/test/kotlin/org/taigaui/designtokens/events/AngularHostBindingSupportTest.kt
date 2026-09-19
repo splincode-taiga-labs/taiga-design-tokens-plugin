@@ -78,6 +78,50 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     @Test
+    fun `completes bare HTML attributes in Angular host metadata`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'input[example]',
+                host: {'val<caret>': ''},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val variants = myFixture.completeBasic().orEmpty().map { element -> element.lookupString }
+
+        assertTrue(variants.any { variant -> variant.contains("value", ignoreCase = true) })
+    }
+
+    @Test
+    fun `does not duplicate closing parenthesis when accepting host event completion`() {
+        myFixture.configureByText(
+            "component.ts",
+            """
+            @Component({
+                selector: 'form[example]',
+                host: {'(su<caret>)': 'onSubmit()'},
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        val submit =
+            myFixture
+                .completeBasic()
+                .orEmpty()
+                .first { element -> element.lookupString.contains("submit", ignoreCase = true) }
+
+        myFixture.lookup.currentItem = submit
+        myFixture.finishLookup('\n')
+
+        assertTrue(myFixture.file.text.contains("'(submit)': 'onSubmit()'"))
+        assertFalse(myFixture.file.text.contains("(submit))"))
+    }
+
+    @Test
     fun `completes Angular style bindings in host metadata`() {
         myFixture.configureByText(
             "component.ts",
