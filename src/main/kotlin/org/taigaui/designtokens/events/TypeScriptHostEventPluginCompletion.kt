@@ -53,42 +53,12 @@ private fun addAngularBindingCompletions(
                 request.nameBeforeCaret.length,
             ).run()
     val existingClosingDelimiter = request.existingClosingDelimiter(parameters)
-    val nativeNames =
-        nativeItems
-            .flatMap { item ->
-                listOf(
-                    item.name,
-                    item.name.removePrefix("[").removeSuffix("]"),
-                )
-            }.toSet()
-    val domPropertyPrefix = request.nameBeforeCaret.removePrefix("[")
-    val domPropertyItems =
-        request.context
-            .standardDomProperties()
-            .asSequence()
-            .filter { property ->
-                property.startsWith(domPropertyPrefix, ignoreCase = true) &&
-                    property !in nativeNames
-            }.map { property ->
-                LookupElementBuilder
-                    .create("[$property]")
-                    .withTypeText("DOM property", true)
-                    .let { element ->
-                        existingClosingDelimiter
-                            ?.let { delimiter ->
-                                element.withInsertHandler(
-                                    hostClosingDelimiterDeduplicationHandler(delimiter),
-                                )
-                            } ?: element
-                    }
-            }.toList()
 
     nativeItems.forEach { item ->
         item
             .withHostClosingDelimiterDeduplication(existingClosingDelimiter)
             .addToResult(parameters, patchedResult)
     }
-    patchedResult.addAllElements(domPropertyItems)
 }
 
 private fun addEventCompletions(
