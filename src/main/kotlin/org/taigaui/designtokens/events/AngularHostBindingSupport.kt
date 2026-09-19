@@ -4,7 +4,6 @@ import com.intellij.lang.javascript.psi.JSObjectLiteralExpression
 import com.intellij.lang.javascript.psi.JSProperty
 import com.intellij.lang.javascript.psi.ecma6.ES6Decorator
 import com.intellij.openapi.application.ReadAction
-import com.intellij.psi.ElementManipulators
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
@@ -96,13 +95,11 @@ internal object AngularHostBindingSupport {
             ?.takeIf { source -> source.startsWith('(') && source.endsWith(')') }
             ?.takeIf { isAngularHostProperty() }
             ?.let { source ->
-                nameIdentifier?.let { identifier ->
-                    val valueRange = ElementManipulators.getValueTextRange(identifier)
-
+                hostPropertyNameRange(source)?.let { range ->
                     AngularHostEventBinding(
                         source = source,
-                        startOffset = identifier.textRange.startOffset + valueRange.startOffset,
-                        endOffset = identifier.textRange.startOffset + valueRange.endOffset,
+                        startOffset = range.first,
+                        endOffset = range.last + 1,
                     )
                 }
             }
@@ -111,15 +108,28 @@ internal object AngularHostBindingSupport {
         takeIf { property -> property.isAngularHostProperty() }
             ?.let { property ->
                 val hostObject = property.context as? JSObjectLiteralExpression ?: return@let null
-                val identifier = property.nameIdentifier ?: return@let null
-                val valueRange = ElementManipulators.getValueTextRange(identifier)
+                val source = property.name ?: return@let null
+                val range = property.hostPropertyNameRange(source) ?: return@let null
 
                 AngularHostPropertyContext(
                     property = property,
                     hostObject = hostObject,
-                    nameStartOffset = identifier.textRange.startOffset + valueRange.startOffset,
-                    nameEndOffset = identifier.textRange.startOffset + valueRange.endOffset,
+                    nameStartOffset = range.first,
+                    nameEndOffset = range.last + 1,
                 )
+            }
+
+    private fun JSProperty.hostPropertyNameRange(source: String): IntRange? =
+        nameIdentifier
+            ?.let { identifier ->
+                identifier.text
+                    .indexOf(source)
+                    .takeIf { index -> index >= 0 }
+                    ?.let { index ->
+                        val startOffset = identifier.textRange.startOffset + index
+
+                        startOffset until (startOffset + source.length)
+                    }
             }
 
     private fun JSProperty.isAngularHostProperty(): Boolean {
