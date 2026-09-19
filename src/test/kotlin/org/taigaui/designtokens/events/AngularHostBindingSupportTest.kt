@@ -15,6 +15,20 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         super.setUp()
 
         myFixture.addFileToProject(
+            "angular.json",
+            """
+            {
+              "projects": {
+                "test": {
+                  "projectType": "application",
+                  "root": "",
+                  "sourceRoot": "src"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
             "node_modules/@angular/core/package.json",
             """
             {
@@ -47,7 +61,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     fun `finds event plugin bindings in directive host metadata`() {
         val file =
             myFixture.configureByText(
-                "directive.ts",
+                "src/directive.ts",
                 """
                 import {Directive} from '@angular/core';
 
@@ -77,7 +91,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     fun `finds host binding at modifier offset`() {
         val file =
             myFixture.configureByText(
-                "component.ts",
+                "src/component.ts",
                 """
                 import {Component} from '@angular/core';
 
@@ -98,7 +112,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes native browser events in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -118,7 +132,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes bare HTML attributes in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -138,7 +152,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `does not duplicate closing parenthesis when accepting host event completion`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -166,7 +180,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes Angular style bindings in host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -186,7 +200,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes Angular style binding prefix in host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -206,7 +220,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes CSS classes in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -228,7 +242,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes HTML attributes in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -249,7 +263,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes CSS units after style property in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -272,7 +286,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `does not duplicate closing parenthesis when accepting Taiga modifier completion`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -300,7 +314,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes Taiga modifiers in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -322,7 +336,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes Taiga custom events in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -342,7 +356,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes global event target in Angular host metadata`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -362,7 +376,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `completes events after global event target`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -384,7 +398,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         val binding = "(visualViewport>resize)"
         val file =
             myFixture.configureByText(
-                "component.ts",
+                "src/component.ts",
                 """
                 import {Component} from '@angular/core';
 
@@ -431,7 +445,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `opens auto popup for Taiga custom event while typing host key`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -453,7 +467,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `opens auto popup for Taiga modifiers after event separator`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -476,7 +490,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `does not repeat already used Taiga modifier in host completion`() {
         myFixture.configureByText(
-            "component.ts",
+            "src/component.ts",
             """
             import {Component} from '@angular/core';
 
@@ -498,7 +512,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     fun `ignores similar keys outside Angular host metadata`() {
         val file =
             myFixture.configureByText(
-                "plain.ts",
+                "src/plain.ts",
                 """
                 const ordinary = {'(click.zoneless)': 'value'};
 
@@ -520,7 +534,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     @Test
     fun `does not complete Taiga modifiers in ordinary TypeScript objects`() {
         myFixture.configureByText(
-            "plain.ts",
+            "src/plain.ts",
             "const ordinary = {'(click.<caret>)': 'value'};",
         )
 
@@ -534,7 +548,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     fun `uses host binding offsets for modifier validation`() {
         val file =
             myFixture.configureByText(
-                "invalid.ts",
+                "src/invalid.ts",
                 """
                 import {Directive} from '@angular/core';
 
