@@ -11,13 +11,49 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase() {
+    override fun setUp() {
+        super.setUp()
+
+        myFixture.addFileToProject(
+            "node_modules/@angular/core/package.json",
+            """
+            {
+              "name": "@angular/core",
+              "version": "17.3.0",
+              "types": "index.d.ts"
+            }
+            """.trimIndent(),
+        )
+        myFixture.addFileToProject(
+            "node_modules/@angular/core/index.d.ts",
+            """
+            export interface DirectiveMetadata {
+                selector?: string;
+                host?: Record<string, string>;
+            }
+
+            export interface ComponentMetadata extends DirectiveMetadata {
+                template?: string;
+                styles?: string | string[];
+            }
+
+            export declare function Directive(metadata: DirectiveMetadata): ClassDecorator;
+            export declare function Component(metadata: ComponentMetadata): ClassDecorator;
+            """.trimIndent(),
+        )
+    }
+
     @Test
     fun `finds event plugin bindings in directive host metadata`() {
         val file =
             myFixture.configureByText(
                 "directive.ts",
                 """
-                @Directive({
+                import {Directive} from '@angular/core';
+
+                import {Directive} from '@angular/core';
+
+            @Directive({
                     selector: '[example]',
                     host: {
                         '(mousemove.zoneless)': 'onMove(${DOLLAR}event)',
@@ -45,7 +81,11 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             myFixture.configureByText(
                 "component.ts",
                 """
-                @Component({
+                import {Component} from '@angular/core';
+
+                import {Component} from '@angular/core';
+
+            @Component({
                     selector: 'example',
                     host: {'(click.zoneless.capture)': 'onClick()'},
                 })
@@ -64,6 +104,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(cl<caret>)': 'onClick()'},
@@ -82,6 +124,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'input[example]',
                 host: {'val<caret>': ''},
@@ -100,6 +144,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'form[example]',
                 host: {'(su<caret>)': 'onSubmit()'},
@@ -126,6 +172,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'[style.w<caret>]': 'width'},
@@ -144,6 +192,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'[st<caret>]': 'width'},
@@ -162,6 +212,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 styles: ['.active {} .disabled {}'],
@@ -182,6 +234,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'button[example]',
                 host: {'[attr.<caret>]': 'label'},
@@ -201,6 +255,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'[style.width.<caret>]': 'width'},
@@ -222,6 +278,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'button[example]',
                 host: {'(click.ca<caret>)': 'onClick()'},
@@ -248,6 +306,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(click.<caret>)': 'onClick()'},
@@ -268,6 +328,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(r<caret>)': 'onResize()'},
@@ -286,6 +348,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(vis<caret>)': 'onResize()'},
@@ -304,6 +368,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(visualViewport>r<caret>)': 'onResize()'},
@@ -324,7 +390,11 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             myFixture.configureByText(
                 "component.ts",
                 """
-                @Component({
+                import {Component} from '@angular/core';
+
+                import {Component} from '@angular/core';
+
+            @Component({
                     selector: 'example',
                     host: {'$binding': 'onResize()'},
                 })
@@ -369,6 +439,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(<caret>)': 'onResize()'},
@@ -389,6 +461,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(click<caret>)': 'onClick()'},
@@ -410,6 +484,8 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         myFixture.configureByText(
             "component.ts",
             """
+            import {Component} from '@angular/core';
+
             @Component({
                 selector: 'example',
                 host: {'(click.zoneless.<caret>)': 'onClick()'},
@@ -432,7 +508,11 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 """
                 const ordinary = {'(click.zoneless)': 'value'};
 
-                @Directive({
+                import {Directive} from '@angular/core';
+
+                import {Directive} from '@angular/core';
+
+            @Directive({
                     selector: '[example]',
                     options: {
                         host: {'(click.stop)': 'notAngularHost'},
@@ -464,7 +544,11 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             myFixture.configureByText(
                 "invalid.ts",
                 """
-                @Directive({
+                import {Directive} from '@angular/core';
+
+                import {Directive} from '@angular/core';
+
+            @Directive({
                     selector: '[example]',
                     host: {
                         '(click.captre)': 'onClick()',
