@@ -3,19 +3,14 @@ package org.taigaui.designtokens.events
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionResultSet
-import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.InsertHandler
-import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
 import com.intellij.polySymbols.PolySymbol
 import com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem
 import com.intellij.polySymbols.js.JS_PROPERTIES
 import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
-import com.intellij.psi.PsiFile
 
 class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
     override fun fillCompletionVariants(
@@ -130,46 +125,6 @@ private fun addHtmlAttributeCompletions(
     result
         .withPrefixMatcher(prefix)
         .addAllElements(items)
-}
-
-class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate() {
-    override fun checkAutoPopup(
-        charTyped: Char,
-        project: Project,
-        editor: Editor,
-        file: PsiFile,
-    ): Result {
-        if (!charTyped.isCompletionTrigger()) {
-            return Result.CONTINUE
-        }
-
-        val caretOffset = editor.caretModel.offset
-        val isInsideHost =
-            AngularHostBindingSupport.isInsideHostProperty(
-                file,
-                (caretOffset - 1).coerceAtLeast(0),
-            )
-
-        if (!isInsideHost) {
-            return Result.CONTINUE
-        }
-
-        AutoPopupController
-            .getInstance(project)
-            .scheduleAutoPopup(editor) { psiFile ->
-                val currentOffset = editor.caretModel.offset
-
-                AngularHostBindingSupport.isInsideHostProperty(
-                    psiFile,
-                    (currentOffset - 1).coerceAtLeast(0),
-                )
-            }
-
-        return Result.STOP
-    }
-
-    private fun Char.isCompletionTrigger(): Boolean =
-        isLetterOrDigit() || this == '.' || this == '>' || this == '-' || this == '_'
 }
 
 private data class AngularHostCompletionRequest(
