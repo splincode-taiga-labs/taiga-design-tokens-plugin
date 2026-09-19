@@ -27,6 +27,19 @@ internal data class AngularHostPropertyContext(
     val nameEndOffset: Int,
 )
 
+private fun JSProperty.hostPropertyNameRange(source: String): IntRange? =
+    nameIdentifier
+        ?.let { identifier ->
+            identifier.text
+                .indexOf(source)
+                .takeIf { index -> index >= 0 }
+                ?.let { index ->
+                    val startOffset = identifier.textRange.startOffset + index
+
+                    startOffset until (startOffset + source.length)
+                }
+        }
+
 internal object AngularHostBindingSupport {
     fun findAll(file: PsiFile): List<AngularHostEventBinding> =
         PsiTreeUtil
@@ -117,19 +130,6 @@ internal object AngularHostBindingSupport {
                     nameStartOffset = range.first,
                     nameEndOffset = range.last + 1,
                 )
-            }
-
-    private fun JSProperty.hostPropertyNameRange(source: String): IntRange? =
-        nameIdentifier
-            ?.let { identifier ->
-                identifier.text
-                    .indexOf(source)
-                    .takeIf { index -> index >= 0 }
-                    ?.let { index ->
-                        val startOffset = identifier.textRange.startOffset + index
-
-                        startOffset until (startOffset + source.length)
-                    }
             }
 
     private fun JSProperty.isAngularHostProperty(): Boolean {
