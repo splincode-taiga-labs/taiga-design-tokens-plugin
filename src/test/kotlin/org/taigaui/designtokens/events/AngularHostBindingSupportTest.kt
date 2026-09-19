@@ -624,8 +624,19 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
     }
 
     private companion object {
-        const val DOLLAR = '$'
+        const val DOLLAR = '        fileName: String,
+        text: String,
+    ): PsiFile {
+        val file = myFixture.addFileToProject("src/$fileName", text)
+
+        myFixture.configureFromExistingVirtualFile(file.virtualFile)
+
+        return myFixture.file
     }
+}
+
+    }
+
     private fun configureAngularFile(
         fileName: String,
         text: String,
