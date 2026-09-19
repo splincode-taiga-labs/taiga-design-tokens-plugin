@@ -623,7 +623,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         assertEquals("zoneless", file.text.substring(duplicate.startOffset, duplicate.endOffset))
     }
 
-private fun configureAngularFile(
+    private fun configureAngularFile(
         fileName: String,
         text: String,
     ): PsiFile {
