@@ -167,6 +167,9 @@ class TypeScriptHostEventPluginCompletionAutoPopupHandler : TypedHandlerDelegate
 
         return Result.STOP
     }
+
+    private fun Char.isCompletionTrigger(): Boolean =
+        isLetterOrDigit() || this == '.' || this == '>' || this == '-' || this == '_'
 }
 
 private data class AngularHostCompletionRequest(
@@ -408,9 +411,6 @@ private fun EventPluginModifier.completionIdentity(): String =
         source.startsWith("throttle~") -> "throttle"
         else -> source
     }
-
-private fun Char.isCompletionTrigger(): Boolean =
-    isLetterOrDigit() || this == '.' || this == '>' || this == '-' || this == '_'
 
 private val EVENT_PLUGIN_EVENT_COMPLETIONS =
     listOf(
