@@ -151,6 +151,38 @@ private fun createContextCell(row: DesignTokenHoverValueRow): JComponent =
                 },
             )
         }
+
+        row.sourceDetails.forEach { detail ->
+            add(Box.createVerticalStrut(JBUI.scale(3)))
+            add(createSourceDetail(detail))
+        }
+    }
+
+private fun createSourceDetail(detail: DesignTokenSourceDetail): JComponent =
+    JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        isOpaque = false
+        alignmentX = JComponent.LEFT_ALIGNMENT
+
+        add(
+            JBLabel("${detail.sourceFile.fileName}:${detail.line}").apply {
+                foreground = UIUtil.getContextHelpForeground()
+                font = font.deriveFont(JBUI.scaleFontSize(11f).toFloat())
+                toolTipText = detail.sourceFile.toString()
+                alignmentX = JComponent.LEFT_ALIGNMENT
+            },
+        )
+
+        if (detail.selectorChain.isNotEmpty()) {
+            add(
+                JBLabel(detail.selectorChain.joinToString(" → ")).apply {
+                    foreground = UIUtil.getContextHelpForeground()
+                    font = font.deriveFont(JBUI.scaleFontSize(11f).toFloat())
+                    toolTipText = detail.selectorChain.joinToString(" → ")
+                    alignmentX = JComponent.LEFT_ALIGNMENT
+                },
+            )
+        }
     }
 
 private fun createValueCell(
