@@ -15,6 +15,12 @@
     <depends>com.intellij.css</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable
+            id="org.taigaui.designtokens.settings"
+            parentId="tools"
+            displayName="Taiga UI"
+            instance="org.taigaui.designtokens.settings.TaigaDesignTokensConfigurable"
+        />
         <polySymbols.webTypes
             source="web-types/event-plugins@3.1.0.web-types.json"
             enableByDefault="false"
