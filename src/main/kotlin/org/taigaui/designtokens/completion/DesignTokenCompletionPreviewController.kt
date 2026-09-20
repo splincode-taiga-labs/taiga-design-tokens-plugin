@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
 import org.taigaui.designtokens.project.DesignTokenIndexService
+import org.taigaui.designtokens.settings.TaigaDesignTokensSettings
 import java.awt.Dimension
 import java.awt.Point
 import java.nio.file.Path
@@ -139,6 +140,7 @@ internal class DesignTokenCompletionPreviewController(
         }
 
         val indexService = project.service<DesignTokenIndexService>()
+        val includeSourceDetails = service<TaigaDesignTokensSettings>().showCompletionSourceDetails
 
         previewJob =
             coroutineScope.launch(CoroutineName("Taiga UI design token completion preview")) {
@@ -149,7 +151,13 @@ internal class DesignTokenCompletionPreviewController(
                 val model =
                     groups
                         .takeIf { values -> values.isNotEmpty() }
-                        ?.let { values -> DesignTokenHoverPopupModel.create(request.tokenName, values) }
+                        ?.let { values ->
+                            DesignTokenHoverPopupModel.create(
+                                tokenName = request.tokenName,
+                                groups = values,
+                                includeSourceDetails = includeSourceDetails,
+                            )
+                        }
 
                 withContext(Dispatchers.EDT) {
                     if (
