@@ -18,13 +18,16 @@ internal fun List<DecoratedResolution>.toDisplayGroups(): List<DisplayResolution
         )
     }
 
-internal fun DisplayResolutionGroup.toHoverValueRow(): DesignTokenHoverValueRow =
+internal fun DisplayResolutionGroup.toHoverValueRow(
+    includeSourceDetails: Boolean,
+): DesignTokenHoverValueRow =
     DesignTokenHoverValueRow(
         platform = platformLabel(),
         resolvedValue = representative.hoverValueText(),
         color = representative.toHoverColorOrNull(),
         navigationTarget = navigationTarget(),
         overrideMessage = overrideMessage,
+        sourceDetails = if (includeSourceDetails) sourceDetails() else emptyList(),
     )
 
 internal fun DisplayResolutionGroup.platformLabel(): String =
@@ -54,6 +57,24 @@ private fun List<DesignTokenVariantResolution>.toPresentationContexts(): List<De
                 platformResolutions.map(DesignTokenVariantResolution::requestedContext).distinct()
             }
         }
+
+private fun DisplayResolutionGroup.sourceDetails(): List<DesignTokenSourceDetail> =
+    resolutions
+        .flatMap { resolution -> resolution.variant.origins }
+        .map { origin ->
+            DesignTokenSourceDetail(
+                sourceFile = origin.sourceFile,
+                line = origin.line,
+                selectorChain = origin.selectorChain,
+            )
+        }.distinct()
+        .sortedWith(
+            compareBy(
+                { detail -> detail.sourceFile.toString() },
+                DesignTokenSourceDetail::line,
+                { detail -> detail.selectorChain.joinToString() },
+            ),
+        )
 
 private fun DisplayResolutionGroup.navigationTarget(): DesignTokenNavigationTarget? {
     val origins = resolutions.flatMap { resolution -> resolution.variant.origins }
