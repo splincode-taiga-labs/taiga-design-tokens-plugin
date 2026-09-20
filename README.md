@@ -119,6 +119,17 @@ The plugin does not ship a fixed catalog of token or icon names. It discovers da
 
 This allows different projects or monorepo packages to use different Taiga UI versions without changing plugin configuration.
 
+## Settings
+
+The plugin adds an application-scoped settings page under **Settings → Tools → Taiga UI**.
+
+Two optional presentation settings are available:
+
+- **Show source details in completion preview** — adds compact source file, line, and selector information to design-token completion previews.
+- **Show source files and selector contexts in token hover** — adds the complete source list for each displayed token value.
+
+Both options are disabled by default, so upgrading the plugin preserves the current completion and hover appearance. Changes apply without restarting the IDE and affect presentation only; they do not change token resolution, source precedence, or cache behavior.
+
 ## Developer documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
