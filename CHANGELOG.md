@@ -9,3 +9,4 @@
 - Smoke test and GitHub Actions build.
 - Staged implementation roadmap for Taiga UI token documentation.
 - Pixel-equivalent inlay hints for `rem` values in CSS, Less, SCSS, and Angular numeric `style.*.rem` bindings.
+- Application-scoped Taiga UI settings for optional source details in completion previews and token hover popups.
