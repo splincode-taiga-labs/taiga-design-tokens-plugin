@@ -19,6 +19,7 @@ internal data class DesignTokenHoverPopupModel(
         fun create(
             tokenName: String,
             groups: List<DesignTokenResolutionGroup>,
+            includeSourceDetails: Boolean = false,
         ): DesignTokenHoverPopupModel {
             val origins = groups.flatMap { group -> group.origins }
 
@@ -28,7 +29,11 @@ internal data class DesignTokenHoverPopupModel(
                     DesignTokenDescriptionExtractor.extract(
                         origins.filter { origin -> origin.deprecation == null },
                     ),
-                sections = groups.toHoverPackageSections(tokenName),
+                sections =
+                    groups.toHoverPackageSections(
+                        tokenName = tokenName,
+                        includeSourceDetails = includeSourceDetails,
+                    ),
                 deprecation = origins.effectiveDeprecation(),
             )
         }
@@ -77,6 +82,13 @@ internal data class DesignTokenHoverValueRow(
     val color: Color?,
     val navigationTarget: DesignTokenNavigationTarget?,
     val overrideMessage: String? = null,
+    val sourceDetails: List<DesignTokenSourceDetail> = emptyList(),
+)
+
+internal data class DesignTokenSourceDetail(
+    val sourceFile: Path,
+    val line: Int,
+    val selectorChain: List<String>,
 )
 
 internal data class DesignTokenHoverReferenceChain(
