@@ -11,9 +11,14 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.json</depends>
     <depends>JavaScript</depends>
+    <depends>AngularJS</depends>
     <depends>com.intellij.css</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <polySymbols.webTypes
+            source="web-types/event-plugins@3.1.0.web-types.json"
+            enableByDefault="false"
+        />
         <completion.contributor
             language="CSS"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
@@ -25,6 +30,12 @@
         <completion.contributor
             language="SCSS"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
+        />
+        <completion.contributor
+            id="TaigaUIEventPluginHostCompletionContributor"
+            language="TypeScript"
+            order="first, before JSPatternBasedCompletionContributor, before JSCompletionContributor"
+            implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginCompletionContributor"
         />
         <completion.contributor
             language="any"
@@ -46,12 +57,50 @@
             level="WARNING"
             implementationClass="org.taigaui.designtokens.completion.DeprecatedDesignTokenInspection"
         />
+        <localInspection
+            shortName="UnknownTaigaUIEventModifier"
+            displayName="Unknown Taiga UI event modifier"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            language="HtmlCompatible"
+            level="ERROR"
+            implementationClass="org.taigaui.designtokens.events.UnknownEventPluginModifierInspection"
+        />
+        <localInspection
+            shortName="DuplicateTaigaUIEventModifier"
+            displayName="Duplicate Taiga UI event modifier"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            language="HtmlCompatible"
+            level="ERROR"
+            implementationClass="org.taigaui.designtokens.events.DuplicateEventPluginModifierInspection"
+        />
+        <localInspection
+            shortName="InvalidTaigaUIEventModifierInHostBinding"
+            displayName="Invalid Taiga UI event modifier in Angular host binding"
+            groupName="Taiga UI"
+            enabledByDefault="true"
+            language="TypeScript"
+            level="ERROR"
+            implementationClass="org.taigaui.designtokens.events.TypeScriptEventPluginModifierInspection"
+        />
+        <lang.inspectionSuppressor
+            language="TypeScript"
+            implementationClass="org.taigaui.designtokens.events.TypeScriptHostEventPluginInspectionSuppressor"
+        />
+        <daemon.highlightInfoFilter
+            implementation="org.taigaui.designtokens.events.EventPluginKeyEventHighlightInfoFilter"
+        />
         <typedHandler
             implementation="org.taigaui.designtokens.icons.IconCompletionAutoPopupHandler"
             order="first, before completionAutoPopup"
         />
         <typedHandler
             implementation="org.taigaui.designtokens.completion.DesignTokenCompletionAutoPopupHandler"
+        />
+        <typedHandler
+            implementation="org.taigaui.designtokens.events.TypeScriptHostEventPluginCompletionAutoPopupHandler"
+            order="first, before completionAutoPopup"
         />
         <codeInsight.declarativeInlayProvider
             group="VALUES_GROUP"
@@ -82,6 +131,12 @@
             nameKey="inlay.rem.px.name"
             descriptionKey="inlay.rem.px.description"
             providerId="taiga.rem.px.embedded.styles"
+        />
+        <editorFactoryMouseListener
+            implementation="org.taigaui.designtokens.events.EventPluginsHoverPopupListener"
+        />
+        <editorFactoryMouseMotionListener
+            implementation="org.taigaui.designtokens.events.EventPluginsHoverPopupListener"
         />
         <editorFactoryMouseListener
             implementation="org.taigaui.designtokens.documentation.DesignTokenHoverPopupListener"

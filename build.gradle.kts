@@ -57,6 +57,7 @@ dependencies {
         }
 
         bundledPlugin("JavaScript")
+        bundledPlugin("AngularJS")
         bundledPlugin("com.intellij.css")
         bundledPlugin("com.intellij.modules.json")
         testFramework(TestFrameworkType.Platform)
@@ -77,6 +78,10 @@ intellijPlatform {
             untilBuild = provider { null }
         }
     }
+}
+
+tasks.named<org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask>("prepareTestSandbox") {
+    disabledPlugins.add("org.jetbrains.plugins.vue")
 }
 
 tasks {

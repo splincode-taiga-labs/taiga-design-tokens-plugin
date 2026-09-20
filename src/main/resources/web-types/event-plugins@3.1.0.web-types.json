@@ -1,0 +1,299 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JetBrains/web-types/master/schema/web-types.json",
+  "name": "@taiga-ui/event-plugins",
+  "framework": "angular",
+  "version": "3.1.0",
+  "description-markup": "markdown",
+  "contributions": {
+    "js": {
+      "ng-custom-events": [
+        {
+          "name": "Longtap event",
+          "description": "Fires for a long press or context-menu gesture. Uses the native `contextmenu` event where available and provides an iOS-compatible fallback.",
+          "priority": "normal",
+          "pattern": {
+            "template": [
+              "longtap"
+            ]
+          }
+        },
+        {
+          "name": "Resize event",
+          "description": "Fires when the element dimensions change, using `ResizeObserver` under the hood.",
+          "priority": "normal",
+          "pattern": {
+            "template": [
+              "resize"
+            ]
+          }
+        },
+        {
+          "name": "Global event target",
+          "description": "Listens on an object reachable from `window` using the `target>event` syntax provided by `@taiga-ui/event-plugins`.",
+          "priority": "high",
+          "pattern": {
+            "template": [
+              {
+                "items": "ng-event-plugins-global-targets",
+                "template": [
+                  "#item:global target"
+                ]
+              },
+              ">",
+              {
+                "or": [
+                  {
+                    "items": {
+                      "path": "/js/events",
+                      "includeVirtual": false
+                    },
+                    "template": [
+                      "#item:event"
+                    ]
+                  },
+                  {
+                    "items": "ng-event-plugins-global-events",
+                    "template": [
+                      "#item:event"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "ng-event-plugins-global-targets": [
+            {
+              "name": "visualViewport",
+              "description": "The browser's `window.visualViewport` event target."
+            },
+            {
+              "name": "window",
+              "description": "The global `window` event target."
+            },
+            {
+              "name": "document",
+              "description": "The global `window.document` event target."
+            },
+            {
+              "name": "document.body",
+              "description": "The document body event target."
+            },
+            {
+              "name": "Global object path",
+              "priority": "lowest",
+              "pattern": "[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*",
+              "doc-hide-pattern": true,
+              "hide-from-completion": true
+            }
+          ],
+          "ng-event-plugins-global-events": [
+            {
+              "name": "resize",
+              "description": "Fires when the global target is resized."
+            },
+            {
+              "name": "scroll",
+              "description": "Fires when the global target is scrolled."
+            },
+            {
+              "name": "scrollend",
+              "description": "Fires when scrolling on the global target has completed."
+            },
+            {
+              "name": "Global event name",
+              "priority": "lowest",
+              "pattern": "[A-Za-z0-9_$:-]+(?:\\.[A-Za-z0-9_$~:-]+)*",
+              "doc-hide-pattern": true,
+              "hide-from-completion": true
+            }
+          ]
+        },
+        {
+          "name": "Custom modifiers for declarative events handling",
+          "priority": "high",
+          "pattern": {
+            "template": [
+              {
+                "or": [
+                  {
+                    "items": {
+                      "path": "/js/events",
+                      "includeVirtual": false
+                    },
+                    "template": [
+                      "#item:event"
+                    ]
+                  },
+                  {
+                    "template": [
+                      {
+                        "or": [
+                          {
+                            "regex": "keyup",
+                            "case-sensitive": false
+                          },
+                          {
+                            "regex": "keydown",
+                            "case-sensitive": false
+                          }
+                        ]
+                      },
+                      {
+                        "items": {
+                          "path": "ng-event-plugins-key-event-modifiers",
+                          "name-conversion": {
+                            "canonical-names": "lowercase",
+                            "match-names": [
+                              "lowercase"
+                            ],
+                            "name-variants": [
+                              "as-is"
+                            ]
+                          }
+                        },
+                        "template": [
+                          ".",
+                          "#...",
+                          "#item:key event modifier"
+                        ],
+                        "priority": "high",
+                        "repeat": true,
+                        "unique": true,
+                        "required": false
+                      },
+                      {
+                        "items": {
+                          "path": "ng-event-plugins-key-names"
+                        },
+                        "template": [
+                          ".",
+                          "#...",
+                          "#item:key name"
+                        ],
+                        "repeat": false,
+                        "required": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "items": "ng-event-plugins-modifiers",
+                "template": [
+                  ".",
+                  "#...",
+                  "#item:modifier"
+                ],
+                "priority": "high",
+                "repeat": true,
+                "unique": true,
+                "required": true
+              }
+            ]
+          },
+          "ng-event-plugins-key-event-modifiers": [
+            {
+              "name": "alt"
+            },
+            {
+              "name": "control"
+            },
+            {
+              "name": "meta"
+            },
+            {
+              "name": "shift"
+            },
+            {
+              "name": "code",
+              "ng-event-plugins-key-names": [
+                {
+                  "name": "Key code",
+                  "pattern": {
+                    "regex": "space|dot|escape|enter|tab|arrowDown|arrowLeft|arrowRight|arrowUp|end|home|pageDown|pageUp|backspace|delete|insert|contextMenu|help|printScreen|altRight|backquote|backslash|bracketLeft|bracketRight|capsLock|comma|controlLeft|controlRight|equal|intlBackslash|intlRo|intlYen|lang1|lang2|mediaTrackNext|mediaTrackPrevious|metaLeft|metaRight|minus|numLock|numpadAdd|numpadComma|numpadDecimal|numpadDivide|numpadMultiply|numpadSubtract|osLeft|period|quote|scrollLock|semicolon|shiftLeft|shiftRight|slash|unidentified|volumeDown|volumeMute|volumeUp|wakeUp|digit[0-9]|numpad[0-9]|key[A-Z]|f(?:[0-9]|1[0-9]|2[0-4])",
+                    "case-sensitive": false
+                  },
+                  "hide-from-completion": true
+                }
+              ]
+            }
+          ],
+          "ng-event-plugins-key-names": [
+            {
+              "name": "Extended event special key",
+              "pattern": {
+                "regex": "space|dot|esc|escape|enter|tab|arrowDown|arrowLeft|arrowRight|arrowUp|end|home|pageDown|pageUp|backspace|delete|insert|contextMenu|help|printScreen|os",
+                "case-sensitive": false
+              },
+              "hide-from-completion": true
+            },
+            {
+              "name": "Extended event standard key",
+              "priority": "low",
+              "pattern": {
+                "regex": "f1[1-9]|f20|f[1-9]|[a-z]|[0-9]|[`~!@#$%^&*()_+\\-\\[\\]{}|;:,?]",
+                "case-sensitive": false
+              },
+              "doc-hide-pattern": true,
+              "hide-from-completion": true
+            }
+          ],
+          "ng-event-plugins-modifiers": [
+            {
+              "name": "capture",
+              "description": "Listens for the event during the capture phase instead of the bubbling phase."
+            },
+            {
+              "name": "once",
+              "description": "Removes the event listener automatically after the first invocation."
+            },
+            {
+              "name": "passive",
+              "description": "Registers a passive event listener, allowing the browser to optimize scrolling and other input handling."
+            },
+            {
+              "name": "prevent",
+              "description": "Calls `event.preventDefault()` before invoking the event handler."
+            },
+            {
+              "name": "self",
+              "description": "Invokes the handler only when the event originated from the element itself, ignoring bubbled events from descendants."
+            },
+            {
+              "name": "silent",
+              "description": "Legacy alias for `zoneless`. Runs the event handler outside Angular's `NgZone` to avoid triggering change detection."
+            },
+            {
+              "name": "zoneless",
+              "description": "Runs the event handler outside Angular's `NgZone` to avoid triggering change detection."
+            },
+            {
+              "name": "stop",
+              "description": "Calls `event.stopPropagation()` before invoking the event handler."
+            },
+            {
+              "name": "debounce~<delay>ms",
+              "description": "Invokes the handler after events stop arriving for the specified delay in milliseconds. Example: `click.debounce~300ms`.",
+              "pattern": "debounce~\\d+ms"
+            },
+            {
+              "name": "debounce~<delay>s",
+              "description": "Invokes the handler after events stop arriving for the specified delay in seconds. Example: `click.debounce~2s`.",
+              "pattern": "debounce~\\d+s"
+            },
+            {
+              "name": "throttle~<delay>ms",
+              "description": "Invokes the handler at most once per specified interval in milliseconds. Example: `click.throttle~300ms`.",
+              "pattern": "throttle~\\d+ms"
+            },
+            {
+              "name": "throttle~<delay>s",
+              "description": "Invokes the handler at most once per specified interval in seconds. Example: `click.throttle~2s`.",
+              "pattern": "throttle~\\d+s"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
