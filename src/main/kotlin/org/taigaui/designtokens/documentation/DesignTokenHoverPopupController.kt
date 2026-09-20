@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
+import org.taigaui.designtokens.settings.TaigaDesignTokensSettings
 import java.awt.Point
 import java.nio.file.Path
 import javax.swing.SwingUtilities
@@ -182,9 +183,13 @@ internal class DesignTokenHoverPopupController(
             }
         }
 
+        val includeSourceDetails = service<TaigaDesignTokensSettings>().showHoverSourceDetails
         val popupData =
             withContext(Dispatchers.Default) {
-                target.resolvePopupData(indexService)
+                target.resolvePopupData(
+                    indexService = indexService,
+                    includeSourceDetails = includeSourceDetails,
+                )
             }
 
         showPopupDataIfCurrent(request, target, popupData)
@@ -426,7 +431,10 @@ private fun HoverRequest.resolvePopupTarget(project: Project): PopupTarget? =
                 }
         }
 
-private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData {
+private fun PopupTarget.resolvePopupData(
+    indexService: DesignTokenIndexService,
+    includeSourceDetails: Boolean,
+): PopupData {
     val groups = indexService.resolveToken(sourceFile, tokenName)
     val model =
         if (groups.isEmpty()) {
@@ -440,7 +448,11 @@ private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService):
 
             DesignTokenHoverPopupModel.notFound(tokenName, suggestions)
         } else {
-            DesignTokenHoverPopupModel.create(tokenName, groups)
+            DesignTokenHoverPopupModel.create(
+                tokenName = tokenName,
+                groups = groups,
+                includeSourceDetails = includeSourceDetails,
+            )
         }
 
     return PopupData(
