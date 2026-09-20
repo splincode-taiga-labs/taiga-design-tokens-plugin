@@ -91,7 +91,7 @@ Status: implemented.
 
 ## Stage 5 — Production editor features
 
-Status: in progress.
+Status: implemented.
 
 Implemented:
 
@@ -147,10 +147,21 @@ Implemented:
 - Ignore dynamic Angular expressions instead of guessing runtime values.
 - Render unobtrusive text-without-background hints without modifying source files.
 
-Remaining product work:
+### Event plugin support
 
-1. [#31 — Add event plugin support](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/31).
-2. [#49 — Add plugin settings for completion and token hover details](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
+- Support Taiga UI event-plugin modifiers in Angular templates through versioned Web Types.
+- Support native events, global targets, Taiga modifiers, validation, hover documentation, and TypeScript `host` metadata.
+- Keep TypeScript host auto-completion responsive with debounced completion startup.
+- Implemented by [#31](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/31) / [#56](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/pull/56).
+
+### Plugin settings
+
+- Add application-scoped settings under **Tools → Taiga UI**.
+- Keep the existing presentation as the default.
+- Allow optional source details in completion previews.
+- Allow optional source-file and selector-context details in token hover.
+- Apply presentation changes without changing token resolution semantics.
+- Tracked by [#49](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
 
 ## Stage 6 — Performance and architecture hardening
 
@@ -197,10 +208,6 @@ Recommended order:
 ## Current execution order
 
 ```text
-#31 event plugins
-  ↓
-#49 plugin settings
-  ↓
 #50 IDE compatibility / Plugin Verifier
   ↓
 #51 real-project validation
