@@ -111,8 +111,16 @@ class DesignTokenHoverPopupModelTest {
                 groups = groups,
                 includeSourceDetails = true,
             )
-        val defaultRow = defaultModel.sections.single().rows.single()
-        val detailedRow = detailedModel.sections.single().rows.single()
+        val defaultRow =
+            defaultModel.sections
+                .single()
+                .rows
+                .single()
+        val detailedRow =
+            detailedModel.sections
+                .single()
+                .rows
+                .single()
 
         assertTrue(defaultRow.sourceDetails.isEmpty())
         assertEquals(defaultRow.resolvedValue, detailedRow.resolvedValue)
