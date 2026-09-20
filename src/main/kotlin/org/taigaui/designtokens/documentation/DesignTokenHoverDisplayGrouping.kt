@@ -18,9 +18,7 @@ internal fun List<DecoratedResolution>.toDisplayGroups(): List<DisplayResolution
         )
     }
 
-internal fun DisplayResolutionGroup.toHoverValueRow(
-    includeSourceDetails: Boolean,
-): DesignTokenHoverValueRow =
+internal fun DisplayResolutionGroup.toHoverValueRow(includeSourceDetails: Boolean): DesignTokenHoverValueRow =
     DesignTokenHoverValueRow(
         platform = platformLabel(),
         resolvedValue = representative.hoverValueText(),
