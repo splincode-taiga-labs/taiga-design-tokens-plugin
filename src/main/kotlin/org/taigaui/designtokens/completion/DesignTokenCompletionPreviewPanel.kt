@@ -219,4 +219,3 @@ private const val MIN_PREVIEW_HEIGHT = 72
 private const val MAX_PREVIEW_HEIGHT = 420
 private const val COLOR_PREVIEW_SIZE = 18
 private const val VALUE_COLUMNS = 34
-private const val MAX_COMPLETION_SOURCE_DETAILS = 2
