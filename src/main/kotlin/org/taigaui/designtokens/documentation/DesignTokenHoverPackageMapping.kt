@@ -6,6 +6,7 @@ import org.taigaui.designtokens.resolution.DesignTokenVariantResolution
 
 internal fun List<DesignTokenResolutionGroup>.toHoverPackageSections(
     tokenName: String,
+    includeSourceDetails: Boolean,
 ): List<DesignTokenHoverPackageSection> {
     val decorated =
         flatMap { group -> group.resolutions }
@@ -21,7 +22,7 @@ internal fun List<DesignTokenResolutionGroup>.toHoverPackageSections(
                 packageName = packageName,
                 rows =
                     displayGroups
-                        .map(DisplayResolutionGroup::toHoverValueRow)
+                        .map { group -> group.toHoverValueRow(includeSourceDetails) }
                         .sortedWith(VALUE_ROW_COMPARATOR),
                 chains =
                     displayGroups
