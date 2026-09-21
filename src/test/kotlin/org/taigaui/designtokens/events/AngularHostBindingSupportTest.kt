@@ -2,6 +2,7 @@ package org.taigaui.designtokens.events
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
 import org.junit.Assert.assertEquals
@@ -9,6 +10,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.taigaui.designtokens.completion.DesignTokenCompletionContextFinder
+import org.taigaui.designtokens.documentation.designTokenStyleTextContext
 
 class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase() {
     override fun setUp() {
@@ -55,6 +58,43 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             export declare function Component(metadata: ComponentMetadata): ClassDecorator;
             """.trimIndent(),
         )
+    }
+
+    @Test
+    fun `resolves design token completion context in Angular inline styles`() {
+        configureAngularFile(
+            "component.ts",
+            """
+            import {Component} from '@angular/core';
+
+            @Component({
+                selector: 'example',
+                template: '',
+                styles: `
+                    .example {
+                        color: var(--tui-back<caret>);
+                    }
+                `,
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+        val styleContext =
+            myFixture.editor.designTokenStyleTextContext(
+                myFixture.editor.caretModel.offset,
+            )
+        val completionContext =
+            styleContext?.let { context ->
+                DesignTokenCompletionContextFinder.find(
+                    text = context.text,
+                    offset = context.offset,
+                )
+            }
+
+        assertNotNull(styleContext)
+        assertEquals("--tui-back", completionContext?.prefix)
     }
 
     @Test
