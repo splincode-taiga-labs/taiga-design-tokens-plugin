@@ -8,8 +8,11 @@ import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.injected.editor.DocumentWindow
+import com.intellij.lang.css.CSSLanguage
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
@@ -68,24 +71,35 @@ private fun DesignTokenCatalogEntry.toLookupElement(): LookupElementBuilder {
 }
 
 private fun CompletionParameters.toDesignTokenCompletionRequest(): DesignTokenCompletionRequest? =
-    originalFile.virtualFile
-        ?.takeIf { file -> file.extension?.lowercase() in SUPPORTED_EXTENSIONS }
+    position
+        .language
+        .takeIf { language -> language.isKindOf(CSSLanguage.INSTANCE) }
+        ?.let {
+            editor.designTokenSourceFilePath()?.let { sourceFile ->
+                DesignTokenCompletionContextFinder
+                    .find(
+                        text = editor.document.immutableCharSequence,
+                        offset = editor.caretModel.offset,
+                    )?.let { completionContext ->
+                        DesignTokenCompletionRequest(
+                            project = originalFile.project,
+                            editor = editor,
+                            sourceFile = sourceFile,
+                            prefix = completionContext.prefix,
+                        )
+                    }
+            }
+        }
+
+private fun Editor.designTokenSourceFilePath(): Path? {
+    val sourceDocument = (document as? DocumentWindow)?.delegate ?: document
+
+    return FileDocumentManager
+        .getInstance()
+        .getFile(sourceDocument)
         ?.path
         ?.let(::pathOrNull)
-        ?.let { sourceFile ->
-            DesignTokenCompletionContextFinder
-                .find(
-                    text = editor.document.immutableCharSequence,
-                    offset = editor.caretModel.offset,
-                )?.let { completionContext ->
-                    DesignTokenCompletionRequest(
-                        project = originalFile.project,
-                        editor = editor,
-                        sourceFile = sourceFile,
-                        prefix = completionContext.prefix,
-                    )
-                }
-        }
+}
 
 private data class DesignTokenCompletionRequest(
     val project: Project,
