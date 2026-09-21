@@ -69,7 +69,7 @@ internal class DesignTokenCompletionPreviewController(
 
         detach()
 
-        if (lookup?.isCompletion != true || !lookup.supportsDesignTokenPreview()) {
+        if (lookup?.isCompletion != true) {
             return
         }
 
@@ -119,6 +119,11 @@ internal class DesignTokenCompletionPreviewController(
     }
 
     private fun requestPreview(lookup: Lookup) {
+        if (!service<TaigaDesignTokensSettings>().showCompletionPreview) {
+            clearPreviewRequest()
+            return
+        }
+
         val request = lookup.previewRequest()
 
         if (request == null) {
@@ -140,7 +145,6 @@ internal class DesignTokenCompletionPreviewController(
         }
 
         val indexService = project.service<DesignTokenIndexService>()
-        val includeSourceDetails = service<TaigaDesignTokensSettings>().showCompletionSourceDetails
 
         previewJob =
             coroutineScope.launch(CoroutineName("Taiga UI design token completion preview")) {
@@ -155,7 +159,6 @@ internal class DesignTokenCompletionPreviewController(
                             DesignTokenHoverPopupModel.create(
                                 tokenName = request.tokenName,
                                 groups = values,
-                                includeSourceDetails = includeSourceDetails,
                             )
                         }
 
@@ -277,14 +280,6 @@ internal fun normalizeDesignTokenLookupString(value: String): String? =
         value.startsWith(TAIGA_TOKEN_BARE_ROOT) -> "--$value"
         else -> null
     }
-
-private fun Lookup.supportsDesignTokenPreview(): Boolean =
-    psiFile?.virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS ||
-        FileDocumentManager
-            .getInstance()
-            .getFile(topLevelEditor.document)
-            ?.extension
-            ?.lowercase() in SUPPORTED_EXTENSIONS
 
 private fun previewLocation(
     lookup: Lookup,
