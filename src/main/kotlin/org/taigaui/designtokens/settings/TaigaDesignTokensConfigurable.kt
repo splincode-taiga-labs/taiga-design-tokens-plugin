@@ -13,17 +13,17 @@ internal class TaigaDesignTokensConfigurable : BoundConfigurable("Taiga UI") {
         return panel {
             group("Design tokens") {
                 row {
-                    checkBox("Show source details in completion preview")
+                    checkBox("Show design token completion preview")
                         .bindSelected(
-                            { settings.showCompletionSourceDetails },
-                            { value -> settings.showCompletionSourceDetails = value },
+                            { settings.showCompletionPreview },
+                            { value -> settings.showCompletionPreview = value },
                         )
                 }
                 row {
-                    checkBox("Show source files and selector contexts in token hover")
+                    checkBox("Show design token hover popup")
                         .bindSelected(
-                            { settings.showHoverSourceDetails },
-                            { value -> settings.showHoverSourceDetails = value },
+                            { settings.showHoverPopup },
+                            { value -> settings.showHoverPopup = value },
                         )
                 }
             }
