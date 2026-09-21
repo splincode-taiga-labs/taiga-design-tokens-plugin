@@ -26,12 +26,17 @@ internal fun Editor.designTokenStyleTextContext(offset: Int): DesignTokenStyleTe
     val currentProject = project ?: return null
     val psiDocumentManager = PsiDocumentManager.getInstance(currentProject)
     val hostFile = psiDocumentManager.getPsiFile(document) ?: return null
+    val injectionManager = InjectedLanguageManager.getInstance(currentProject)
     val injectedFile =
-        InjectedLanguageManager
-            .getInstance(currentProject)
+        injectionManager
             .findInjectedElementAt(hostFile, offset)
             ?.containingFile
             ?.takeIf { file -> file.language.isKindOf(CSSLanguage.INSTANCE) }
+            ?: offset
+                .takeIf { currentOffset -> currentOffset > 0 }
+                ?.let { currentOffset -> injectionManager.findInjectedElementAt(hostFile, currentOffset - 1) }
+                ?.containingFile
+                ?.takeIf { file -> file.language.isKindOf(CSSLanguage.INSTANCE) }
             ?: return null
     val injectedDocument = psiDocumentManager.getDocument(injectedFile) as? DocumentWindow ?: return null
 
