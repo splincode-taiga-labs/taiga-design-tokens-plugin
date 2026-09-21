@@ -69,7 +69,11 @@ internal class DesignTokenCompletionPreviewController(
 
         detach()
 
-        if (lookup?.isCompletion != true) {
+        if (
+            lookup?.isCompletion != true ||
+            !service<TaigaDesignTokensSettings>().showCompletionPreview ||
+            !lookup.hasDesignTokenPreviewContext()
+        ) {
             return
         }
 
@@ -240,6 +244,14 @@ internal class DesignTokenCompletionPreviewController(
         previewHint?.takeIf { hint -> hint.isVisible }?.hide()
     }
 }
+
+private fun Lookup.hasDesignTokenPreviewContext(): Boolean =
+    DesignTokenCompletionContextFinder
+        .find(
+            text = topLevelEditor.document.immutableCharSequence,
+            offset = topLevelEditor.caretModel.offset,
+        )?.prefix
+        ?.startsWith(TAIGA_TOKEN_ROOT) == true
 
 private fun Lookup.previewRequest(): CompletionPreviewRequest? =
     currentTokenName()?.let { tokenName ->
