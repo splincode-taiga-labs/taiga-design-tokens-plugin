@@ -134,11 +134,6 @@ private fun createValueRow(row: DesignTokenHoverValueRow): JComponent =
         )
         add(Box.createVerticalStrut(JBUI.scale(4)))
         add(createResolvedValue(row))
-
-        if (row.sourceDetails.isNotEmpty()) {
-            add(Box.createVerticalStrut(JBUI.scale(4)))
-            add(createCompactSourceDetails(row.sourceDetails))
-        }
     }
 
 private fun createResolvedValue(row: DesignTokenHoverValueRow): JComponent =
