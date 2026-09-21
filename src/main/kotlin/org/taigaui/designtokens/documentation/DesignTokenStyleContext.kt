@@ -10,18 +10,19 @@ import java.nio.file.Path
 internal fun Editor.isDesignTokenStyleContext(offset: Int): Boolean {
     val physicalFile = FileDocumentManager.getInstance().getFile(document)
 
-    if (physicalFile?.extension?.lowercase() in DESIGN_TOKEN_STYLE_EXTENSIONS) {
-        return true
-    }
-
-    val currentProject = project ?: return false
-    val hostFile = PsiDocumentManager.getInstance(currentProject).getPsiFile(document) ?: return false
-    val injectedElement =
-        InjectedLanguageManager
-            .getInstance(currentProject)
-            .findInjectedElementAt(hostFile, offset)
-
-    return injectedElement?.language?.isKindOf(CSSLanguage.INSTANCE) == true
+    return physicalFile?.extension?.lowercase() in DESIGN_TOKEN_STYLE_EXTENSIONS ||
+        project
+            ?.let { currentProject ->
+                PsiDocumentManager
+                    .getInstance(currentProject)
+                    .getPsiFile(document)
+                    ?.let { hostFile ->
+                        InjectedLanguageManager
+                            .getInstance(currentProject)
+                            .findInjectedElementAt(hostFile, offset)
+                    }?.language
+                    ?.isKindOf(CSSLanguage.INSTANCE)
+            } == true
 }
 
 internal fun Editor.designTokenSourceFile(): Path? =
