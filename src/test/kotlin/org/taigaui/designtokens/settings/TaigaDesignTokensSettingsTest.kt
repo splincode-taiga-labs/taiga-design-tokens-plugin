@@ -6,11 +6,11 @@ import org.junit.Test
 
 class TaigaDesignTokensSettingsTest {
     @Test
-    fun `enables presentation details by default`() {
+    fun `enables token preview and hover by default`() {
         val settings = TaigaDesignTokensSettings()
 
-        assertTrue(settings.showCompletionSourceDetails)
-        assertTrue(settings.showHoverSourceDetails)
+        assertTrue(settings.showCompletionPreview)
+        assertTrue(settings.showHoverPopup)
     }
 
     @Test
@@ -18,13 +18,13 @@ class TaigaDesignTokensSettingsTest {
         val settings = TaigaDesignTokensSettings()
         val state =
             TaigaDesignTokensSettings.SettingsState().apply {
-                showCompletionSourceDetails = false
-                showHoverSourceDetails = false
+                showCompletionPreview = false
+                showHoverPopup = false
             }
 
         settings.loadState(state)
 
-        assertFalse(settings.showCompletionSourceDetails)
-        assertFalse(settings.showHoverSourceDetails)
+        assertFalse(settings.showCompletionPreview)
+        assertFalse(settings.showHoverPopup)
     }
 }
