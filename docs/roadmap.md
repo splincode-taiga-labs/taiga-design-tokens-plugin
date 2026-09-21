@@ -67,7 +67,7 @@ Status: implemented.
 Status: implemented.
 
 - Detect a `--tui-*` custom property under the pointer only when it is the first argument of `var(...)`.
-- Support CSS, SCSS, and Less source files.
+- Support CSS, SCSS, and Less source files, including Angular inline styles injected into TypeScript.
 - Support offsets at the beginning, middle, end, and immediately after a token name.
 - Support several `var(...)` references in one value and token references nested inside fallbacks.
 - Ignore declarations, comments, strings, unrelated custom properties, unsupported files, and unknown Taiga UI tokens.
@@ -157,7 +157,7 @@ Implemented:
 ### Plugin settings
 
 - Add application-scoped settings under **Tools → Taiga UI**.
-- Keep the existing presentation as the default.
+- Enable source-detail presentation by default while keeping both layers independently configurable.
 - Allow optional source details in completion previews.
 - Allow optional source-file and selector-context details in token hover.
 - Apply presentation changes without changing token resolution semantics.
