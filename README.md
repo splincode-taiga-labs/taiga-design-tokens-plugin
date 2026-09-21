@@ -123,12 +123,12 @@ This allows different projects or monorepo packages to use different Taiga UI ve
 
 The plugin adds an application-scoped settings page under **Settings → Tools → Taiga UI**.
 
-Two optional presentation settings are available:
+Two editor features can be controlled independently:
 
-- **Show source details in completion preview** — adds compact source file, line, and selector information to design-token completion previews.
-- **Show source files and selector contexts in token hover** — adds the complete source list for each displayed token value.
+- **Show design token completion preview** — shows the side preview for the currently selected `--tui-*` completion item, including resolved values and color swatches.
+- **Show design token hover popup** — shows the custom token popup when hovering a complete `var(--tui-...)` reference.
 
-Both options are enabled by default so source information is visible immediately. Users can turn either detail layer off independently. Changes apply without restarting the IDE and affect presentation only; they do not change token resolution, source precedence, or cache behavior.
+Both options are enabled by default. Changes affect editor presentation only and do not change token resolution, source precedence, indexing, or cache behavior.
 
 ## Developer documentation
 
