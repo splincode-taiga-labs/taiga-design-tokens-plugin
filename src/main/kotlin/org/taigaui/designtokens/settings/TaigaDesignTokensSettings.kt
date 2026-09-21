@@ -13,20 +13,20 @@ import com.intellij.openapi.components.Storage
 )
 internal class TaigaDesignTokensSettings :
     SimplePersistentStateComponent<TaigaDesignTokensSettings.SettingsState>(SettingsState()) {
-    var showCompletionSourceDetails: Boolean
-        get() = state.showCompletionSourceDetails
+    var showCompletionPreview: Boolean
+        get() = state.showCompletionPreview
         set(value) {
-            state.showCompletionSourceDetails = value
+            state.showCompletionPreview = value
         }
 
-    var showHoverSourceDetails: Boolean
-        get() = state.showHoverSourceDetails
+    var showHoverPopup: Boolean
+        get() = state.showHoverPopup
         set(value) {
-            state.showHoverSourceDetails = value
+            state.showHoverPopup = value
         }
 
     internal class SettingsState : BaseState() {
-        var showCompletionSourceDetails by property(true)
-        var showHoverSourceDetails by property(true)
+        var showCompletionPreview by property(true)
+        var showHoverPopup by property(true)
     }
 }
