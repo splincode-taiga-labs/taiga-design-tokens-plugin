@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.documentation
 
+import com.intellij.injected.editor.DocumentWindow
 import com.intellij.lang.css.CSSLanguage
 import com.intellij.lang.injection.InjectedLanguageManager
 import com.intellij.openapi.editor.Editor
@@ -7,23 +8,40 @@ import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.psi.PsiDocumentManager
 import java.nio.file.Path
 
-internal fun Editor.isDesignTokenStyleContext(offset: Int): Boolean {
+internal data class DesignTokenStyleTextContext(
+    val text: CharSequence,
+    val offset: Int,
+)
+
+internal fun Editor.designTokenStyleTextContext(offset: Int): DesignTokenStyleTextContext? {
     val physicalFile = FileDocumentManager.getInstance().getFile(document)
 
-    return physicalFile?.extension?.lowercase() in DESIGN_TOKEN_STYLE_EXTENSIONS ||
-        project
-            ?.let { currentProject ->
-                PsiDocumentManager
-                    .getInstance(currentProject)
-                    .getPsiFile(document)
-                    ?.let { hostFile ->
-                        InjectedLanguageManager
-                            .getInstance(currentProject)
-                            .findInjectedElementAt(hostFile, offset)
-                    }?.language
-                    ?.isKindOf(CSSLanguage.INSTANCE)
-            } == true
+    if (physicalFile?.extension?.lowercase() in DESIGN_TOKEN_STYLE_EXTENSIONS) {
+        return DesignTokenStyleTextContext(
+            text = document.immutableCharSequence,
+            offset = offset,
+        )
+    }
+
+    val currentProject = project ?: return null
+    val psiDocumentManager = PsiDocumentManager.getInstance(currentProject)
+    val hostFile = psiDocumentManager.getPsiFile(document) ?: return null
+    val injectedFile =
+        InjectedLanguageManager
+            .getInstance(currentProject)
+            .findInjectedElementAt(hostFile, offset)
+            ?.containingFile
+            ?.takeIf { file -> file.language.isKindOf(CSSLanguage.INSTANCE) }
+            ?: return null
+    val injectedDocument = psiDocumentManager.getDocument(injectedFile) as? DocumentWindow ?: return null
+
+    return DesignTokenStyleTextContext(
+        text = injectedDocument.immutableCharSequence,
+        offset = injectedDocument.hostToInjected(offset),
+    )
 }
+
+internal fun Editor.isDesignTokenStyleContext(offset: Int): Boolean = designTokenStyleTextContext(offset) != null
 
 internal fun Editor.designTokenSourceFile(): Path? =
     FileDocumentManager
