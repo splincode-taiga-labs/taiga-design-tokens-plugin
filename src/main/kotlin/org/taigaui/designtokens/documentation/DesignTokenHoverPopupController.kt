@@ -80,6 +80,11 @@ internal class DesignTokenHoverPopupController(
     fun mouseMoved(event: EditorMouseEvent) {
         val editor = event.editor
 
+        if (!service<TaigaDesignTokensSettings>().showHoverPopup) {
+            dismissHover(editor)
+            return
+        }
+
         if (editor.project == project && !editor.isDisposed) {
             if (project.blocksDesignTokenPopup(editor)) {
                 dismissHover()
@@ -182,13 +187,9 @@ internal class DesignTokenHoverPopupController(
             }
         }
 
-        val includeSourceDetails = service<TaigaDesignTokensSettings>().showHoverSourceDetails
         val popupData =
             withContext(Dispatchers.Default) {
-                target.resolvePopupData(
-                    indexService = indexService,
-                    includeSourceDetails = includeSourceDetails,
-                )
+                target.resolvePopupData(indexService)
             }
 
         showPopupDataIfCurrent(request, target, popupData)
@@ -422,10 +423,7 @@ private fun HoverRequest.resolvePopupTarget(project: Project): PopupTarget? =
             }
         }
 
-private fun PopupTarget.resolvePopupData(
-    indexService: DesignTokenIndexService,
-    includeSourceDetails: Boolean,
-): PopupData {
+private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData {
     val groups = indexService.resolveToken(sourceFile, tokenName)
     val model =
         if (groups.isEmpty()) {
@@ -442,7 +440,6 @@ private fun PopupTarget.resolvePopupData(
             DesignTokenHoverPopupModel.create(
                 tokenName = tokenName,
                 groups = groups,
-                includeSourceDetails = includeSourceDetails,
             )
         }
 
