@@ -383,7 +383,6 @@ private fun Editor.calculateDesignTokenPopupWidth(): Int {
 private fun EditorMouseEvent.findReferenceUnderPointer(anchor: Point): DesignTokenReferenceAtOffset? =
     takeIf { area == EditorMouseEventArea.EDITING_AREA }
         ?.takeIf { editor.document.immutableCharSequence.hasDesignTokenNear(offset) }
-        ?.takeIf { editor.isDesignTokenStyleContext(offset) }
         ?.let {
             DesignTokenReferenceAtOffsetFinder.find(
                 editor.document.immutableCharSequence,
