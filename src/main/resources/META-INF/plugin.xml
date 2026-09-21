@@ -27,14 +27,17 @@
         />
         <completion.contributor
             language="CSS"
+            order="first"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
         <completion.contributor
             language="LESS"
+            order="first"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
         <completion.contributor
             language="SCSS"
+            order="first"
             implementationClass="org.taigaui.designtokens.completion.DesignTokenCompletionContributor"
         />
         <completion.contributor
