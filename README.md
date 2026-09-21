@@ -128,7 +128,7 @@ Two optional presentation settings are available:
 - **Show source details in completion preview** — adds compact source file, line, and selector information to design-token completion previews.
 - **Show source files and selector contexts in token hover** — adds the complete source list for each displayed token value.
 
-Both options are disabled by default, so upgrading the plugin preserves the current completion and hover appearance. Changes apply without restarting the IDE and affect presentation only; they do not change token resolution, source precedence, or cache behavior.
+Both options are enabled by default so source information is visible immediately. Users can turn either detail layer off independently. Changes apply without restarting the IDE and affect presentation only; they do not change token resolution, source precedence, or cache behavior.
 
 ## Developer documentation
 
