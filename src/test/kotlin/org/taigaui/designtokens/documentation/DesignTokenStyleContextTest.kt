@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.documentation
 
+import com.intellij.openapi.application.ReadAction
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
 import org.junit.Assert.assertFalse
@@ -55,7 +56,7 @@ class DesignTokenStyleContextTest : LightPlatformCodeInsightFixture4TestCase() {
             ".example { color: var(--tui-text-primary); }",
         )
 
-        assertTrue(myFixture.editor.isDesignTokenStyleContext(tokenOffset()))
+        assertTrue(isDesignTokenStyleContext())
     }
 
     @Test
@@ -79,7 +80,7 @@ class DesignTokenStyleContextTest : LightPlatformCodeInsightFixture4TestCase() {
 
         PsiDocumentManager.getInstance(project).commitAllDocuments()
 
-        assertTrue(myFixture.editor.isDesignTokenStyleContext(tokenOffset()))
+        assertTrue(isDesignTokenStyleContext())
     }
 
     @Test
@@ -91,8 +92,13 @@ class DesignTokenStyleContextTest : LightPlatformCodeInsightFixture4TestCase() {
 
         PsiDocumentManager.getInstance(project).commitAllDocuments()
 
-        assertFalse(myFixture.editor.isDesignTokenStyleContext(tokenOffset()))
+        assertFalse(isDesignTokenStyleContext())
     }
+
+    private fun isDesignTokenStyleContext(): Boolean =
+        ReadAction.compute<Boolean, RuntimeException> {
+            myFixture.editor.isDesignTokenStyleContext(tokenOffset())
+        }
 
     private fun tokenOffset(): Int =
         myFixture.editor.document.text
