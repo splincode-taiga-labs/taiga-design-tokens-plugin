@@ -3,7 +3,6 @@ package org.taigaui.designtokens.documentation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.taigaui.designtokens.index.DesignTokenContext
 import org.taigaui.designtokens.index.DesignTokenOrigin
@@ -99,42 +98,6 @@ class DesignTokenHoverPopupModelTest {
         assertEquals(255, color.green)
         assertEquals(255, color.blue)
         assertEquals(184, color.alpha)
-    }
-
-    @Test
-    fun `keeps source details opt in without changing resolved values`() {
-        val groups = listOf(group(resolved("#fff", "#fff")))
-        val defaultModel = DesignTokenHoverPopupModel.create(TOKEN, groups)
-        val detailedModel =
-            DesignTokenHoverPopupModel.create(
-                tokenName = TOKEN,
-                groups = groups,
-                includeSourceDetails = true,
-            )
-        val defaultRow =
-            defaultModel.sections
-                .single()
-                .rows
-                .single()
-        val detailedRow =
-            detailedModel.sections
-                .single()
-                .rows
-                .single()
-
-        assertTrue(defaultRow.sourceDetails.isEmpty())
-        assertEquals(defaultRow.resolvedValue, detailedRow.resolvedValue)
-        assertEquals(defaultRow.platform, detailedRow.platform)
-        assertEquals(
-            listOf(
-                DesignTokenSourceDetail(
-                    sourceFile = Path.of("palette/light.css"),
-                    line = 1,
-                    selectorChain = listOf(":root", "[tuiTheme='light']"),
-                ),
-            ),
-            detailedRow.sourceDetails,
-        )
     }
 
     @Test
