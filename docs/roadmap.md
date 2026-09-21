@@ -157,9 +157,9 @@ Implemented:
 ### Plugin settings
 
 - Add application-scoped settings under **Tools → Taiga UI**.
-- Enable source-detail presentation by default while keeping both layers independently configurable.
-- Allow optional source details in completion previews.
-- Allow optional source-file and selector-context details in token hover.
+- Allow the design-token completion side preview to be enabled or disabled.
+- Allow the design-token hover popup to be enabled or disabled.
+- Keep both editor features enabled by default.
 - Apply presentation changes without changing token resolution semantics.
 - Tracked by [#49](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
 
