@@ -124,12 +124,10 @@ internal class DesignTokenCompletionPreviewController(
     }
 
     private fun requestPreview(lookup: Lookup) {
-        if (!service<TaigaDesignTokensSettings>().showCompletionPreview) {
-            clearPreviewRequest()
-            return
-        }
-
-        val request = lookup.previewRequest()
+        val request =
+            lookup
+                .previewRequest()
+                ?.takeIf { service<TaigaDesignTokensSettings>().showCompletionPreview }
 
         if (request == null) {
             clearPreviewRequest()
@@ -138,49 +136,47 @@ internal class DesignTokenCompletionPreviewController(
 
         val key = PreviewKey(lookup, request.tokenName, request.sourceFile)
 
-        if (previewKey == key && previewJob?.isActive == true) {
-            return
-        }
+        if (previewKey != key || previewJob?.isActive != true) {
+            previewKey = key
+            previewJob?.cancel()
 
-        previewKey = key
-        previewJob?.cancel()
+            if (previewHint?.isVisible != true) {
+                showLoading(lookup, request.tokenName)
+            }
 
-        if (previewHint?.isVisible != true) {
-            showLoading(lookup, request.tokenName)
-        }
+            val indexService = project.service<DesignTokenIndexService>()
 
-        val indexService = project.service<DesignTokenIndexService>()
-
-        previewJob =
-            coroutineScope.launch(CoroutineName("Taiga UI design token completion preview")) {
-                val groups =
-                    withContext(Dispatchers.Default) {
-                        indexService.resolveToken(request.sourceFile, request.tokenName)
-                    }
-                val model =
-                    groups
-                        .takeIf { values -> values.isNotEmpty() }
-                        ?.let { values ->
-                            DesignTokenHoverPopupModel.create(
-                                tokenName = request.tokenName,
-                                groups = values,
-                            )
+            previewJob =
+                coroutineScope.launch(CoroutineName("Taiga UI design token completion preview")) {
+                    val groups =
+                        withContext(Dispatchers.Default) {
+                            indexService.resolveToken(request.sourceFile, request.tokenName)
                         }
+                    val model =
+                        groups
+                            .takeIf { values -> values.isNotEmpty() }
+                            ?.let { values ->
+                                DesignTokenHoverPopupModel.create(
+                                    tokenName = request.tokenName,
+                                    groups = values,
+                                )
+                            }
 
-                withContext(Dispatchers.EDT) {
-                    if (
-                        previewKey == key &&
-                        activeLookup === lookup &&
-                        lookup.currentTokenName() == request.tokenName
-                    ) {
-                        if (model == null) {
-                            hidePreview()
-                        } else {
-                            showModel(lookup, model)
+                    withContext(Dispatchers.EDT) {
+                        if (
+                            previewKey == key &&
+                            activeLookup === lookup &&
+                            lookup.currentTokenName() == request.tokenName
+                        ) {
+                            if (model == null) {
+                                hidePreview()
+                            } else {
+                                showModel(lookup, model)
+                            }
                         }
                     }
                 }
-            }
+        }
     }
 
     private fun clearPreviewRequest() {
