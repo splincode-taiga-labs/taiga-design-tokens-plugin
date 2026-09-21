@@ -26,7 +26,7 @@ internal class TaigaDesignTokensSettings :
         }
 
     internal class SettingsState : BaseState() {
-        var showCompletionSourceDetails by property(false)
-        var showHoverSourceDetails by property(false)
+        var showCompletionSourceDetails by property(true)
+        var showHoverSourceDetails by property(true)
     }
 }
