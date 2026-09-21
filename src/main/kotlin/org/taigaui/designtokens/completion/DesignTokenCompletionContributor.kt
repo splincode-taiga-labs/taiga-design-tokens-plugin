@@ -3,7 +3,6 @@ package org.taigaui.designtokens.completion
 import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
-import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.completion.InsertionContext
@@ -14,41 +13,46 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
-import com.intellij.patterns.PlatformPatterns
-import com.intellij.util.ProcessingContext
+import org.taigaui.designtokens.index.isValidDesignTokenName
 import org.taigaui.designtokens.project.DesignTokenCatalogEntry
 import java.nio.file.Path
 
 class DesignTokenCompletionContributor : CompletionContributor() {
-    init {
-        extend(
-            CompletionType.BASIC,
-            PlatformPatterns.psiElement(),
-            DesignTokenCompletionProvider(),
-        )
-    }
-}
-
-private class DesignTokenCompletionProvider : CompletionProvider<CompletionParameters>() {
-    override fun addCompletions(
+    override fun fillCompletionVariants(
         parameters: CompletionParameters,
-        context: ProcessingContext,
         result: CompletionResultSet,
     ) {
         val request = parameters.toDesignTokenCompletionRequest() ?: return
-
-        request.project.service<DesignTokenCompletionPreviewController>().ensureAttached()
-
+        val previewController = request.project.service<DesignTokenCompletionPreviewController>()
         val entries =
             request.project
                 .service<DesignTokenCompletionService>()
                 .entriesFor(request.sourceFile, request::scheduleRefresh)
                 .orEmpty()
+        val catalogNames = entries.map(DesignTokenCatalogEntry::name).toSet()
         val matchingResult = result.withPrefixMatcher(request.prefix)
+
+        previewController.ensureAttached()
+
+        result.runRemainingContributors(parameters) { completionResult ->
+            val lookupString = completionResult.lookupElement.lookupString
+            val normalizedToken = normalizeDesignTokenLookupString(lookupString)
+
+            if (
+                normalizedToken == null ||
+                (
+                    normalizedToken.isValidDesignTokenName() &&
+                        normalizedToken !in catalogNames
+                )
+            ) {
+                result.passResult(completionResult)
+            }
+        }
 
         entries.forEach { entry ->
             matchingResult.addElement(entry.toLookupElement())
         }
+        result.stopHere()
     }
 }
 
