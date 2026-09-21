@@ -1,16 +1,15 @@
 package org.taigaui.designtokens.settings
 
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TaigaDesignTokensSettingsTest {
     @Test
-    fun `keeps current presentation as the default`() {
+    fun `enables presentation details by default`() {
         val settings = TaigaDesignTokensSettings()
 
-        assertFalse(settings.showCompletionSourceDetails)
-        assertFalse(settings.showHoverSourceDetails)
+        assertTrue(settings.showCompletionSourceDetails)
+        assertTrue(settings.showHoverSourceDetails)
     }
 
     @Test
