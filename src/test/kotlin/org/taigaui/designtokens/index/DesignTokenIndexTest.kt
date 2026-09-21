@@ -26,6 +26,20 @@ class DesignTokenIndexTest {
     }
 
     @Test
+    fun `rejects malformed token names`() {
+        val index =
+            buildIndex(
+                declaration("palette/light.css", "--tui-radius", "1rem", 2),
+                declaration("palette/light.css", "--tui-radius.%", "2rem", 3),
+                declaration("palette/light.css", "--tui-radius.foo", "3rem", 4),
+            )
+
+        assertEquals(listOf("--tui-radius"), index.names)
+        assertTrue(index.find("--tui-radius.%").isEmpty())
+        assertTrue(index.find("--tui-radius.foo").isEmpty())
+    }
+
+    @Test
     fun `returns empty list for unknown token`() {
         val index =
             buildIndex(
