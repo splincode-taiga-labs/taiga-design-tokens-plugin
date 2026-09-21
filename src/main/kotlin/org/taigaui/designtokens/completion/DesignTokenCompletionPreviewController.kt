@@ -20,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
+import org.taigaui.designtokens.documentation.designTokenStyleTextContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
 import org.taigaui.designtokens.settings.TaigaDesignTokensSettings
 import java.awt.Dimension
@@ -246,21 +247,15 @@ internal class DesignTokenCompletionPreviewController(
 }
 
 private fun Lookup.hasDesignTokenPreviewContext(): Boolean =
-    DesignTokenCompletionContextFinder
-        .find(
-            text = topLevelEditor.document.immutableCharSequence,
-            offset = topLevelEditor.caretModel.offset,
-        )?.prefix
+    designTokenCompletionContext()
+        ?.prefix
         ?.startsWith(TAIGA_TOKEN_ROOT) == true
 
 private fun Lookup.previewRequest(): CompletionPreviewRequest? =
     currentTokenName()?.let { tokenName ->
         sourceFilePath()?.let { sourceFile ->
-            DesignTokenCompletionContextFinder
-                .find(
-                    text = topLevelEditor.document.immutableCharSequence,
-                    offset = topLevelEditor.caretModel.offset,
-                )?.takeIf { context -> context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
+            designTokenCompletionContext()
+                ?.takeIf { context -> context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
                 ?.let {
                     CompletionPreviewRequest(
                         tokenName = tokenName,
@@ -270,14 +265,25 @@ private fun Lookup.previewRequest(): CompletionPreviewRequest? =
         }
     }
 
+private fun Lookup.designTokenCompletionContext(): DesignTokenCompletionContext? {
+    val editor = topLevelEditor
+    val caretOffset = editor.caretModel.offset
+    val styleContext = editor.designTokenStyleTextContext(caretOffset) ?: return null
+
+    return DesignTokenCompletionContextFinder.find(
+        text = styleContext.text,
+        offset = styleContext.offset,
+    )
+}
+
 private fun Lookup.sourceFilePath(): Path? =
-    psiFile
-        ?.virtualFile
+    FileDocumentManager
+        .getInstance()
+        .getFile(topLevelEditor.document)
         ?.path
         ?.let(::pathOrNull)
-        ?: FileDocumentManager
-            .getInstance()
-            .getFile(topLevelEditor.document)
+        ?: psiFile
+            ?.virtualFile
             ?.path
             ?.let(::pathOrNull)
 
