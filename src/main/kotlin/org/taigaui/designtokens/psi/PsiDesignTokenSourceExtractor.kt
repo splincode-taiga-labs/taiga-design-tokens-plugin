@@ -16,6 +16,7 @@ import org.taigaui.designtokens.diagnostics.PerformanceMetric
 import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.index.DesignTokenSourceExtractor
 import org.taigaui.designtokens.index.DesignTokenSourceFormat
+import org.taigaui.designtokens.index.isValidDesignTokenName
 import java.nio.file.Path
 
 class PsiDesignTokenSourceExtractor(
@@ -91,7 +92,7 @@ class PsiDesignTokenSourceExtractor(
         val tokenName = propertyName
         val rawValue = rawValue()
 
-        return if (tokenName.startsWith(TOKEN_PREFIX) && rawValue.isNotEmpty()) {
+        return if (tokenName.isValidDesignTokenName() && rawValue.isNotEmpty()) {
             DesignTokenDeclaration(
                 name = tokenName,
                 value = rawValue,
@@ -142,7 +143,6 @@ class PsiDesignTokenSourceExtractor(
     ): Int = content.take(offset).count { it == '\n' } + 1
 
     private companion object {
-        const val TOKEN_PREFIX = "--tui-"
         const val COLON = ":"
     }
 }
