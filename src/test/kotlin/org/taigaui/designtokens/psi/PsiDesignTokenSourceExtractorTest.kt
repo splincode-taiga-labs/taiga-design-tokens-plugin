@@ -157,6 +157,23 @@ class PsiDesignTokenSourceExtractorTest : BasePlatformTestCase() {
         assertEmpty(declarations)
     }
 
+    fun testIgnoresMalformedTaigaTokenNames() {
+        val declarations =
+            extract(
+                fileName = "malformed.css",
+                content =
+                    """
+                    :root {
+                        --tui-radius: 1rem;
+                        --tui-radius.%: 2rem;
+                        --tui-radius.foo: 3rem;
+                    }
+                    """.trimIndent(),
+            )
+
+        assertEquals(listOf("--tui-radius"), declarations.map(DesignTokenDeclaration::name))
+    }
+
     fun testSelectorContextDoesNotLeakToSiblingRuleset() {
         val declarations =
             extract(
