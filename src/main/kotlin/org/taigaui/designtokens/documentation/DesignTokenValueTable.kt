@@ -168,13 +168,14 @@ private fun createValueCell(
     val fixedWidth =
         fixedComponents.sumOf { component -> JBUI.unscale(component.preferredSize.width) } +
             VALUE_ITEM_GAP * (fixedComponents.size - 1).coerceAtLeast(0)
+    val valuePresentation = designTokenValuePresentation(row.resolvedValue)
     val maxTextWidth = (valueWidth - fixedWidth).coerceAtLeast(MIN_VALUE_TEXT_WIDTH)
     val textWidth =
-        calculateNaturalTextWidth(row.resolvedValue)
+        calculateNaturalTextWidth(valuePresentation)
             .coerceIn(MIN_SINGLE_LINE_TEXT_WIDTH, maxTextWidth)
     val text =
         WrappedTextPane(
-            text = row.resolvedValue,
+            text = valuePresentation,
             width = textWidth,
             textFont = DESIGN_TOKEN_POPUP_CODE_FONT,
             textColor = row.textColor(),
