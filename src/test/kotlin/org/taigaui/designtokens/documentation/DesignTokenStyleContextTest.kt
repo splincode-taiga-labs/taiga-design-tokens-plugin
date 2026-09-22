@@ -3,8 +3,10 @@ package org.taigaui.designtokens.documentation
 import com.intellij.openapi.application.ReadAction
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.taigaui.designtokens.completion.designTokenCompletionContextAt
 import org.junit.Test
 
 class DesignTokenStyleContextTest : LightPlatformCodeInsightFixture4TestCase() {
@@ -81,6 +83,39 @@ class DesignTokenStyleContextTest : LightPlatformCodeInsightFixture4TestCase() {
         PsiDocumentManager.getInstance(project).commitAllDocuments()
 
         assertTrue(isDesignTokenStyleContext())
+    }
+
+    @Test
+    fun `maps Angular inline styles to design token completion context`() {
+        configureAngularFile(
+            """
+            import {Component} from '@angular/core';
+
+            @Component({
+                selector: 'example',
+                template: '',
+                styles: `
+                    .example {
+                        color: var(--tui-te);
+                    }
+                `,
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+        val tokenEnd =
+            myFixture.editor.document.text
+                .indexOf("--tui-te")
+                .plus("--tui-te".length)
+        val context =
+            ReadAction.compute<org.taigaui.designtokens.completion.DesignTokenCompletionContext?, RuntimeException> {
+                myFixture.editor.designTokenCompletionContextAt(tokenEnd)
+            }
+
+        assertEquals("--tui-te", context?.prefix)
     }
 
     @Test
