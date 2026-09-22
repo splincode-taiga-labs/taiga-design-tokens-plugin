@@ -1,5 +1,8 @@
 package org.taigaui.designtokens.completion
 
+import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.model.Pointer
+import com.intellij.polySymbols.search.PsiLinkedPolySymbol
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import org.taigaui.designtokens.documentation.DesignTokenHoverPackageSection
@@ -8,7 +11,21 @@ import org.taigaui.designtokens.documentation.DesignTokenHoverValueRow
 import org.taigaui.designtokens.documentation.DesignTokenNavigationTarget
 import java.nio.file.Path
 
-internal fun PsiElement.toCustomPropertyPreviewModel(tokenName: String): DesignTokenHoverPopupModel? {
+internal fun LookupElement.toCustomPropertyPreviewModel(tokenName: String): DesignTokenHoverPopupModel? =
+    linkedPsiElement()?.toCustomPropertyPreviewModel(tokenName)
+
+private fun LookupElement.linkedPsiElement(): PsiElement? {
+    val lookupObject = getObject()
+    val dereferenced =
+        (lookupObject as? Pointer<*>)
+            ?.dereference()
+
+    return psiElement
+        ?: (lookupObject as? PsiLinkedPolySymbol)?.linkedElement
+        ?: (dereferenced as? PsiLinkedPolySymbol)?.linkedElement
+}
+
+private fun PsiElement.toCustomPropertyPreviewModel(tokenName: String): DesignTokenHoverPopupModel? {
     val declaration = findCustomPropertyDeclaration(tokenName) ?: return null
     val sourceFile =
         containingFile
