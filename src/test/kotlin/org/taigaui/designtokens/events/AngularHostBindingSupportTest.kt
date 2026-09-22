@@ -81,7 +81,9 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         PsiDocumentManager.getInstance(project).commitAllDocuments()
 
         val token = "--tui-back"
-        val tokenEnd = myFixture.editor.document.text.indexOf(token) + token.length
+        val tokenEnd =
+            myFixture.editor.document.text
+                .indexOf(token) + token.length
 
         myFixture.editor.caretModel.moveToOffset(tokenEnd)
 
