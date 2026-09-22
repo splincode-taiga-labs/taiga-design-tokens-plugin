@@ -40,6 +40,7 @@ internal class DesignTokenCompletionPreviewController(
     private var previewPanel: DesignTokenCompletionPreviewPanel? = null
     private var previewJob: Job? = null
     private var previewKey: PreviewKey? = null
+    private var previewAnchorY: Int? = null
 
     init {
         project.messageBus
@@ -120,6 +121,7 @@ internal class DesignTokenCompletionPreviewController(
         previewJob?.cancel()
         previewJob = null
         previewKey = null
+        previewAnchorY = null
         hidePreview()
     }
 
@@ -247,7 +249,14 @@ internal class DesignTokenCompletionPreviewController(
     ) {
         val editor = lookup.topLevelEditor
         val layeredPane = editor.contentComponent.rootPane?.layeredPane ?: return
-        val location = previewLocation(lookup, previewSize, layeredPane)
+        val location =
+            previewLocation(
+                lookup = lookup,
+                previewSize = previewSize,
+                layeredPane = layeredPane,
+                anchorY = previewAnchorY,
+            )
+        previewAnchorY = location.y
         val hint =
             previewHint
                 ?: LightweightHint(requireNotNull(previewPanel))
@@ -318,6 +327,7 @@ private fun previewLocation(
     lookup: Lookup,
     previewSize: Dimension,
     layeredPane: JLayeredPane,
+    anchorY: Int?,
 ): Point {
     val lookupBounds = lookup.bounds
     val gap = JBUI.scale(PREVIEW_GAP)
@@ -325,9 +335,10 @@ private fun previewLocation(
     val leftX = lookupBounds.x - previewSize.width - gap
     val fitsRight = rightX + previewSize.width <= layeredPane.width
     val x = if (fitsRight) rightX else leftX.coerceAtLeast(0)
-    val maxY = (layeredPane.height - previewSize.height).coerceAtLeast(0)
+    val maxY = (layeredPane.height - JBUI.scale(MAX_PREVIEW_HEIGHT)).coerceAtLeast(0)
+    val y = anchorY ?: lookupBounds.y.coerceIn(0, maxY)
 
-    return Point(x, lookupBounds.y.coerceIn(0, maxY))
+    return Point(x, y)
 }
 
 private data class CompletionPreviewCandidate(
