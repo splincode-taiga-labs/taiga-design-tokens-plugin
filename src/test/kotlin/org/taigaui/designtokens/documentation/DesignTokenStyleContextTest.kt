@@ -6,8 +6,8 @@ import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestC
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.taigaui.designtokens.completion.designTokenCompletionContextAt
 import org.junit.Test
+import org.taigaui.designtokens.completion.designTokenCompletionContextAt
 
 class DesignTokenStyleContextTest : LightPlatformCodeInsightFixture4TestCase() {
     override fun setUp() {
