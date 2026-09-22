@@ -20,7 +20,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
-import org.taigaui.designtokens.documentation.designTokenStyleTextContext
 import org.taigaui.designtokens.project.DesignTokenIndexService
 import org.taigaui.designtokens.settings.TaigaDesignTokensSettings
 import java.awt.Dimension
@@ -262,14 +261,7 @@ private fun Lookup.previewRequest(): CompletionPreviewRequest? =
     }
 
 private fun Lookup.designTokenCompletionContext(): DesignTokenCompletionContext? =
-    topLevelEditor
-        .designTokenStyleTextContext(topLevelEditor.caretModel.offset)
-        ?.let { context ->
-            DesignTokenCompletionContextFinder.find(
-                text = context.text,
-                offset = context.offset,
-            )
-        }
+    topLevelEditor.designTokenCompletionContextAt(topLevelEditor.caretModel.offset)
 
 private fun Lookup.sourceFilePath(): Path? =
     FileDocumentManager
