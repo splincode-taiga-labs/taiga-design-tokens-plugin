@@ -45,7 +45,7 @@ private fun PsiElement.toCustomPropertyPreviewModel(tokenName: String): DesignTo
     val line =
         containingFile
             ?.let { file -> PsiDocumentManager.getInstance(project).getDocument(file) }
-            ?.getLineNumber(textOffset)
+            ?.getLineNumber(declaration.offset)
             ?.plus(1)
     val sourceLabel =
         buildString {
@@ -67,7 +67,7 @@ private fun PsiElement.toCustomPropertyPreviewModel(tokenName: String): DesignTo
                         listOf(
                             DesignTokenHoverValueRow(
                                 platform = sourceLabel,
-                                resolvedValue = declaration,
+                                resolvedValue = declaration.value,
                                 color = null,
                                 navigationTarget =
                                     if (sourceFile != null && line != null) {
@@ -83,13 +83,48 @@ private fun PsiElement.toCustomPropertyPreviewModel(tokenName: String): DesignTo
     )
 }
 
-private fun PsiElement.findCustomPropertyDeclaration(tokenName: String): String? =
-    generateSequence(this) { element -> element.parent }
-        .take(MAX_PSI_ANCESTORS)
-        .map(PsiElement::getText)
-        .filter { text -> text.length <= MAX_DECLARATION_TEXT_LENGTH }
-        .mapNotNull { text -> extractCustomPropertyValue(text, tokenName) }
-        .firstOrNull()
+private fun PsiElement.findCustomPropertyDeclaration(tokenName: String): CustomPropertyDeclaration? {
+    val localDeclaration =
+        generateSequence(this) { element -> element.parent }
+            .take(MAX_PSI_ANCESTORS)
+            .map { element -> element to element.text }
+            .filter { (_, text) -> text.length <= MAX_DECLARATION_TEXT_LENGTH }
+            .mapNotNull { (element, text) ->
+                extractCustomPropertyValue(text, tokenName)?.let { value ->
+                    CustomPropertyDeclaration(
+                        value = value,
+                        offset = element.textRange.startOffset,
+                    )
+                }
+            }.firstOrNull()
+
+    if (localDeclaration != null) {
+        return localDeclaration
+    }
+
+    val file = containingFile ?: return null
+    val document = PsiDocumentManager.getInstance(project).getDocument(file)
+    val text = document?.immutableCharSequence ?: file.text
+    val sourceOffset = textOffset
+
+    return customPropertyPattern(tokenName)
+        .findAll(text)
+        .mapNotNull { match ->
+            match
+                .groups[1]
+                ?.value
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+                ?.let { value ->
+                    CustomPropertyDeclaration(
+                        value = value,
+                        offset = match.range.first,
+                    )
+                }
+        }.minByOrNull { declaration ->
+            kotlin.math.abs(declaration.offset - sourceOffset)
+        }
+}
 
 internal fun extractCustomPropertyValue(
     text: String,
@@ -103,6 +138,11 @@ internal fun extractCustomPropertyValue(
         ?.trim()
         ?.takeIf(String::isNotEmpty)
 }
+
+private data class CustomPropertyDeclaration(
+    val value: String,
+    val offset: Int,
+)
 
 private fun customPropertyPattern(tokenName: String): Regex =
     Regex(
