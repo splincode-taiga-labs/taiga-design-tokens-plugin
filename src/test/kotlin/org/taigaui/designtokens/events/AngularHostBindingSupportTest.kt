@@ -10,8 +10,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.taigaui.designtokens.completion.DesignTokenCompletionContextFinder
-import org.taigaui.designtokens.documentation.designTokenStyleTextContext
+import org.taigaui.designtokens.completion.designTokenCompletionContextAt
 
 class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase() {
     override fun setUp() {
@@ -72,7 +71,7 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 template: '',
                 styles: `
                     .example {
-                        color: var(--tui-back<caret>);
+                        color: var(--tui-back);
                     }
                 `,
             })
@@ -81,20 +80,15 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
         )
         PsiDocumentManager.getInstance(project).commitAllDocuments()
 
-        val styleContext =
-            myFixture.editor.designTokenStyleTextContext(
-                myFixture.editor.caretModel.offset,
-            )
-        val completionContext =
-            styleContext?.let { context ->
-                DesignTokenCompletionContextFinder.find(
-                    text = context.text,
-                    offset = context.offset,
-                )
-            }
+        val token = "--tui-back"
+        val tokenEnd = myFixture.editor.document.text.indexOf(token) + token.length
 
-        assertNotNull(styleContext)
-        assertEquals("--tui-back", completionContext?.prefix)
+        myFixture.editor.caretModel.moveToOffset(tokenEnd)
+
+        assertEquals(
+            token,
+            myFixture.editor.designTokenCompletionContextAt(tokenEnd)?.prefix,
+        )
     }
 
     @Test
