@@ -2,7 +2,7 @@ package org.taigaui.designtokens.completion
 
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.model.Pointer
-import com.intellij.polySymbols.search.PsiLinkedPolySymbol
+import com.intellij.polySymbols.search.PsiSourcedPolySymbol
 import com.intellij.polySymbols.utils.PolySymbolDeclaredInPsi
 import com.intellij.polySymbols.utils.PolySymbolDelegate
 import com.intellij.psi.PsiDocumentManager
@@ -29,7 +29,7 @@ private fun LookupElement.linkedPsiElement(): PsiElement? {
 
 private fun Any?.polySymbolPsiElement(): PsiElement? =
     when (this) {
-        is PsiLinkedPolySymbol -> linkedElement
+        is PsiSourcedPolySymbol -> source
         is PolySymbolDeclaredInPsi -> sourceElement
         is PolySymbolDelegate<*> -> delegate.polySymbolPsiElement()
         else -> null
