@@ -1,11 +1,13 @@
 package org.taigaui.designtokens.completion
 
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupEvent
 import com.intellij.codeInsight.lookup.LookupListener
 import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -133,7 +135,13 @@ internal class DesignTokenCompletionPreviewController(
             return
         }
 
-        val key = PreviewKey(lookup, request.tokenName, request.sourceFile)
+        val key =
+            PreviewKey(
+                lookup = lookup,
+                tokenName = request.tokenName,
+                sourceFile = request.sourceFile,
+                lookupElement = request.lookupElement,
+            )
 
         if (previewKey != key || previewJob?.isActive != true) {
             previewKey = key
@@ -160,12 +168,16 @@ internal class DesignTokenCompletionPreviewController(
                                     groups = values,
                                 )
                             }
+                            ?: readAction {
+                                request.lookupElement.psiElement
+                                    ?.toCustomPropertyPreviewModel(request.tokenName)
+                            }
 
                     withContext(Dispatchers.EDT) {
                         if (
                             previewKey == key &&
                             activeLookup === lookup &&
-                            lookup.currentTokenName() == request.tokenName
+                            lookup.currentItem === request.lookupElement
                         ) {
                             if (model == null) {
                                 hidePreview()
@@ -247,16 +259,19 @@ private fun Lookup.hasDesignTokenPreviewContext(): Boolean =
         ?.startsWith(TAIGA_TOKEN_ROOT) == true
 
 private fun Lookup.previewRequest(): CompletionPreviewRequest? =
-    currentTokenName()?.let { tokenName ->
-        sourceFilePath()?.let { sourceFile ->
-            designTokenCompletionContext()
-                ?.takeIf { context -> context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
-                ?.let {
-                    CompletionPreviewRequest(
-                        tokenName = tokenName,
-                        sourceFile = sourceFile,
-                    )
-                }
+    currentItem?.let { lookupElement ->
+        normalizeDesignTokenLookupString(lookupElement.lookupString)?.let { tokenName ->
+            sourceFilePath()?.let { sourceFile ->
+                designTokenCompletionContext()
+                    ?.takeIf { context -> context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
+                    ?.let {
+                        CompletionPreviewRequest(
+                            tokenName = tokenName,
+                            sourceFile = sourceFile,
+                            lookupElement = lookupElement,
+                        )
+                    }
+            }
         }
     }
 
@@ -305,12 +320,14 @@ private fun previewLocation(
 private data class CompletionPreviewRequest(
     val tokenName: String,
     val sourceFile: Path,
+    val lookupElement: LookupElement,
 )
 
 private data class PreviewKey(
     val lookup: Lookup,
     val tokenName: String,
     val sourceFile: Path,
+    val lookupElement: LookupElement,
 )
 
 private const val TAIGA_TOKEN_ROOT = "--tui-"
