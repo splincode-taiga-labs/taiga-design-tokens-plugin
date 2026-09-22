@@ -110,12 +110,12 @@ class DesignTokenStyleContextTest : LightPlatformCodeInsightFixture4TestCase() {
             myFixture.editor.document.text
                 .indexOf("--tui-te")
                 .plus("--tui-te".length)
-        val context =
-            ReadAction.compute<org.taigaui.designtokens.completion.DesignTokenCompletionContext?, RuntimeException> {
-                myFixture.editor.designTokenCompletionContextAt(tokenEnd)
+        val prefix =
+            ReadAction.compute<String?, RuntimeException> {
+                myFixture.editor.designTokenCompletionContextAt(tokenEnd)?.prefix
             }
 
-        assertEquals("--tui-te", context?.prefix)
+        assertEquals("--tui-te", prefix)
     }
 
     @Test
