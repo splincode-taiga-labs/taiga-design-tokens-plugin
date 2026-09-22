@@ -169,8 +169,7 @@ internal class DesignTokenCompletionPreviewController(
                                 )
                             }
                             ?: readAction {
-                                request.lookupElement.psiElement
-                                    ?.toCustomPropertyPreviewModel(request.tokenName)
+                                request.lookupElement.toCustomPropertyPreviewModel(request.tokenName)
                             }
 
                     withContext(Dispatchers.EDT) {
