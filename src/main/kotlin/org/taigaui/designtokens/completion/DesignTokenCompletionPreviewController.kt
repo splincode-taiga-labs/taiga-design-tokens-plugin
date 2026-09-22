@@ -257,22 +257,30 @@ private fun Lookup.hasDesignTokenPreviewContext(): Boolean =
         ?.prefix
         ?.startsWith(TAIGA_TOKEN_ROOT) == true
 
-private fun Lookup.previewRequest(): CompletionPreviewRequest? =
-    currentItem?.let { lookupElement ->
-        normalizeDesignTokenLookupString(lookupElement.lookupString)?.let { tokenName ->
-            sourceFilePath()?.let { sourceFile ->
-                designTokenCompletionContext()
-                    ?.takeIf { context -> context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
-                    ?.let {
-                        CompletionPreviewRequest(
-                            tokenName = tokenName,
-                            sourceFile = sourceFile,
-                            lookupElement = lookupElement,
-                        )
-                    }
-            }
-        }
+private fun Lookup.previewRequest(): CompletionPreviewRequest? {
+    val lookupElement = currentItem
+    val tokenName = lookupElement?.lookupString?.let(::normalizeDesignTokenLookupString)
+    val sourceFile = sourceFilePath()
+    val hasDesignTokenContext =
+        designTokenCompletionContext()
+            ?.prefix
+            ?.startsWith(TAIGA_TOKEN_ROOT) == true
+
+    return if (
+        lookupElement != null &&
+        tokenName != null &&
+        sourceFile != null &&
+        hasDesignTokenContext
+    ) {
+        CompletionPreviewRequest(
+            tokenName = tokenName,
+            sourceFile = sourceFile,
+            lookupElement = lookupElement,
+        )
+    } else {
+        null
     }
+}
 
 private fun Lookup.designTokenCompletionContext(): DesignTokenCompletionContext? =
     topLevelEditor.designTokenCompletionContextAt(topLevelEditor.caretModel.offset)
@@ -287,11 +295,6 @@ private fun Lookup.sourceFilePath(): Path? =
             ?.virtualFile
             ?.path
             ?.let(::pathOrNull)
-
-private fun Lookup.currentTokenName(): String? =
-    currentItem
-        ?.lookupString
-        ?.let(::normalizeDesignTokenLookupString)
 
 internal fun normalizeDesignTokenLookupString(value: String): String? =
     when {
