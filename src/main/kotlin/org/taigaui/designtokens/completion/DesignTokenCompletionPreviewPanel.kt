@@ -212,6 +212,6 @@ private class ColorPreviewIcon(
 private const val PREVIEW_WIDTH = 430
 private const val PREVIEW_PADDING = 12
 private const val MIN_PREVIEW_HEIGHT = 72
-private const val MAX_PREVIEW_HEIGHT = 420
+internal const val MAX_PREVIEW_HEIGHT = 420
 private const val COLOR_PREVIEW_SIZE = 18
 private const val VALUE_COLUMNS = 34
