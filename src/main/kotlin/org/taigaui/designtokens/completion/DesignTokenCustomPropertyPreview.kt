@@ -3,6 +3,8 @@ package org.taigaui.designtokens.completion
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.model.Pointer
 import com.intellij.polySymbols.search.PsiLinkedPolySymbol
+import com.intellij.polySymbols.utils.PolySymbolDeclaredInPsi
+import com.intellij.polySymbols.utils.PolySymbolDelegate
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import org.taigaui.designtokens.documentation.DesignTokenHoverPackageSection
@@ -21,9 +23,17 @@ private fun LookupElement.linkedPsiElement(): PsiElement? {
             ?.dereference()
 
     return psiElement
-        ?: (lookupObject as? PsiLinkedPolySymbol)?.linkedElement
-        ?: (dereferenced as? PsiLinkedPolySymbol)?.linkedElement
+        ?: lookupObject.polySymbolPsiElement()
+        ?: dereferenced.polySymbolPsiElement()
 }
+
+private fun Any?.polySymbolPsiElement(): PsiElement? =
+    when (this) {
+        is PsiLinkedPolySymbol -> linkedElement
+        is PolySymbolDeclaredInPsi -> sourceElement
+        is PolySymbolDelegate<*> -> delegate.polySymbolPsiElement()
+        else -> null
+    }
 
 private fun PsiElement.toCustomPropertyPreviewModel(tokenName: String): DesignTokenHoverPopupModel? {
     val declaration = findCustomPropertyDeclaration(tokenName) ?: return null
