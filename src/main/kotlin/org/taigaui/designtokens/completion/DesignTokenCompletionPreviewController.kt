@@ -191,7 +191,10 @@ internal class DesignTokenCompletionPreviewController(
                         )
                     }
                     ?: readAction {
-                        candidate.lookupElement.toCustomPropertyPreviewModel(candidate.tokenName)
+                        candidate.lookupElement.toCustomPropertyPreviewModel(
+                            tokenName = candidate.tokenName,
+                            project = project,
+                        )
                     }
 
             withContext(Dispatchers.EDT) {
