@@ -24,6 +24,38 @@ internal fun LookupElement.toCustomPropertyPreviewModel(
         ?: project.toCustomPropertyPreviewModel(tokenName)
 
 private fun Project.toCustomPropertyPreviewModel(tokenName: String): DesignTokenHoverPopupModel? {
+    val rows =
+        findCustomPropertyDeclarations(tokenName)
+            .distinct()
+            .sortedWith(
+                compareBy(
+                    { declaration -> declaration.sourceFile?.toString().orEmpty() },
+                    { declaration -> declaration.line ?: Int.MAX_VALUE },
+                    ProjectCustomPropertyDeclaration::value,
+                ),
+            ).map { declaration -> declaration.toHoverValueRow() }
+
+    return rows
+        .takeIf(List<*>::isNotEmpty)
+        ?.let { valueRows ->
+            DesignTokenHoverPopupModel(
+                tokenName = tokenName,
+                description = null,
+                sections =
+                    listOf(
+                        DesignTokenHoverPackageSection(
+                            packageName = "Project custom property",
+                            rows = valueRows,
+                            chains = emptyList(),
+                        ),
+                    ),
+            )
+        }
+}
+
+private fun Project.findCustomPropertyDeclarations(
+    tokenName: String,
+): List<ProjectCustomPropertyDeclaration> {
     val declarations = mutableListOf<ProjectCustomPropertyDeclaration>()
     val scope = GlobalSearchScope.projectScope(this)
     val searchWord = tokenName.removePrefix("--")
@@ -67,33 +99,7 @@ private fun Project.toCustomPropertyPreviewModel(tokenName: String): DesignToken
             true,
         )
 
-    val rows =
-        declarations
-            .distinct()
-            .sortedWith(
-                compareBy(
-                    { declaration -> declaration.sourceFile?.toString().orEmpty() },
-                    { declaration -> declaration.line ?: Int.MAX_VALUE },
-                    ProjectCustomPropertyDeclaration::value,
-                ),
-            ).map { declaration -> declaration.toHoverValueRow() }
-
-    return rows
-        .takeIf(List<*>::isNotEmpty)
-        ?.let { valueRows ->
-            DesignTokenHoverPopupModel(
-                tokenName = tokenName,
-                description = null,
-                sections =
-                    listOf(
-                        DesignTokenHoverPackageSection(
-                            packageName = "Project custom property",
-                            rows = valueRows,
-                            chains = emptyList(),
-                        ),
-                    ),
-            )
-        }
+    return declarations
 }
 
 private fun ProjectCustomPropertyDeclaration.toHoverValueRow(): DesignTokenHoverValueRow {
@@ -239,6 +245,5 @@ private fun customPropertyPattern(tokenName: String): Regex =
     Regex(
         pattern = """(?s)(?:^|[;{])\s*${Regex.escape(tokenName)}\s*:\s*([^;{}]+)""",
     )
-
 
 private val CUSTOM_PROPERTY_SOURCE_EXTENSIONS = setOf("css", "less", "scss")
