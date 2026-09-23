@@ -119,6 +119,17 @@ The plugin does not ship a fixed catalog of token or icon names. It discovers da
 
 This allows different projects or monorepo packages to use different Taiga UI versions without changing plugin configuration.
 
+## Settings
+
+The plugin adds an application-scoped settings page under **Settings → Tools → Taiga UI**.
+
+Two editor features can be controlled independently:
+
+- **Show design token completion preview** — shows the side preview for the currently selected `--tui-*` completion item, including resolved values and color swatches.
+- **Show design token hover popup** — shows the custom token popup when hovering a complete `var(--tui-...)` reference.
+
+Both options are enabled by default. Changes affect editor presentation only and do not change token resolution, source precedence, indexing, or cache behavior.
+
 ## Developer documentation
 
 - [Architecture](docs/ARCHITECTURE.md)

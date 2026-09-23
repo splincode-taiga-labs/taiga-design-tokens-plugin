@@ -8,6 +8,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
 import org.taigaui.designtokens.documentation.DesignTokenHoverValueRow
+import org.taigaui.designtokens.documentation.designTokenValuePresentation
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -149,7 +150,7 @@ private fun createResolvedValue(row: DesignTokenHoverValueRow): JComponent =
                 BorderLayout.WEST,
             )
         }
-        add(createWrappingValue(row.resolvedValue), BorderLayout.CENTER)
+        add(createWrappingValue(designTokenValuePresentation(row.resolvedValue)), BorderLayout.CENTER)
     }
 
 private fun createWrappingValue(value: String): JTextArea =
@@ -211,6 +212,6 @@ private class ColorPreviewIcon(
 private const val PREVIEW_WIDTH = 430
 private const val PREVIEW_PADDING = 12
 private const val MIN_PREVIEW_HEIGHT = 72
-private const val MAX_PREVIEW_HEIGHT = 420
+internal const val MAX_PREVIEW_HEIGHT = 420
 private const val COLOR_PREVIEW_SIZE = 18
 private const val VALUE_COLUMNS = 34

@@ -32,6 +32,8 @@ class DesignTokenIndex private constructor(
             val groupedOrigins = linkedMapOf<VariantKey, MutableList<DesignTokenOrigin>>()
 
             declarations
+                .asSequence()
+                .filter { declaration -> declaration.name.isValidDesignTokenName() }
                 .sortedWith(DECLARATION_COMPARATOR)
                 .forEach { declaration ->
                     val normalizedSourceFile = declaration.sourceFile.toAbsolutePath().normalize()

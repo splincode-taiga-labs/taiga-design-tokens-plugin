@@ -15,15 +15,9 @@ class DesignTokenCompletionAutoPopupHandler : TypedHandlerDelegate() {
         editor: Editor,
         file: PsiFile,
     ): Result {
-        val completionContext =
-            DesignTokenCompletionContextFinder.find(
-                text = editor.document.immutableCharSequence,
-                offset = editor.caretModel.offset,
-            )
-        val supportedContext =
-            file.virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS && completionContext != null
+        val completionContext = editor.designTokenCompletionContextAt(editor.caretModel.offset)
 
-        if (supportedContext) {
+        if (completionContext != null) {
             project.service<DesignTokenCompletionPreviewController>()
 
             if (charTyped.isTokenNameCharacter() && LookupManager.getInstance(project).activeLookup == null) {

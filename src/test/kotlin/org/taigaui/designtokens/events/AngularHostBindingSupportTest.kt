@@ -2,6 +2,7 @@ package org.taigaui.designtokens.events
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
 import org.junit.Assert.assertEquals
@@ -9,6 +10,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.taigaui.designtokens.completion.designTokenCompletionContextAt
 
 class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase() {
     override fun setUp() {
@@ -54,6 +56,40 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
             export declare function Directive(metadata: DirectiveMetadata): ClassDecorator;
             export declare function Component(metadata: ComponentMetadata): ClassDecorator;
             """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `resolves design token completion context in Angular inline styles`() {
+        configureAngularFile(
+            "component.ts",
+            """
+            import {Component} from '@angular/core';
+
+            @Component({
+                selector: 'example',
+                template: '',
+                styles: `
+                    .example {
+                        color: var(--tui-back);
+                    }
+                `,
+            })
+            export class ExampleComponent {}
+            """.trimIndent(),
+        )
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+
+        val token = "--tui-back"
+        val tokenEnd =
+            myFixture.editor.document.text
+                .indexOf(token) + token.length
+
+        myFixture.editor.caretModel.moveToOffset(tokenEnd)
+
+        assertEquals(
+            token,
+            myFixture.editor.designTokenCompletionContextAt(tokenEnd)?.prefix,
         )
     }
 

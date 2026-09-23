@@ -58,7 +58,12 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         )
         createFile(
             workspaceRoot.resolve("src/styles.less"),
-            ":root { --tui-team-color: hotpink; }",
+            """
+            :root {
+                --tui-team-color: hotpink;
+                --tui-radius.%: 1rem;
+            }
+            """.trimIndent(),
         )
     }
 
@@ -80,6 +85,12 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
             "--tui-text-primary",
         )
         assertFalse(suggestions.contains("--tui-background-base"))
+    }
+
+    fun testDoesNotCompleteMalformedProjectTokenName() {
+        val suggestions = complete("--tui-ra")
+
+        assertFalse(suggestions.contains("--tui-radius.%"))
     }
 
     fun testCompletesSingleInstalledTokenMatch() {

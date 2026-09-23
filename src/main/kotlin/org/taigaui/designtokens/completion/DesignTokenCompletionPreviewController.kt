@@ -1,11 +1,13 @@
 package org.taigaui.designtokens.completion
 
 import com.intellij.codeInsight.lookup.Lookup
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupEvent
 import com.intellij.codeInsight.lookup.LookupListener
 import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.codeInsight.lookup.LookupManagerListener
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileDocumentManager
@@ -21,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
 import org.taigaui.designtokens.project.DesignTokenIndexService
+import org.taigaui.designtokens.settings.TaigaDesignTokensSettings
 import java.awt.Dimension
 import java.awt.Point
 import java.nio.file.Path
@@ -37,6 +40,7 @@ internal class DesignTokenCompletionPreviewController(
     private var previewPanel: DesignTokenCompletionPreviewPanel? = null
     private var previewJob: Job? = null
     private var previewKey: PreviewKey? = null
+    private var previewAnchorY: Int? = null
 
     init {
         project.messageBus
@@ -68,7 +72,10 @@ internal class DesignTokenCompletionPreviewController(
 
         detach()
 
-        if (lookup?.isCompletion != true || !lookup.supportsDesignTokenPreview()) {
+        if (
+            lookup?.isCompletion != true ||
+            !service<TaigaDesignTokensSettings>().showCompletionPreview
+        ) {
             return
         }
 
@@ -114,57 +121,102 @@ internal class DesignTokenCompletionPreviewController(
         previewJob?.cancel()
         previewJob = null
         previewKey = null
+        previewAnchorY = null
         hidePreview()
     }
 
     private fun requestPreview(lookup: Lookup) {
-        val request = lookup.previewRequest()
+        val candidate =
+            lookup
+                .previewCandidate()
+                ?.takeIf { service<TaigaDesignTokensSettings>().showCompletionPreview }
 
-        if (request == null) {
+        if (candidate == null) {
             clearPreviewRequest()
-            return
-        }
+        } else {
+            val key =
+                PreviewKey(
+                    lookup = lookup,
+                    tokenName = candidate.tokenName,
+                    sourceFile = candidate.sourceFile,
+                    lookupElement = candidate.lookupElement,
+                )
 
-        val key = PreviewKey(lookup, request.tokenName, request.sourceFile)
+            if (previewKey != key || previewJob?.isActive != true) {
+                previewKey = key
+                previewJob?.cancel()
 
-        if (previewKey == key && previewJob?.isActive == true) {
-            return
-        }
+                if (previewHint?.isVisible != true) {
+                    showLoading(lookup, candidate.tokenName)
+                }
 
-        previewKey = key
-        previewJob?.cancel()
-
-        if (previewHint?.isVisible != true) {
-            showLoading(lookup, request.tokenName)
-        }
-
-        val indexService = project.service<DesignTokenIndexService>()
-
-        previewJob =
-            coroutineScope.launch(CoroutineName("Taiga UI design token completion preview")) {
-                val groups =
-                    withContext(Dispatchers.Default) {
-                        indexService.resolveToken(request.sourceFile, request.tokenName)
+                previewJob =
+                    coroutineScope.launch(CoroutineName("Taiga UI design token completion preview")) {
+                        resolveAndShowPreview(
+                            lookup = lookup,
+                            candidate = candidate,
+                            key = key,
+                        )
                     }
-                val model =
-                    groups
-                        .takeIf { values -> values.isNotEmpty() }
-                        ?.let { values -> DesignTokenHoverPopupModel.create(request.tokenName, values) }
+            }
+        }
+    }
 
-                withContext(Dispatchers.EDT) {
-                    if (
-                        previewKey == key &&
-                        activeLookup === lookup &&
-                        lookup.currentTokenName() == request.tokenName
-                    ) {
-                        if (model == null) {
-                            hidePreview()
-                        } else {
-                            showModel(lookup, model)
-                        }
+    private suspend fun resolveAndShowPreview(
+        lookup: Lookup,
+        candidate: CompletionPreviewCandidate,
+        key: PreviewKey,
+    ) {
+        val hasDesignTokenContext =
+            readAction {
+                candidate.editor
+                    .designTokenCompletionContextAt(candidate.caretOffset)
+                    ?.prefix
+                    ?.startsWith(TAIGA_TOKEN_ROOT) == true
+            }
+
+        if (hasDesignTokenContext) {
+            val indexService = project.service<DesignTokenIndexService>()
+            val groups =
+                withContext(Dispatchers.Default) {
+                    indexService.resolveToken(candidate.sourceFile, candidate.tokenName)
+                }
+            val model =
+                groups
+                    .takeIf { values -> values.isNotEmpty() }
+                    ?.let { values ->
+                        DesignTokenHoverPopupModel.create(
+                            tokenName = candidate.tokenName,
+                            groups = values,
+                        )
+                    }
+                    ?: readAction {
+                        candidate.lookupElement.toCustomPropertyPreviewModel(
+                            tokenName = candidate.tokenName,
+                            project = project,
+                        )
+                    }
+
+            withContext(Dispatchers.EDT) {
+                if (
+                    previewKey == key &&
+                    activeLookup === lookup &&
+                    lookup.currentItem === candidate.lookupElement
+                ) {
+                    if (model == null) {
+                        hidePreview()
+                    } else {
+                        showModel(lookup, model)
                     }
                 }
             }
+        } else {
+            withContext(Dispatchers.EDT) {
+                if (previewKey == key) {
+                    clearPreviewRequest()
+                }
+            }
+        }
     }
 
     private fun clearPreviewRequest() {
@@ -200,7 +252,14 @@ internal class DesignTokenCompletionPreviewController(
     ) {
         val editor = lookup.topLevelEditor
         val layeredPane = editor.contentComponent.rootPane?.layeredPane ?: return
-        val location = previewLocation(lookup, previewSize, layeredPane)
+        val location =
+            previewLocation(
+                lookup = lookup,
+                previewSize = previewSize,
+                layeredPane = layeredPane,
+                anchorY = previewAnchorY,
+            )
+        previewAnchorY = location.y
         val hint =
             previewHint
                 ?: LightweightHint(requireNotNull(previewPanel))
@@ -230,38 +289,35 @@ internal class DesignTokenCompletionPreviewController(
     }
 }
 
-private fun Lookup.previewRequest(): CompletionPreviewRequest? =
-    currentTokenName()?.let { tokenName ->
-        sourceFilePath()?.let { sourceFile ->
-            DesignTokenCompletionContextFinder
-                .find(
-                    text = topLevelEditor.document.immutableCharSequence,
-                    offset = topLevelEditor.caretModel.offset,
-                )?.takeIf { context -> context.prefix.startsWith(TAIGA_TOKEN_ROOT) }
-                ?.let {
-                    CompletionPreviewRequest(
-                        tokenName = tokenName,
-                        sourceFile = sourceFile,
-                    )
-                }
-        }
+private fun Lookup.previewCandidate(): CompletionPreviewCandidate? {
+    val lookupElement = currentItem
+    val tokenName = lookupElement?.lookupString?.let(::normalizeDesignTokenLookupString)
+    val sourceFile = sourceFilePath()
+    val editor = topLevelEditor
+
+    return if (lookupElement != null && tokenName != null && sourceFile != null) {
+        CompletionPreviewCandidate(
+            tokenName = tokenName,
+            sourceFile = sourceFile,
+            lookupElement = lookupElement,
+            editor = editor,
+            caretOffset = editor.caretModel.offset,
+        )
+    } else {
+        null
     }
+}
 
 private fun Lookup.sourceFilePath(): Path? =
-    psiFile
-        ?.virtualFile
+    FileDocumentManager
+        .getInstance()
+        .getFile(topLevelEditor.document)
         ?.path
         ?.let(::pathOrNull)
-        ?: FileDocumentManager
-            .getInstance()
-            .getFile(topLevelEditor.document)
+        ?: psiFile
+            ?.virtualFile
             ?.path
             ?.let(::pathOrNull)
-
-private fun Lookup.currentTokenName(): String? =
-    currentItem
-        ?.lookupString
-        ?.let(::normalizeDesignTokenLookupString)
 
 internal fun normalizeDesignTokenLookupString(value: String): String? =
     when {
@@ -270,18 +326,11 @@ internal fun normalizeDesignTokenLookupString(value: String): String? =
         else -> null
     }
 
-private fun Lookup.supportsDesignTokenPreview(): Boolean =
-    psiFile?.virtualFile?.extension?.lowercase() in SUPPORTED_EXTENSIONS ||
-        FileDocumentManager
-            .getInstance()
-            .getFile(topLevelEditor.document)
-            ?.extension
-            ?.lowercase() in SUPPORTED_EXTENSIONS
-
 private fun previewLocation(
     lookup: Lookup,
     previewSize: Dimension,
     layeredPane: JLayeredPane,
+    anchorY: Int?,
 ): Point {
     val lookupBounds = lookup.bounds
     val gap = JBUI.scale(PREVIEW_GAP)
@@ -289,20 +338,25 @@ private fun previewLocation(
     val leftX = lookupBounds.x - previewSize.width - gap
     val fitsRight = rightX + previewSize.width <= layeredPane.width
     val x = if (fitsRight) rightX else leftX.coerceAtLeast(0)
-    val maxY = (layeredPane.height - previewSize.height).coerceAtLeast(0)
+    val maxY = (layeredPane.height - JBUI.scale(MAX_PREVIEW_HEIGHT)).coerceAtLeast(0)
+    val y = anchorY ?: lookupBounds.y.coerceIn(0, maxY)
 
-    return Point(x, lookupBounds.y.coerceIn(0, maxY))
+    return Point(x, y)
 }
 
-private data class CompletionPreviewRequest(
+private data class CompletionPreviewCandidate(
     val tokenName: String,
     val sourceFile: Path,
+    val lookupElement: LookupElement,
+    val editor: com.intellij.openapi.editor.Editor,
+    val caretOffset: Int,
 )
 
 private data class PreviewKey(
     val lookup: Lookup,
     val tokenName: String,
     val sourceFile: Path,
+    val lookupElement: LookupElement,
 )
 
 private const val TAIGA_TOKEN_ROOT = "--tui-"
