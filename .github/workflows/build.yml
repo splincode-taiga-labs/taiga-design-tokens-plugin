@@ -39,7 +39,7 @@ jobs:
                   distribution: temurin
                   java-version: 21
 
-            - name: Check and build plugin
+            - name: Check, build, and verify plugin
               env:
                   JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=${{ runner.temp }}
               run: >-
@@ -48,5 +48,6 @@ jobs:
                   buildPlugin
                   verifyPluginStructure
                   verifyPluginProjectConfiguration
+                  verifyPlugin
                   -Djava.net.useSystemProxies=false
                   --stacktrace
