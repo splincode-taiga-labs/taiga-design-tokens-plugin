@@ -2,10 +2,10 @@ package org.taigaui.designtokens.completion
 
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.model.Pointer
+import com.intellij.openapi.project.Project
 import com.intellij.polySymbols.search.PsiSourcedPolySymbol
 import com.intellij.polySymbols.utils.PolySymbolDeclaredInPsi
 import com.intellij.polySymbols.utils.PolySymbolDelegate
-import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
@@ -53,9 +53,7 @@ private fun Project.toCustomPropertyPreviewModel(tokenName: String): DesignToken
         }
 }
 
-private fun Project.findCustomPropertyDeclarations(
-    tokenName: String,
-): List<ProjectCustomPropertyDeclaration> {
+private fun Project.findCustomPropertyDeclarations(tokenName: String): List<ProjectCustomPropertyDeclaration> {
     val declarations = mutableListOf<ProjectCustomPropertyDeclaration>()
     val scope = GlobalSearchScope.projectScope(this)
     val searchWord = tokenName.removePrefix("--")
