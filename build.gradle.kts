@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
@@ -44,6 +45,12 @@ detekt {
 
 val localIdePath = providers.gradleProperty("localIdePath").orNull
 val debugProjectPath = providers.gradleProperty("debugProjectPath")
+val supportedIdeSinceBuild = providers.gradleProperty("supportedIdeSinceBuild")
+val supportedIdeUntilBuild = providers.gradleProperty("supportedIdeUntilBuild")
+val pluginVerifierIdeVersions =
+    providers.gradleProperty("pluginVerifierIdeVersions").map { versions ->
+        versions.split(',').map(String::trim)
+    }
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
@@ -74,8 +81,16 @@ intellijPlatform {
 
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "253"
-            untilBuild = provider { null }
+            sinceBuild.set(supportedIdeSinceBuild)
+            untilBuild.set(supportedIdeUntilBuild)
+        }
+    }
+
+    pluginVerification {
+        ides {
+            pluginVerifierIdeVersions.get().forEach { version ->
+                create(IntelliJPlatformType.WebStorm, version)
+            }
         }
     }
 }
