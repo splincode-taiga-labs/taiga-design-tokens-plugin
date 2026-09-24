@@ -1,8 +1,8 @@
 package org.taigaui.designtokens.icons
 
+import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.scale.ScaleContext
-import com.intellij.util.SVGLoader
-import com.intellij.util.ui.ImageUtil
+import com.intellij.util.IconUtil
 import java.awt.Image
 import java.net.URI
 
@@ -30,27 +30,17 @@ internal class IconSvgPreviewRenderer {
         logicalSize: Int,
     ): Image? =
         runCatching {
-            val url = source.uri.toURL()
-            val scaleContext = ScaleContext.create()
-            val logicalSizeDouble = logicalSize.toDouble()
+            val icon = IconLoader.findIcon(source.uri.toURL()) ?: return@runCatching null
+            val maxIconSize = maxOf(icon.iconWidth, icon.iconHeight)
 
-            url.openStream().use { stream ->
-                SVGLoader
-                    .load(
-                        url,
-                        stream,
-                        scaleContext,
-                        logicalSizeDouble,
-                        logicalSizeDouble,
-                    ).let { image ->
-                        ImageUtil.ensureHiDPI(
-                            image,
-                            scaleContext,
-                            logicalSizeDouble,
-                            logicalSizeDouble,
-                        )
-                    }
+            if (maxIconSize <= 0) {
+                return@runCatching null
             }
+
+            val scale = logicalSize.toFloat() / maxIconSize
+            val scaledIcon = IconUtil.scale(icon, null, scale)
+
+            IconLoader.toImage(scaledIcon, ScaleContext.create())
         }.getOrNull()
 }
 

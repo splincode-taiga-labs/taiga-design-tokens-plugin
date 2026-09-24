@@ -130,6 +130,17 @@ Two editor features can be controlled independently:
 
 Both options are enabled by default. Changes affect editor presentation only and do not change token resolution, source precedence, indexing, or cache behavior.
 
+## Compatibility
+
+The plugin currently supports **WebStorm 2025.3 through 2026.2.x** (IntelliJ Platform builds `253` through `262.*`).
+
+CI runs JetBrains Plugin Verifier against:
+
+- **WebStorm 2025.3** — the minimum supported IDE;
+- **WebStorm 2026.2.2** — the current supported IDE used as the upper compatibility boundary.
+
+The plugin is built against WebStorm 2025.3.6 and targets Java 21 bytecode. Support for a newer IDE major version should be added only after updating the compatibility range and adding that version to the verifier matrix.
+
 ## Developer documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
