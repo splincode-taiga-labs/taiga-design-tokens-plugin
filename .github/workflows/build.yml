@@ -39,7 +39,7 @@ jobs:
                   distribution: temurin
                   java-version: 21
 
-            - name: Check, build, and verify plugin
+            - name: Check and build plugin
               env:
                   JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=${{ runner.temp }}
               run: >-
@@ -48,6 +48,37 @@ jobs:
                   buildPlugin
                   verifyPluginStructure
                   verifyPluginProjectConfiguration
+                  -Djava.net.useSystemProxies=false
+                  --stacktrace
+
+    plugin-verifier:
+        name: Plugin Verifier
+        needs: build
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up Java
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: 21
+
+            - name: Cache IntelliJ Platform IDEs
+              uses: actions/cache@v4
+              with:
+                  path: .intellijPlatform/ides
+                  key: intellij-platform-${{ runner.os }}-${{ hashFiles('gradle.properties') }}
+                  restore-keys: |
+                      intellij-platform-${{ runner.os }}-
+
+            - name: Verify plugin compatibility
+              env:
+                  JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=${{ runner.temp }}
+              run: >-
+                  ./gradlew
                   verifyPlugin
                   -Djava.net.useSystemProxies=false
                   --stacktrace
