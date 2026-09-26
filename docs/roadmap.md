@@ -187,15 +187,15 @@ Acceptance goals from #18 are covered by the merged implementation and CI regres
 
 ## Stage 7 — Release and production hardening
 
-Status: planned.
+Status: in progress.
 
 Tracked by:
 
-- [#50 — Define supported IDE matrix and add Plugin Verifier CI](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/50).
-- [#51 — Validate packaged plugin against real Angular and Nx projects](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/51).
-- [#52 — Audit editor popups, previews and inlay hints for accessibility](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/52).
-- [#53 — Add plugin signing and JetBrains Marketplace publishing](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/53).
-- [#54 — Prepare the first production-ready plugin release](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/54).
+- [x] [#50 — Define supported IDE matrix and add Plugin Verifier CI](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/50).
+- [ ] [#51 — Validate packaged plugin against real Angular and Nx projects](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/51).
+- [ ] [#52 — Audit editor popups, previews and inlay hints for accessibility](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/52).
+- [ ] [#53 — Add plugin signing and JetBrains Marketplace publishing](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/53).
+- [ ] [#54 — Prepare the first production-ready plugin release](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/54).
 
 Recommended order:
 
@@ -208,8 +208,6 @@ Recommended order:
 ## Current execution order
 
 ```text
-#50 IDE compatibility / Plugin Verifier
-  ↓
 #51 real-project validation
   ↓
 #52 accessibility
@@ -218,5 +216,7 @@ Recommended order:
   ↓
 #54 first production-ready release
 ```
+
+The supported IDE matrix and Plugin Verifier CI from #50 are implemented and green on `main`.
 
 The production release should happen only after the supported IDE matrix, real-project validation, accessibility checks, signing, and publishing pipeline are green.
