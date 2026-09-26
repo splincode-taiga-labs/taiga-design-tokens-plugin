@@ -1,0 +1,9 @@
+{
+    "name": "@validation/taiga-v5",
+    "version": "0.0.0",
+    "private": true,
+    "dependencies": {
+        "@taiga-ui/design-tokens": "0.322.0",
+        "@taiga-ui/icons": "5.25.0"
+    }
+}

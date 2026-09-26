@@ -1,0 +1,19 @@
+{
+    "name": "taiga-v4",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "application",
+    "sourceRoot": "apps/taiga-v4/src",
+    "targets": {
+        "build": {
+            "executor": "@angular/build:application",
+            "options": {
+                "browser": "apps/taiga-v4/src/main.ts",
+                "index": "apps/taiga-v4/src/index.html",
+                "tsConfig": "apps/taiga-v4/tsconfig.app.json",
+                "styles": [
+                    "apps/taiga-v4/src/styles.less"
+                ]
+            }
+        }
+    }
+}

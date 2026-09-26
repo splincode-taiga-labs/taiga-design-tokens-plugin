@@ -1,0 +1,25 @@
+{
+    "name": "taiga-design-tokens-nx-pnpm-taiga-mixed",
+    "version": "0.0.0",
+    "private": true,
+    "packageManager": "pnpm@12.5.1",
+    "scripts": {
+        "build": "nx run-many -t build"
+    },
+    "dependencies": {
+        "@angular/common": "22.2.0",
+        "@angular/core": "22.2.0",
+        "@angular/platform-browser": "22.2.0",
+        "rxjs": "7.8.2",
+        "tslib": "2.8.1"
+    },
+    "devDependencies": {
+        "@angular/build": "22.2.0",
+        "@angular/compiler": "22.2.0",
+        "@angular/compiler-cli": "22.2.0",
+        "@nx/angular": "23.2.1",
+        "less": "4.4.1",
+        "nx": "23.2.1",
+        "typescript": "6.0.2"
+    }
+}
