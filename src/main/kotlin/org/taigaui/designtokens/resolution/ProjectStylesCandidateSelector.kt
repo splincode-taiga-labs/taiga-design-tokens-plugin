@@ -18,7 +18,7 @@ internal object ProjectStylesCandidateSelector {
             }
         val candidates =
             applicableCandidates
-                .filter(DesignTokenVariant::isLocalOverride)
+                .filter { variant -> variant.isLocalOverride() }
                 .ifEmpty { applicableCandidates }
 
         if (candidates.isEmpty()) {
