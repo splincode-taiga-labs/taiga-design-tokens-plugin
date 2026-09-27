@@ -224,6 +224,58 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
         assertResolvedValue("#000000cc", result)
     }
 
+    fun testResolvesTaigaUi5StylesVariablesNotImportedByProprietaryTheme() {
+        writePackage(
+            directory = "design-tokens",
+            name = "@taiga-ui/design-tokens",
+            version = "0.312.0",
+            exports = null,
+            files =
+                mapOf(
+                    "palette.css" to
+                        ":root { --tui-v5-base: #123456; }",
+                ),
+        )
+        writePackage(
+            directory = "styles",
+            name = "@taiga-ui/styles",
+            version = "5.18.0",
+            exports = "\"./*\": \"./*\"",
+            files =
+                mapOf(
+                    "mixins/theme/variables.less" to
+                        """
+                        .tui-theme-variables() {
+                            --tui-duration: 0.3s;
+                        }
+                        """.trimIndent(),
+                ),
+        )
+        writePackage(
+            directory = "proprietary",
+            name = "@taiga-ui/proprietary",
+            version = "5.18.0",
+            exports = "\"./styles/*\": \"./styles/*\"",
+            files =
+                mapOf(
+                    "styles/theme/private-tokens.less" to
+                        ":root { --tui-v5-proprietary: red; }",
+                ),
+        )
+
+        val index = buildIndex(resolvePackageSet())
+        val groups = DesignTokenValueResolver(index).resolveGrouped("--tui-duration")
+        val packages =
+            index
+                .find("--tui-duration")
+                .flatMap { variant -> variant.origins }
+                .mapNotNull { origin -> origin.packageName }
+                .toSet()
+
+        assertEquals(setOf("@taiga-ui/styles"), packages)
+        assertResolvedValue("0.3s", groups.single().representative)
+    }
+
     fun testResolvesTaigaUi5StylesPackageAndIgnoresUnexportedCoreStyles() {
         writePackage(
             directory = "design-tokens",
