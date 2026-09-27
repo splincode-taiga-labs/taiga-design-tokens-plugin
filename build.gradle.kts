@@ -61,6 +61,8 @@ val marketplaceChannel =
     }
 
 dependencies {
+    compileOnly("com.github.weisj:jsvg:1.3.0-jb.8")
+
     testImplementation("junit:junit:4.13.2")
     testRuntimeOnly(kotlin("stdlib"))
 
