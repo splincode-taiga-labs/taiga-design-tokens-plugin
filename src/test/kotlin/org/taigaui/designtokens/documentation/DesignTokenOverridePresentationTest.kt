@@ -124,6 +124,47 @@ class DesignTokenOverridePresentationTest {
     }
 
     @Test
+    fun `selector-local project value overrides installed package value`() {
+        val model =
+            DesignTokenHoverPopupModel.create(
+                TOKEN,
+                listOf(
+                    group(
+                        resolution(
+                            packageName = DESIGN_TOKENS_PACKAGE,
+                            rawValue = "0.3s",
+                            value = "0.3s",
+                            requestedContext = LIGHT_DESKTOP,
+                            sharedAcrossPlatforms = true,
+                        ),
+                        resolution(
+                            packageName = PROJECT_STYLES_PACKAGE,
+                            rawValue = "0",
+                            value = "0",
+                            requestedContext = LIGHT_DESKTOP,
+                            sharedAcrossPlatforms = true,
+                            localOverride = true,
+                        ),
+                    ),
+                ),
+            )
+        val packageRow =
+            model.sections
+                .first { section -> section.packageName == DESIGN_TOKENS_PACKAGE }
+                .rows
+                .single()
+        val projectRow =
+            model.sections
+                .first { section -> section.packageName == PROJECT_STYLES_PACKAGE }
+                .rows
+                .single()
+
+        assertEquals("0", projectRow.resolvedValue)
+        assertNull(projectRow.overrideMessage)
+        assertEquals("Overridden by $PROJECT_STYLES_PACKAGE", packageRow.overrideMessage)
+    }
+
+    @Test
     fun `shows a root fallback only for contexts where it is effective`() {
         val rootDesktop = rootResolution(LIGHT_DESKTOP, "desktop-font")
         val rootIos = rootResolution(LIGHT_IOS, "desktop-font")
@@ -244,6 +285,7 @@ class DesignTokenOverridePresentationTest {
         requestedContext: DesignTokenContext,
         declarationContext: DesignTokenContext = LIGHT_DESKTOP,
         sharedAcrossPlatforms: Boolean,
+        localOverride: Boolean = false,
     ): DesignTokenVariantResolution {
         val packageDirectory = packageName.substringAfterLast('/')
         val sourceFile = Path.of("node_modules/@taiga-ui/$packageDirectory/styles/variables.less")
@@ -262,6 +304,7 @@ class DesignTokenOverridePresentationTest {
                             packageName = packageName,
                             packageVersion = "1.0.0",
                             sharedAcrossPlatforms = sharedAcrossPlatforms,
+                            localOverride = localOverride,
                         ),
                     ),
             )
