@@ -74,6 +74,7 @@ dependencies {
         bundledPlugin("AngularJS")
         bundledPlugin("com.intellij.css")
         bundledPlugin("com.intellij.modules.json")
+        zipSigner()
         testFramework(TestFrameworkType.Platform)
     }
 }
