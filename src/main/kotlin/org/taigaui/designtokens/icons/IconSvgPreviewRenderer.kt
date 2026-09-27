@@ -33,11 +33,6 @@ internal class IconSvgPreviewRenderer {
         runCatching {
             val sourceSize = readSvgSize(source.uri) ?: return@runCatching null
             val maxSourceSize = maxOf(sourceSize.width, sourceSize.height)
-
-            if (maxSourceSize <= 0F) {
-                return@runCatching null
-            }
-
             val scale = logicalSize / maxSourceSize
             val targetWidth = maxOf(1, (sourceSize.width * scale).roundToInt())
             val targetHeight = maxOf(1, (sourceSize.height * scale).roundToInt())
@@ -70,26 +65,47 @@ private fun readSvgSize(uri: URI): SvgSize? =
                 .bufferedReader()
                 .use { reader -> SVG_ROOT.find(reader.readText())?.value }
                 ?: return@runCatching null
-        val width = SVG_WIDTH.find(root)?.groupValues?.get(1)?.toSvgLength()
-        val height = SVG_HEIGHT.find(root)?.groupValues?.get(1)?.toSvgLength()
 
-        if (width != null && height != null && width > 0F && height > 0F) {
-            return@runCatching SvgSize(width, height)
-        }
-
-        val viewBox =
-            SVG_VIEW_BOX
-                .find(root)
-                ?.groupValues
-                ?.get(1)
-                ?.trim()
-                ?.split(VIEW_BOX_SEPARATOR)
-                ?.mapNotNull(String::toFloatOrNull)
-
-        viewBox
-            ?.takeIf { values -> values.size == 4 && values[2] > 0F && values[3] > 0F }
-            ?.let { values -> SvgSize(values[2], values[3]) }
+        explicitSvgSize(root)
+            ?: viewBoxSvgSize(root)
     }.getOrNull()
+
+private fun explicitSvgSize(root: String): SvgSize? {
+    val width = SVG_WIDTH.find(root)?.groupValues?.get(1)?.toSvgLength()
+    val height = SVG_HEIGHT.find(root)?.groupValues?.get(1)?.toSvgLength()
+
+    return svgSize(width, height)
+}
+
+private fun viewBoxSvgSize(root: String): SvgSize? {
+    val values =
+        SVG_VIEW_BOX
+            .find(root)
+            ?.groupValues
+            ?.get(1)
+            ?.trim()
+            ?.split(VIEW_BOX_SEPARATOR)
+            ?.mapNotNull(String::toFloatOrNull)
+            ?: return null
+
+    if (values.size != VIEW_BOX_VALUE_COUNT) {
+        return null
+    }
+
+    return svgSize(values[2], values[3])
+}
+
+private fun svgSize(
+    width: Float?,
+    height: Float?,
+): SvgSize? {
+    width ?: return null
+    height ?: return null
+
+    return SvgSize(width, height).takeIf(SvgSize::isValid)
+}
+
+private fun SvgSize.isValid(): Boolean = width > 0F && height > 0F
 
 private fun String.toSvgLength(): Float? =
     SVG_LENGTH
@@ -118,5 +134,6 @@ private val SVG_LENGTH =
         RegexOption.IGNORE_CASE,
     )
 private val VIEW_BOX_SEPARATOR = Regex("""[,\s]+""")
+private const val VIEW_BOX_VALUE_COUNT = 4
 
 internal const val ICON_PREVIEW_LOGICAL_SIZE = 64
