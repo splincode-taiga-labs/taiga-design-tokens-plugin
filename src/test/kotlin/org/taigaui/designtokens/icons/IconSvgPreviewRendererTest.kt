@@ -1,7 +1,6 @@
 package org.taigaui.designtokens.icons
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
-import com.intellij.util.ui.JBImageIcon
 import java.awt.Rectangle
 import java.awt.image.BufferedImage
 import java.nio.file.Files
@@ -16,7 +15,6 @@ class IconSvgPreviewRendererTest : BasePlatformTestCase() {
         ) { svg ->
             val icon = render(IconSvgSource.Local(svg))
 
-            assertTrue(icon is JBImageIcon)
             assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconWidth)
             assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconHeight)
             assertEquals(

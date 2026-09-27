@@ -1,13 +1,9 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.ui.scale.ScaleContext
-import com.intellij.util.ImageLoader
-import com.intellij.util.SVGLoader
-import com.intellij.util.ui.ImageUtil
-import com.intellij.util.ui.JBImageIcon
+import com.intellij.openapi.util.IconLoader
+import com.intellij.util.IconUtil
 import java.net.URI
 import javax.swing.Icon
-import kotlin.math.roundToInt
 
 internal class IconSvgPreviewRenderer {
     private val cache = mutableMapOf<IconPreviewRenderKey, Icon>()
@@ -33,40 +29,18 @@ internal class IconSvgPreviewRenderer {
         logicalSize: Int,
     ): Icon? =
         runCatching {
-            val url = source.uri.toURL()
-            val sourceImage = ImageLoader.loadFromUrl(url) ?: return@runCatching null
-            val sourceWidth = sourceImage.getWidth(null)
-            val sourceHeight = sourceImage.getHeight(null)
-            val maxSourceSize = maxOf(sourceWidth, sourceHeight)
+            val icon = IconLoader.findIcon(source.uri.toURL()) ?: return@runCatching null
+            val maxSourceSize = maxOf(icon.iconWidth, icon.iconHeight)
 
             if (maxSourceSize <= 0) {
                 return@runCatching null
             }
 
-            val scale = logicalSize.toDouble() / maxSourceSize
-            val targetWidth = maxOf(1, (sourceWidth * scale).roundToInt())
-            val targetHeight = maxOf(1, (sourceHeight * scale).roundToInt())
-            val scaleContext = ScaleContext.create()
-
-            val rendered =
-                url.openStream().use { stream ->
-                    SVGLoader.load(
-                        url,
-                        stream,
-                        scaleContext,
-                        targetWidth.toDouble(),
-                        targetHeight.toDouble(),
-                    )
-                }
-            val image =
-                ImageUtil.ensureHiDPI(
-                    rendered,
-                    scaleContext,
-                    targetWidth.toDouble(),
-                    targetHeight.toDouble(),
-                )
-
-            JBImageIcon(image)
+            IconUtil.scale(
+                icon,
+                null,
+                logicalSize.toFloat() / maxSourceSize,
+            )
         }.getOrNull()
 }
 
