@@ -3,14 +3,13 @@ package org.taigaui.designtokens.icons
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.AsyncProcessIcon
-import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.accessibility.AccessibleContextUtil
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.GridBagLayout
-import java.awt.Image
+import javax.swing.Icon
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 
@@ -47,12 +46,12 @@ internal class IconCompletionPreviewPanel : JPanel(BorderLayout()) {
 
     fun showIcon(
         iconName: String,
-        image: Image,
+        icon: Icon,
     ) {
         AccessibleContextUtil.setDescription(this, "Visual preview of $iconName.")
         content.removeAll()
         content.add(
-            JBLabel(JBImageIcon(image)).apply {
+            JBLabel(icon).apply {
                 background = PREVIEW_BACKGROUND
                 isOpaque = true
                 horizontalAlignment = SwingConstants.CENTER

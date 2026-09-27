@@ -3,16 +3,24 @@ package org.taigaui.designtokens.icons
 import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.codeInsight.lookup.LookupArranger
-import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.codeInsight.lookup.LookupEvent
 import com.intellij.codeInsight.lookup.LookupListener
 import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiFile
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
 
 class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
     override fun checkAutoPopup(
@@ -59,11 +67,47 @@ class IconCompletionAutoPopupHandler : TypedHandlerDelegate() {
             return Result.CONTINUE
         }
 
-        requestIconCompletion(project, editor, sourceFile)
+        project.service<IconCompletionAutoPopupScheduler>().schedule(editor, sourceFile)
 
         // The character is already in the document. Stop the remaining post-typing
         // delegates only for a confirmed Taiga UI icon reference.
         return Result.STOP
+    }
+}
+
+@Service(Service.Level.PROJECT)
+internal class IconCompletionAutoPopupScheduler(
+    private val project: Project,
+    private val coroutineScope: CoroutineScope,
+) {
+    private val pending = mutableMapOf<Editor, Job>()
+
+    fun schedule(
+        editor: Editor,
+        sourceFile: Path,
+    ) {
+        pending.remove(editor)?.cancel()
+
+        if (editor.isDisposed || LookupManager.getActiveLookup(editor)?.containsIconSuggestions() == true) {
+            return
+        }
+
+        pending[editor] =
+            coroutineScope.launch(Dispatchers.EDT + CoroutineName("Taiga UI icon completion debounce")) {
+                delay(ICON_COMPLETION_DEBOUNCE)
+                pending.remove(editor)
+
+                if (
+                    !project.isDisposed &&
+                    !editor.isDisposed &&
+                    IconCompletionContextFinder.find(
+                        text = editor.document.immutableCharSequence,
+                        offset = editor.caretModel.offset,
+                    ) != null
+                ) {
+                    requestIconCompletion(project, editor, sourceFile)
+                }
+            }
     }
 }
 
@@ -117,9 +161,10 @@ private fun showIconLookup(
                 .asSequence()
                 .filter { name -> name.startsWith(completionContext.prefix) }
                 .map { name ->
-                    LookupElementBuilder
-                        .create(name)
-                        .withTypeText(COMPLETION_TYPE_TEXT, true)
+                    createIconLookupElement(
+                        name = name,
+                        removeSuffixOnInsert = false,
+                    )
                 }.toList()
 
         if (items.isEmpty()) {
@@ -183,4 +228,4 @@ private fun PsiFile.toSupportedSourceFile(): Path? =
 
 private fun Lookup.containsIconSuggestions(): Boolean = items.any { item -> item.lookupString.startsWith(ICON_PREFIX) }
 
-private const val COMPLETION_TYPE_TEXT = "Taiga UI icon"
+private val ICON_COMPLETION_DEBOUNCE = 120.milliseconds

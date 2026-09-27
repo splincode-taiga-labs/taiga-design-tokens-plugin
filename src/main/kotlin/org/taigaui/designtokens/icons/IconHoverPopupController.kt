@@ -22,9 +22,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.taigaui.designtokens.documentation.DesignTokenReferenceHitTester
-import java.awt.Image
 import java.awt.Point
 import java.nio.file.Path
+import javax.swing.Icon
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.seconds
 
@@ -76,7 +76,7 @@ internal class IconHoverPopupController(
                 return@launch
             }
 
-            val image =
+            val icon =
                 withContext(Dispatchers.IO) {
                     val service = project.service<IconCompletionService>()
 
@@ -86,22 +86,22 @@ internal class IconHoverPopupController(
                         ?.let { source -> renderer.render(source, ICON_PREVIEW_LOGICAL_SIZE) }
                 }
 
-            if (image == null) {
+            if (icon == null) {
                 clearIfCurrent(request.key)
             } else if (request.isStillCurrent(project) && activeKey == request.key) {
-                showPopup(request, image)
+                showPopup(request, icon)
             }
         }
 
     private fun showPopup(
         request: IconHoverRequest,
-        image: Image,
+        icon: Icon,
     ) {
         if (popup?.isVisible == true || JBPopupFactory.getInstance().isPopupActive) {
             return
         }
 
-        val panel = IconCompletionPreviewPanel().apply { showIcon(request.reference.name, image) }
+        val panel = IconCompletionPreviewPanel().apply { showIcon(request.reference.name, icon) }
         val createdPopup =
             JBPopupFactory
                 .getInstance()
