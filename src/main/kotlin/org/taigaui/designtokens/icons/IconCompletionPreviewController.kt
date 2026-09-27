@@ -17,14 +17,15 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.Dimension
-import java.awt.Image
 import java.awt.Point
-import java.net.URI
 import java.nio.file.Path
+import javax.swing.Icon
 import javax.swing.JLayeredPane
+import kotlin.time.Duration.Companion.milliseconds
 
 @Service(Service.Level.PROJECT)
 internal class IconCompletionPreviewController(
@@ -117,50 +118,84 @@ internal class IconCompletionPreviewController(
 
     private fun requestPreview(lookup: Lookup) {
         val request = lookup.iconPreviewRequest()
-        val source =
-            request?.let { current ->
-                project
-                    .service<IconCompletionService>()
-                    .svgSourceFor(current.sourceFile, current.iconName)
-            }
 
-        when {
-            request == null || source == null -> clearPreviewRequest()
-            previewKey == IconPreviewKey(lookup, request.iconName, source.uri) && previewJob?.isActive == true -> Unit
-            else -> startPreview(lookup, request, source)
+        if (request == null) {
+            clearPreviewRequest()
+            return
         }
+
+        val key =
+            IconPreviewKey(
+                lookup = lookup,
+                iconName = request.iconName,
+                sourceFile = request.sourceFile,
+            )
+
+        if (
+            previewKey == key &&
+            (previewJob?.isActive == true || previewHint?.isVisible == true)
+        ) {
+            return
+        }
+
+        startPreview(lookup, request, key)
     }
 
     private fun startPreview(
         lookup: Lookup,
         request: IconPreviewRequest,
-        source: IconSvgSource,
+        key: IconPreviewKey,
     ) {
-        val key = IconPreviewKey(lookup, request.iconName, source.uri)
-
         previewKey = key
         previewJob?.cancel()
-        showLoading(lookup, request.iconName)
 
         previewJob =
-            coroutineScope.launch(Dispatchers.IO + CoroutineName("Taiga UI icon completion preview")) {
-                val image = renderer.render(source, ICON_PREVIEW_LOGICAL_SIZE)
+            coroutineScope.launch(Dispatchers.EDT + CoroutineName("Taiga UI icon completion preview")) {
+                delay(ICON_PREVIEW_DEBOUNCE)
 
-                withContext(Dispatchers.EDT) {
-                    if (
-                        previewKey == key &&
-                        activeLookup === lookup &&
-                        lookup.currentIconName() == request.iconName
-                    ) {
-                        if (image == null) {
-                            hidePreview()
-                        } else {
-                            showIcon(lookup, request.iconName, image)
-                        }
+                if (!isCurrentPreview(lookup, key)) {
+                    return@launch
+                }
+
+                val source =
+                    withContext(Dispatchers.IO) {
+                        project
+                            .service<IconCompletionService>()
+                            .svgSourceFor(request.sourceFile, request.iconName)
                     }
+
+                if (source == null || !isCurrentPreview(lookup, key)) {
+                    if (isCurrentPreview(lookup, key)) {
+                        hidePreview()
+                    }
+
+                    return@launch
+                }
+
+                val icon =
+                    withContext(Dispatchers.IO) {
+                        renderer.render(source, ICON_PREVIEW_LOGICAL_SIZE)
+                    }
+
+                if (!isCurrentPreview(lookup, key)) {
+                    return@launch
+                }
+
+                if (icon == null) {
+                    hidePreview()
+                } else {
+                    showIcon(lookup, request.iconName, icon)
                 }
             }
     }
+
+    private fun isCurrentPreview(
+        lookup: Lookup,
+        key: IconPreviewKey,
+    ): Boolean =
+        previewKey == key &&
+            activeLookup === lookup &&
+            lookup.currentIconName() == key.iconName
 
     private fun clearPreviewRequest() {
         previewKey = null
@@ -169,24 +204,14 @@ internal class IconCompletionPreviewController(
         hidePreview()
     }
 
-    private fun showLoading(
-        lookup: Lookup,
-        iconName: String,
-    ) {
-        val panel = previewPanel ?: IconCompletionPreviewPanel().also { previewPanel = it }
-
-        panel.showLoading(iconName)
-        showOrMoveHint(lookup, panel.preferredSize)
-    }
-
     private fun showIcon(
         lookup: Lookup,
         iconName: String,
-        image: Image,
+        icon: Icon,
     ) {
         val panel = previewPanel ?: IconCompletionPreviewPanel().also { previewPanel = it }
 
-        panel.showIcon(iconName, image)
+        panel.showIcon(iconName, icon)
         showOrMoveHint(lookup, panel.preferredSize)
     }
 
@@ -291,7 +316,9 @@ private data class IconPreviewRequest(
 private data class IconPreviewKey(
     val lookup: Lookup,
     val iconName: String,
-    val sourceUri: URI,
+    val sourceFile: Path,
 )
+
+private val ICON_PREVIEW_DEBOUNCE = 120.milliseconds
 
 private const val PREVIEW_GAP = 8

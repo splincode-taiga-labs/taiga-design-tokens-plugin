@@ -5,6 +5,7 @@ import com.intellij.ui.components.JBLabel
 import java.awt.Component
 import java.awt.Container
 import java.awt.image.BufferedImage
+import javax.swing.ImageIcon
 
 class IconCompletionPreviewAccessibilityTest : BasePlatformTestCase() {
     fun testPreviewIsPassiveAndExposesSelectedIconToAccessibility() {
@@ -25,7 +26,7 @@ class IconCompletionPreviewAccessibilityTest : BasePlatformTestCase() {
 
         panel.showIcon(
             iconName = "@tui.search",
-            image = BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB),
+            icon = ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)),
         )
 
         panel.accessibleContext?.let { context ->

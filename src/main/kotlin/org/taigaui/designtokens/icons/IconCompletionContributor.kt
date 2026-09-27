@@ -6,10 +6,13 @@ import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.codeInsight.completion.InsertionContext
+import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.codeInsight.lookup.LookupElementDecorator
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.util.ProcessingContext
 import java.nio.file.Path
@@ -57,17 +60,46 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
         val matchingResult = result.withPrefixMatcher(request.prefix)
 
         names.forEach { name ->
-            matchingResult.addElement(
-                LookupElementBuilder
-                    .create(name)
-                    .withTypeText(COMPLETION_TYPE_TEXT, true)
-                    .withInsertHandler { insertionContext, _ ->
-                        removeExistingIconSuffix(insertionContext)
-                    },
-            )
+            matchingResult.addElement(createIconLookupElement(name))
         }
     }
 }
+
+internal fun createIconLookupElement(
+    name: String,
+    removeSuffixOnInsert: Boolean = true,
+): LookupElement {
+    var builder =
+        LookupElementBuilder
+            .create(IconCompletionLookupItem(name), name)
+            .withTypeText(COMPLETION_TYPE_TEXT, true)
+
+    if (removeSuffixOnInsert) {
+        builder =
+            builder.withInsertHandler { insertionContext, _ ->
+                removeExistingIconSuffix(insertionContext)
+            }
+    }
+
+    return IconCompletionLookupElement(builder)
+}
+
+private class IconCompletionLookupElement(
+    delegate: LookupElement,
+) : LookupElementDecorator<LookupElement>(delegate) {
+    override fun <T> getUserData(key: Key<T>): T? {
+        if (key.toString() in NATIVE_DOCUMENTATION_SUPPRESSION_KEYS) {
+            @Suppress("UNCHECKED_CAST")
+            return true as T
+        }
+
+        return super.getUserData(key)
+    }
+}
+
+private class IconCompletionLookupItem(
+    val name: String,
+)
 
 private fun CompletionParameters.toIconCompletionRequest(): IconCompletionRequest? =
     originalFile.virtualFile
@@ -127,5 +159,11 @@ private fun removeExistingIconSuffix(context: InsertionContext) {
 }
 
 private fun pathOrNull(value: String): Path? = runCatching { Path.of(value) }.getOrNull()
+
+private val NATIVE_DOCUMENTATION_SUPPRESSION_KEYS =
+    setOf(
+        "LookupManagerImpl.suppressAutopopupJavadoc",
+        "lookup.suppress.quick.documentation",
+    )
 
 private const val COMPLETION_TYPE_TEXT = "Taiga UI icon"

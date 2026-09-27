@@ -1,26 +1,25 @@
 package org.taigaui.designtokens.icons
 
 import com.intellij.openapi.util.IconLoader
-import com.intellij.ui.scale.ScaleContext
 import com.intellij.util.IconUtil
-import java.awt.Image
 import java.net.URI
+import javax.swing.Icon
 
 internal class IconSvgPreviewRenderer {
-    private val cache = mutableMapOf<IconPreviewRenderKey, Image>()
+    private val cache = mutableMapOf<IconPreviewRenderKey, Icon>()
 
     fun render(
         source: IconSvgSource,
         logicalSize: Int,
-    ): Image? {
+    ): Icon? {
         val key = IconPreviewRenderKey(source.uri, logicalSize)
         val cached = synchronized(cache) { cache[key] }
 
         return cached
             ?: renderSvg(source, logicalSize)
-                ?.also { image ->
+                ?.also { icon ->
                     synchronized(cache) {
-                        cache[key] = image
+                        cache[key] = icon
                     }
                 }
     }
@@ -28,19 +27,15 @@ internal class IconSvgPreviewRenderer {
     private fun renderSvg(
         source: IconSvgSource,
         logicalSize: Int,
-    ): Image? =
+    ): Icon? =
         runCatching {
             val icon = IconLoader.findIcon(source.uri.toURL()) ?: return@runCatching null
-            val maxIconSize = maxOf(icon.iconWidth, icon.iconHeight)
 
-            if (maxIconSize <= 0) {
+            if (icon.iconWidth <= 0 || icon.iconHeight <= 0) {
                 return@runCatching null
             }
 
-            val scale = logicalSize.toFloat() / maxIconSize
-            val scaledIcon = IconUtil.scale(icon, null, scale)
-
-            IconLoader.toImage(scaledIcon, ScaleContext.create())
+            IconUtil.resizeSquared(icon, logicalSize)
         }.getOrNull()
 }
 
