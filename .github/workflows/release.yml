@@ -1,0 +1,164 @@
+name: Release
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: Plugin version to build and sign
+                required: true
+                type: string
+            channel:
+                description: Marketplace channel to validate
+                required: true
+                default: beta
+                type: choice
+                options:
+                    - beta
+                    - default
+    release:
+        types:
+            - prereleased
+            - released
+
+permissions:
+    contents: write
+
+concurrency:
+    group: release-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    release:
+        name: Build, sign, and publish
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install root npm fixture
+              run: npm ci
+
+            - name: Install Taiga UI version workspaces
+              run: npm run install:fixtures --prefix test-fixtures
+
+            - name: Set up Java
+              uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 21
+
+            - name: Set up Gradle
+              uses: gradle/actions/setup-gradle@v6
+              with:
+                  cache-read-only: true
+
+            - name: Cache IntelliJ Platform IDEs
+              uses: actions/cache@v4
+              with:
+                  path: .intellijPlatform/ides
+                  key: intellij-platform-${{ runner.os }}-${{ hashFiles('gradle.properties') }}
+                  restore-keys: |
+                      intellij-platform-${{ runner.os }}-
+
+            - name: Resolve release metadata
+              id: release
+              env:
+                  RELEASE_TAG: ${{ github.event.release.tag_name }}
+                  RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+                  INPUT_VERSION: ${{ inputs.version }}
+                  INPUT_CHANNEL: ${{ inputs.channel }}
+              run: |
+                  if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+                      version="${RELEASE_TAG#v}"
+
+                      if [[ "${RELEASE_PRERELEASE}" == "true" ]]; then
+                          channel="beta"
+                      else
+                          channel="default"
+                      fi
+                  else
+                      version="${INPUT_VERSION}"
+                      channel="${INPUT_CHANNEL}"
+                  fi
+
+                  if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+                      echo "::error::Invalid plugin version: ${version}"
+                      exit 1
+                  fi
+
+                  if [[ "${version}" == *-SNAPSHOT ]]; then
+                      echo "::error::Release version must not end with -SNAPSHOT"
+                      exit 1
+                  fi
+
+                  echo "version=${version}" >> "${GITHUB_OUTPUT}"
+                  echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
+
+            - name: Check, build, and verify release candidate
+              env:
+                  JAVA_TOOL_OPTIONS: -Djava.io.tmpdir=${{ runner.temp }}
+              run: >-
+                  ./gradlew
+                  check
+                  buildPlugin
+                  verifyPluginStructure
+                  verifyPluginProjectConfiguration
+                  verifyPlugin
+                  -PpluginVersion=${{ steps.release.outputs.version }}
+                  -PmarketplaceChannel=${{ steps.release.outputs.channel }}
+                  -Djava.net.useSystemProxies=false
+                  --stacktrace
+
+            - name: Sign and verify release candidate
+              env:
+                  CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+                  PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+                  PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+              run: >-
+                  ./gradlew
+                  signPlugin
+                  verifyPluginSignature
+                  -PpluginVersion=${{ steps.release.outputs.version }}
+                  -PmarketplaceChannel=${{ steps.release.outputs.channel }}
+                  -Djava.net.useSystemProxies=false
+                  --stacktrace
+
+            - name: Upload release artifacts
+              if: ${{ always() }}
+              uses: actions/upload-artifact@v7
+              with:
+                  name: plugin-release-${{ steps.release.outputs.version }}
+                  path: build/distributions/*.zip
+                  if-no-files-found: warn
+
+            - name: Publish to JetBrains Marketplace
+              if: ${{ github.event_name == 'release' }}
+              env:
+                  PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+                  CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+                  PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+                  PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+              run: >-
+                  ./gradlew
+                  publishPlugin
+                  -PpluginVersion=${{ steps.release.outputs.version }}
+                  -PmarketplaceChannel=${{ steps.release.outputs.channel }}
+                  -Djava.net.useSystemProxies=false
+                  --stacktrace
+
+            - name: Attach signed plugin to GitHub Release
+              if: ${{ github.event_name == 'release' }}
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: >-
+                  gh release upload
+                  "${{ github.event.release.tag_name }}"
+                  build/distributions/*-signed.zip
+                  --clobber

@@ -51,6 +51,13 @@ val pluginVerifierIdeVersions =
     providers.gradleProperty("pluginVerifierIdeVersions").map { versions ->
         versions.split(',').map(String::trim)
     }
+val marketplaceChannel =
+    providers.gradleProperty("marketplaceChannel").orElse("beta").map { channel ->
+        require(channel in setOf("beta", "default")) {
+            "marketplaceChannel must be either 'beta' or 'default'"
+        }
+        channel
+    }
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
@@ -86,6 +93,17 @@ intellijPlatform {
         }
     }
 
+    signing {
+        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
+        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
+        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
+    }
+
+    publishing {
+        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
+        channels.set(marketplaceChannel.map { channel -> listOf(channel) })
+    }
+
     pluginVerification {
         ides {
             pluginVerifierIdeVersions.get().forEach { version ->
@@ -100,6 +118,14 @@ tasks.named<org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask>("pr
 }
 
 tasks {
+    named("publishPlugin") {
+        doFirst {
+            require(!project.version.toString().endsWith("-SNAPSHOT")) {
+                "Refusing to publish a SNAPSHOT plugin version"
+            }
+        }
+    }
+
     runIde {
         debugProjectPath.orNull?.let { projectPath ->
             args(projectPath)

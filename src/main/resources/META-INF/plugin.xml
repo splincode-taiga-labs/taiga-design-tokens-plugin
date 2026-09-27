@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>org.taigaui.designtokens</id>
     <name>Taiga UI Design Tokens</name>
-    <vendor url="https://github.com/taiga-family-labs">Taiga Family</vendor>
+    <vendor url="https://github.com/splincode">splincode</vendor>
 
     <description><![CDATA[
         <p>WebStorm support for Taiga UI design tokens.</p>

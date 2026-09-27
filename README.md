@@ -146,3 +146,4 @@ The plugin is built against WebStorm 2025.3.6 and targets Java 21 bytecode. Supp
 - [Architecture](docs/ARCHITECTURE.md)
 - [Implementation roadmap](docs/roadmap.md)
 - [Local debugging](docs/local-debugging.md)
+- [Releasing](docs/releasing.md)
