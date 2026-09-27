@@ -1,9 +1,12 @@
 package org.taigaui.designtokens.icons
 
 import com.intellij.openapi.util.IconLoader
-import com.intellij.util.IconUtil
+import java.awt.Component
+import java.awt.Graphics
+import java.awt.Graphics2D
 import java.net.URI
 import javax.swing.Icon
+import kotlin.math.roundToInt
 
 internal class IconSvgPreviewRenderer {
     private val cache = mutableMapOf<IconPreviewRenderKey, Icon>()
@@ -36,12 +39,37 @@ internal class IconSvgPreviewRenderer {
                 return@runCatching null
             }
 
-            IconUtil.scale(
-                icon,
-                null,
-                logicalSize.toFloat() / maxSourceSize,
+            ScaledPreviewIcon(
+                icon = icon,
+                scale = logicalSize.toDouble() / maxSourceSize,
             )
         }.getOrNull()
+}
+
+private class ScaledPreviewIcon(
+    private val icon: Icon,
+    private val scale: Double,
+) : Icon {
+    override fun getIconWidth(): Int = maxOf(1, (icon.iconWidth * scale).roundToInt())
+
+    override fun getIconHeight(): Int = maxOf(1, (icon.iconHeight * scale).roundToInt())
+
+    override fun paintIcon(
+        component: Component?,
+        graphics: Graphics,
+        x: Int,
+        y: Int,
+    ) {
+        val scaledGraphics = graphics.create() as Graphics2D
+
+        try {
+            scaledGraphics.translate(x, y)
+            scaledGraphics.scale(scale, scale)
+            icon.paintIcon(component, scaledGraphics, 0, 0)
+        } finally {
+            scaledGraphics.dispose()
+        }
+    }
 }
 
 private data class IconPreviewRenderKey(
