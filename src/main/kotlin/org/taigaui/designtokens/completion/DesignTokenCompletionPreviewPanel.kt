@@ -6,6 +6,7 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.util.ui.AsyncProcessIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
+import com.intellij.util.ui.accessibility.AccessibleContextUtil
 import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
 import org.taigaui.designtokens.documentation.DesignTokenHoverValueRow
 import org.taigaui.designtokens.documentation.designTokenValuePresentation
@@ -36,6 +37,12 @@ internal class DesignTokenCompletionPreviewPanel : JPanel(BorderLayout()) {
         }
 
     init {
+        isFocusable = false
+        AccessibleContextUtil.setName(this, "Taiga UI design token completion preview")
+        AccessibleContextUtil.setDescription(
+            this,
+            "Shows resolved values for the selected design token completion.",
+        )
         background = UIUtil.getPanelBackground()
         border = JBUI.Borders.customLine(JBColor.border(), 1)
         add(
@@ -53,6 +60,7 @@ internal class DesignTokenCompletionPreviewPanel : JPanel(BorderLayout()) {
     }
 
     fun showLoading(tokenName: String) {
+        AccessibleContextUtil.setDescription(this, "Loading resolved values for $tokenName.")
         content.removeAll()
         content.add(createTitle(tokenName))
         content.add(Box.createVerticalStrut(JBUI.scale(12)))
@@ -72,6 +80,7 @@ internal class DesignTokenCompletionPreviewPanel : JPanel(BorderLayout()) {
     }
 
     fun showModel(model: DesignTokenHoverPopupModel) {
+        AccessibleContextUtil.setDescription(this, "Resolved values for ${model.tokenName}.")
         content.removeAll()
         content.add(createTitle(model.tokenName))
 
@@ -137,8 +146,10 @@ private fun createValueRow(row: DesignTokenHoverValueRow): JComponent =
         add(createResolvedValue(row))
     }
 
-private fun createResolvedValue(row: DesignTokenHoverValueRow): JComponent =
-    JPanel(BorderLayout(JBUI.scale(8), 0)).apply {
+private fun createResolvedValue(row: DesignTokenHoverValueRow): JComponent {
+    val value = designTokenValuePresentation(row.resolvedValue)
+
+    return JPanel(BorderLayout(JBUI.scale(8), 0)).apply {
         isOpaque = false
         alignmentX = JComponent.LEFT_ALIGNMENT
 
@@ -146,12 +157,15 @@ private fun createResolvedValue(row: DesignTokenHoverValueRow): JComponent =
             add(
                 JBLabel(ColorPreviewIcon(color)).apply {
                     verticalAlignment = JBLabel.TOP
+                    AccessibleContextUtil.setName(this, "Color preview")
+                    AccessibleContextUtil.setDescription(this, "Color preview for $value.")
                 },
                 BorderLayout.WEST,
             )
         }
-        add(createWrappingValue(designTokenValuePresentation(row.resolvedValue)), BorderLayout.CENTER)
+        add(createWrappingValue(value), BorderLayout.CENTER)
     }
+}
 
 private fun createWrappingValue(value: String): JTextArea =
     JTextArea(value).apply {

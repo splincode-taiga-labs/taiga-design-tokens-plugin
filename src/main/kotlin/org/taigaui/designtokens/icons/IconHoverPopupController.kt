@@ -101,7 +101,7 @@ internal class IconHoverPopupController(
             return
         }
 
-        val panel = IconCompletionPreviewPanel().apply { showIcon(image) }
+        val panel = IconCompletionPreviewPanel().apply { showIcon(request.reference.name, image) }
         val createdPopup =
             JBPopupFactory
                 .getInstance()
