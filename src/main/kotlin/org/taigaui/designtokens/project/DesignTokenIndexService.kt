@@ -15,12 +15,14 @@ import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
 import org.taigaui.designtokens.diagnostics.PerformanceMetric
+import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.index.DesignTokenIndex
 import org.taigaui.designtokens.index.DesignTokensPackageScanner
 import org.taigaui.designtokens.packageinfo.DesignTokensPackage
 import org.taigaui.designtokens.packageinfo.DesignTokensPackageResolver
 import org.taigaui.designtokens.psi.PsiDesignTokenSourceExtractor
 import org.taigaui.designtokens.resolution.DesignTokenResolutionGroup
+import org.taigaui.designtokens.resolution.DesignTokenValueResolver
 import java.nio.file.Path
 
 @Service(Service.Level.PROJECT)
@@ -118,13 +120,39 @@ class DesignTokenIndexService(
         sourceFile: Path,
         tokenName: String,
     ): List<DesignTokenResolutionGroup> =
-        resolutionSnapshot(sourceFile)
-            .resolver
-            ?.let { resolver ->
+        resolveToken(
+            sourceFile = sourceFile,
+            tokenName = tokenName,
+            localOverrides = emptyList(),
+        )
+
+    internal fun resolveToken(
+        sourceFile: Path,
+        tokenName: String,
+        localOverrides: List<DesignTokenDeclaration>,
+    ): List<DesignTokenResolutionGroup> {
+        val snapshot = resolutionSnapshot(sourceFile)
+        val resolver =
+            if (localOverrides.isEmpty()) {
+                snapshot.resolver
+            } else {
+                val localIndex =
+                    DesignTokenIndex.build(
+                        packageRoot = sourceFile.parent ?: sourceFile,
+                        declarations = localOverrides,
+                    )
+                val indexes = listOfNotNull(snapshot.mergedIndex, localIndex)
+
+                DesignTokenValueResolver(DesignTokenIndex.merge(indexes))
+            }
+
+        return resolver
+            ?.let { valueResolver ->
                 PerformanceDiagnostics.measure(PerformanceMetric.VALUE_RESOLUTION) {
-                    resolver.resolveGrouped(tokenName)
+                    valueResolver.resolveGrouped(tokenName)
                 }
             }.orEmpty()
+    }
 
     internal fun completionTokenNames(sourceFile: Path): List<String> =
         resolutionSnapshot(
