@@ -11,11 +11,15 @@ internal object ProjectStylesCandidateSelector {
         variants: List<DesignTokenVariant>,
         requestedContext: DesignTokenContext,
     ): List<DesignTokenVariant> {
-        val candidates =
+        val applicableCandidates =
             variants.filter { variant ->
                 variant.sourcePackageName() == PROJECT_STYLES_PACKAGE &&
                     variant.appliesTo(requestedContext)
             }
+        val candidates =
+            applicableCandidates
+                .filter(DesignTokenVariant::isLocalOverride)
+                .ifEmpty { applicableCandidates }
 
         if (candidates.isEmpty()) {
             return emptyList()
@@ -96,6 +100,9 @@ internal object ProjectStylesCandidateSelector {
             this
         }
     }
+
+    private fun DesignTokenVariant.isLocalOverride(): Boolean =
+        origins.any { origin -> origin.localOverride }
 
     private fun DesignTokenVariant.sourcePackageName(): String? =
         origins
