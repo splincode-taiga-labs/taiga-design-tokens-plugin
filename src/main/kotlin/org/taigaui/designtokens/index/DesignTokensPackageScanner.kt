@@ -47,19 +47,24 @@ class DesignTokensPackageScanner(
         }
 
         val proprietaryFiles = proprietary.sourceFiles()
+        val stylesFiles =
+            sourcePackages
+                .firstOrNull { sourcePackage -> sourcePackage.name == STYLES_PACKAGE }
+                ?.sourceFiles()
+                .orEmpty()
         val reachableFiles =
             importGraph.findReachableFiles(
-                entryFiles = proprietaryFiles,
+                entryFiles = proprietaryFiles + stylesFiles,
                 sourcePackages = sourcePackages,
             )
 
         return sourcePackages
             .flatMap { sourcePackage ->
                 val files =
-                    if (sourcePackage == proprietary) {
-                        proprietaryFiles
-                    } else {
-                        reachableFiles[sourcePackage.name].orEmpty()
+                    when {
+                        sourcePackage == proprietary -> proprietaryFiles
+                        sourcePackage.name == STYLES_PACKAGE -> stylesFiles
+                        else -> reachableFiles[sourcePackage.name].orEmpty()
                     }
 
                 scan(sourcePackage, files)
@@ -90,5 +95,6 @@ class DesignTokensPackageScanner(
 
     private companion object {
         const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
+        const val STYLES_PACKAGE = "@taiga-ui/styles"
     }
 }
