@@ -17,6 +17,7 @@ import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.ui.popup.JBPopupListener
 import com.intellij.openapi.ui.popup.LightweightWindowEvent
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.ui.JBUI
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +29,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.taigaui.designtokens.index.DesignTokenDeclaration
 import org.taigaui.designtokens.project.DesignTokenIndexService
+import org.taigaui.designtokens.psi.LocalDesignTokenOverrideResolver
 import org.taigaui.designtokens.settings.TaigaDesignTokensSettings
 import java.awt.Point
 import java.nio.file.Path
@@ -409,6 +412,18 @@ private fun HoverRequest.resolvePopupTarget(project: Project): PopupTarget? =
         ?.takeIf { validReference -> editor.isDesignTokenStyleContext(validReference.startOffset) }
         ?.let { validReference ->
             editor.designTokenSourceFile()?.let { sourceFile ->
+                val localOverrides =
+                    PsiDocumentManager
+                        .getInstance(project)
+                        .getPsiFile(editor.document)
+                        ?.let { psiFile ->
+                            LocalDesignTokenOverrideResolver(project).resolve(
+                                psiFile = psiFile,
+                                sourceFile = sourceFile,
+                                referenceOffset = validReference.startOffset,
+                            )
+                        }.orEmpty()
+
                 PopupTarget(
                     key =
                         PopupKey(
@@ -419,12 +434,18 @@ private fun HoverRequest.resolvePopupTarget(project: Project): PopupTarget? =
                         ),
                     sourceFile = sourceFile,
                     tokenName = validReference.name,
+                    localOverrides = localOverrides,
                 )
             }
         }
 
 private fun PopupTarget.resolvePopupData(indexService: DesignTokenIndexService): PopupData {
-    val groups = indexService.resolveToken(sourceFile, tokenName)
+    val groups =
+        indexService.resolveToken(
+            sourceFile = sourceFile,
+            tokenName = tokenName,
+            localOverrides = localOverrides,
+        )
     val model =
         if (groups.isEmpty()) {
             val suggestions =
@@ -491,6 +512,7 @@ private data class PopupTarget(
     val key: PopupKey,
     val sourceFile: Path,
     val tokenName: String,
+    val localOverrides: List<DesignTokenDeclaration>,
 )
 
 private data class PopupData(
