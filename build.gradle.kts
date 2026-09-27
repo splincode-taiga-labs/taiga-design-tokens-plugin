@@ -51,6 +51,7 @@ val pluginVerifierIdeVersions =
     providers.gradleProperty("pluginVerifierIdeVersions").map { versions ->
         versions.split(',').map(String::trim)
     }
+val zipSignerPath = providers.gradleProperty("zipSignerPath")
 val marketplaceChannel =
     providers.gradleProperty("marketplaceChannel").orElse("beta").map { channel ->
         require(channel in setOf("beta", "default")) {
@@ -95,6 +96,9 @@ intellijPlatform {
     }
 
     signing {
+        zipSignerPath.orNull?.let { path ->
+            cliPath.set(file(path))
+        }
         certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
         privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
         password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
@@ -119,6 +123,10 @@ tasks.named<org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask>("pr
 }
 
 tasks {
+    named("verifyPluginSignature") {
+        dependsOn("signPlugin")
+    }
+
     named("publishPlugin") {
         doFirst {
             require(!project.version.toString().endsWith("-SNAPSHOT")) {
