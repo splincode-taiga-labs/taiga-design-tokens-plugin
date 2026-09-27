@@ -188,7 +188,7 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 mapOf(
                     "styles/theme/appearance.less" to
                         ".host { color: var(--tui-text-primary); }",
-                    "styles/theme/variables.less" to
+                    "styles/theme/palette.less" to
                         ":root { --tui-text-primary: rgba(27, 31, 59, 1); }",
                 ),
         )
@@ -224,29 +224,28 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
         assertResolvedValue("#000000cc", result)
     }
 
-    fun testResolvesTaigaUi5StylesVariablesNotImportedByProprietaryTheme() {
+    fun testResolvesTaigaUi4SharedDurationWithoutProprietaryImport() {
         writePackage(
-            directory = "design-tokens",
-            name = "@taiga-ui/design-tokens",
-            version = "0.312.0",
-            exports = null,
+            directory = "core",
+            name = "@taiga-ui/core",
+            version = "4.93.0",
+            exports = "\"./styles/*\": \"./styles/*\"",
             files =
                 mapOf(
-                    "palette.css" to
-                        ":root { --tui-v5-base: #123456; }",
-                ),
-        )
-        writePackage(
-            directory = "styles",
-            name = "@taiga-ui/styles",
-            version = "5.18.0",
-            exports = "\"./*\": \"./*\"",
-            files =
-                mapOf(
-                    "mixins/theme/variables.less" to
+                    "styles/theme/variables.less" to
+                        """
+                        @import '../mixins/theme/variables.less';
+
+                        &:root,
+                        &:host {
+                            .tui-theme-variables();
+                        }
+                        """.trimIndent(),
+                    "styles/mixins/theme/variables.less" to
                         """
                         .tui-theme-variables() {
                             --tui-duration: 0.3s;
+                            --tui-disabled-opacity: 0.56;
                         }
                         """.trimIndent(),
                 ),
@@ -254,12 +253,12 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
         writePackage(
             directory = "proprietary",
             name = "@taiga-ui/proprietary",
-            version = "5.18.0",
+            version = "4.93.0",
             exports = "\"./styles/*\": \"./styles/*\"",
             files =
                 mapOf(
-                    "styles/theme/private-tokens.less" to
-                        ":root { --tui-v5-proprietary: red; }",
+                    "styles/tbank-theme.less" to
+                        ":root { --tui-proprietary-only: red; }",
                 ),
         )
 
@@ -272,7 +271,7 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 .mapNotNull { origin -> origin.packageName }
                 .toSet()
 
-        assertEquals(setOf("@taiga-ui/styles"), packages)
+        assertEquals(setOf("@taiga-ui/core"), packages)
         assertResolvedValue("0.3s", groups.single().representative)
     }
 
