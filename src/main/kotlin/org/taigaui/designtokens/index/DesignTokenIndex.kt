@@ -38,10 +38,11 @@ class DesignTokenIndex private constructor(
                 .forEach { declaration ->
                     val normalizedSourceFile = declaration.sourceFile.toAbsolutePath().normalize()
                     val declarationPackageRoot = declaration.packageRoot ?: packageRoot
+                    val context = contextClassifier.classify(declarationPackageRoot, declaration)
                     val key =
                         VariantKey(
                             name = declaration.name,
-                            context = contextClassifier.classify(declarationPackageRoot, declaration),
+                            context = context,
                             rawValue = declaration.value,
                             packageName = declaration.packageName,
                         )
@@ -57,8 +58,13 @@ class DesignTokenIndex private constructor(
                                 contextClassifier.isSharedAcrossPlatforms(
                                     declarationPackageRoot,
                                     declaration,
-                                ),
+                                ) ||
+                                    (
+                                        declaration.localOverride &&
+                                            context.platform == DesignTokenPlatform.DESKTOP
+                                    ),
                             cascadeOrder = declaration.cascadeOrder,
+                            localOverride = declaration.localOverride,
                             deprecation = declaration.deprecation,
                         )
 
