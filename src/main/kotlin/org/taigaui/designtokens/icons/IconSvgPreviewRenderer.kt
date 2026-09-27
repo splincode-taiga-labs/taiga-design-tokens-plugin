@@ -1,11 +1,11 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.openapi.util.IconLoader
-import java.awt.Component
-import java.awt.Graphics
-import java.awt.Graphics2D
+import com.github.weisj.jsvg.parser.SVGLoader
+import com.github.weisj.jsvg.view.ViewBox
+import java.awt.image.BufferedImage
 import java.net.URI
 import javax.swing.Icon
+import javax.swing.ImageIcon
 import kotlin.math.roundToInt
 
 internal class IconSvgPreviewRenderer {
@@ -32,44 +32,37 @@ internal class IconSvgPreviewRenderer {
         logicalSize: Int,
     ): Icon? =
         runCatching {
-            val icon = IconLoader.findIcon(source.uri.toURL()) ?: return@runCatching null
-            val maxSourceSize = maxOf(icon.iconWidth, icon.iconHeight)
+            val document = SVGLoader().load(source.uri.toURL()) ?: return@runCatching null
+            val sourceSize = document.size()
+            val maxSourceSize = maxOf(sourceSize.width, sourceSize.height)
 
-            if (maxSourceSize <= 0) {
+            if (maxSourceSize <= 0F) {
                 return@runCatching null
             }
 
-            ScaledPreviewIcon(
-                icon = icon,
-                scale = logicalSize.toDouble() / maxSourceSize,
-            )
+            val scale = logicalSize / maxSourceSize
+            val targetWidth = maxOf(1, (sourceSize.width * scale).roundToInt())
+            val targetHeight = maxOf(1, (sourceSize.height * scale).roundToInt())
+            val image =
+                BufferedImage(
+                    targetWidth,
+                    targetHeight,
+                    BufferedImage.TYPE_INT_ARGB,
+                )
+            val graphics = image.createGraphics()
+
+            try {
+                document.render(
+                    null,
+                    graphics,
+                    ViewBox(targetWidth.toFloat(), targetHeight.toFloat()),
+                )
+            } finally {
+                graphics.dispose()
+            }
+
+            ImageIcon(image)
         }.getOrNull()
-}
-
-private class ScaledPreviewIcon(
-    private val icon: Icon,
-    private val scale: Double,
-) : Icon {
-    override fun getIconWidth(): Int = maxOf(1, (icon.iconWidth * scale).roundToInt())
-
-    override fun getIconHeight(): Int = maxOf(1, (icon.iconHeight * scale).roundToInt())
-
-    override fun paintIcon(
-        component: Component?,
-        graphics: Graphics,
-        x: Int,
-        y: Int,
-    ) {
-        val scaledGraphics = graphics.create() as Graphics2D
-
-        try {
-            scaledGraphics.translate(x, y)
-            scaledGraphics.scale(scale, scale)
-            icon.paintIcon(component, scaledGraphics, 0, 0)
-        } finally {
-            scaledGraphics.dispose()
-        }
-    }
 }
 
 private data class IconPreviewRenderKey(
