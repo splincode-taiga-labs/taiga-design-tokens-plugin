@@ -49,7 +49,7 @@ class DesignTokensPackageScanner(
 
         val proprietaryFiles = proprietary.sourceFiles()
         val sharedVariablesFiles =
-            sourcePackages.flatMap(DesignTokenSourcePackage::sharedVariablesFiles)
+            sourcePackages.flatMap { sourcePackage -> sourcePackage.sharedVariablesFiles() }
         val reachableFiles =
             importGraph.findReachableFiles(
                 entryFiles = proprietaryFiles + sharedVariablesFiles,
