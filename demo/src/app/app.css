@@ -228,10 +228,6 @@ h2 em {
   box-shadow: 0 38px 90px rgba(0, 0, 0, 0.5);
 }
 
-.hero-shot .ide-window {
-  transform: perspective(1200px) rotateY(-4deg) rotateX(1deg);
-}
-
 .window-bar {
   height: 42px;
   padding-inline: 14px;
@@ -466,10 +462,6 @@ footer {
 
   .hero {
     padding-top: 68px;
-  }
-
-  .hero-shot .ide-window {
-    transform: none;
   }
 
   .capabilities {
