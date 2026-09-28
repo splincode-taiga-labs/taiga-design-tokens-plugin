@@ -228,7 +228,6 @@ h2 em {
   box-shadow: 0 38px 90px rgba(0, 0, 0, 0.5);
 }
 
-
 .window-bar {
   height: 42px;
   padding-inline: 14px;
@@ -464,7 +463,6 @@ footer {
   .hero {
     padding-top: 68px;
   }
-
 
   .capabilities {
     grid-template-columns: 1fr 1fr;
