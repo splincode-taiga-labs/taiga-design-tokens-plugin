@@ -14,7 +14,7 @@ internal object GlobalDesignTokenContext {
     private fun isGlobalSelector(selector: String): Boolean {
         val compact = selector.replace(WHITESPACE, "")
 
-        if (THEME_MIXIN.matches(compact)) {
+        if (THEME_MIXIN.matches(compact) || SHARED_VARIABLES_MIXIN.matches(compact)) {
             return true
         }
 
@@ -41,6 +41,11 @@ internal object GlobalDesignTokenContext {
     private val THEME_MIXIN =
         Regex(
             """\.(?:tui-theme-)?(?:light|dark)\(\)""",
+            RegexOption.IGNORE_CASE,
+        )
+    private val SHARED_VARIABLES_MIXIN =
+        Regex(
+            """\.tui-theme-variables\(\)""",
             RegexOption.IGNORE_CASE,
         )
     private val WHITESPACE = Regex("""\s+""")

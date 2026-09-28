@@ -25,6 +25,7 @@ class DesignTokenContextClassifier {
         val hasGlobalScope =
             selectors.any { selector -> GLOBAL_ROOT_SELECTOR.containsMatchIn(selector) } ||
                 (!isProjectStyles && selectors.containsThemeScope()) ||
+                (!isProjectStyles && selectors.containsMatch(SHARED_VARIABLES_MIXIN)) ||
                 (!isProjectStyles && declaration.isImplicitGlobalScssTheme(markers))
 
         return classifyPlatform(markers, selectors) == DesignTokenPlatform.DESKTOP &&
@@ -132,6 +133,8 @@ class DesignTokenContextClassifier {
             Regex("""\.(?:tui-theme-)?light\s*\(""", RegexOption.IGNORE_CASE)
         val DARK_THEME_MIXIN =
             Regex("""\.(?:tui-theme-)?dark\s*\(""", RegexOption.IGNORE_CASE)
+        val SHARED_VARIABLES_MIXIN =
+            Regex("""\.tui-theme-variables\s*\(""", RegexOption.IGNORE_CASE)
         val GLOBAL_ROOT_SELECTOR =
             Regex("""(?:&?:root|:host|\bhtml\b|\bbody\b)""", RegexOption.IGNORE_CASE)
 

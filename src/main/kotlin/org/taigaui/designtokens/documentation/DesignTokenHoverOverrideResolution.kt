@@ -51,6 +51,9 @@ private fun List<DesignTokenVariantResolution>.effectiveCandidates(): List<Desig
 
     return if (projectCandidates.isNotEmpty()) {
         projectCandidates
+            .filter { candidate ->
+                candidate.variant.origins.any { origin -> origin.localOverride }
+            }.ifEmpty { projectCandidates }
             .mostSpecificCandidates()
             .preferLatestProjectCascade()
     } else {

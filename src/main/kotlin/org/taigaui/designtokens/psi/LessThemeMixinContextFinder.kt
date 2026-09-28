@@ -21,7 +21,7 @@ internal object LessThemeMixinContextFinder {
         return groupValues[1]
             .lowercase()
             .takeIf { offset in (openingBrace + 1)..<closingBrace }
-            ?.let { theme -> ".$theme()" }
+            ?.let(::normalizeMixin)
     }
 
     private class BraceScanner(
@@ -119,10 +119,16 @@ internal object LessThemeMixinContextFinder {
         DOUBLE_QUOTE,
     }
 
+    private fun normalizeMixin(mixin: String): String =
+        when (mixin) {
+            "tui-theme-variables" -> ".tui-theme-variables()"
+            else -> "." + mixin.removePrefix("tui-theme-") + "()"
+        }
+
     private val THEME_MIXIN =
         Regex(
             pattern =
-                """(?:\.|@mixin\s+)(?:tui-theme-)?(light|dark)\s*(?:\(\s*\))?\s*\{""",
+                """(?:\.|@mixin\s+)((?:tui-theme-)?(?:light|dark)|tui-theme-variables)\s*(?:\(\s*\))?\s*\{""",
             option = RegexOption.IGNORE_CASE,
         )
 }

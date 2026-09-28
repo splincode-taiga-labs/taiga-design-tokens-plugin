@@ -12,6 +12,7 @@ data class DesignTokenDeclaration(
     val packageVersion: String? = null,
     val packageRoot: Path? = null,
     val cascadeOrder: Int? = null,
+    val localOverride: Boolean = false,
     val deprecation: DesignTokenDeprecation? = null,
 ) {
     override fun equals(other: Any?): Boolean =

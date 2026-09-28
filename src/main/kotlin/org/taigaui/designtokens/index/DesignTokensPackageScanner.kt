@@ -2,6 +2,7 @@ package org.taigaui.designtokens.index
 
 import org.taigaui.designtokens.packageinfo.DesignTokenSourcePackage
 import org.taigaui.designtokens.packageinfo.DesignTokensPackage
+import java.nio.file.Files
 import java.nio.file.Path
 
 class DesignTokensPackageScanner(
@@ -47,9 +48,11 @@ class DesignTokensPackageScanner(
         }
 
         val proprietaryFiles = proprietary.sourceFiles()
+        val sharedVariablesFiles =
+            sourcePackages.flatMap { sourcePackage -> sourcePackage.sharedVariablesFiles() }
         val reachableFiles =
             importGraph.findReachableFiles(
-                entryFiles = proprietaryFiles,
+                entryFiles = proprietaryFiles + sharedVariablesFiles,
                 sourcePackages = sourcePackages,
             )
 
@@ -88,7 +91,13 @@ class DesignTokensPackageScanner(
             .flatMap(sourceFileFinder::find)
             .distinct()
 
+    private fun DesignTokenSourcePackage.sharedVariablesFiles(): List<Path> =
+        sourceRoots
+            .map { sourceRoot -> sourceRoot.resolve(SHARED_VARIABLES_FILE) }
+            .filter(Files::isRegularFile)
+
     private companion object {
         const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
+        val SHARED_VARIABLES_FILE = Path.of("mixins", "theme", "variables.less")
     }
 }

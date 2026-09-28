@@ -188,7 +188,7 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
                 mapOf(
                     "styles/theme/appearance.less" to
                         ".host { color: var(--tui-text-primary); }",
-                    "styles/theme/variables.less" to
+                    "styles/theme/palette.less" to
                         ":root { --tui-text-primary: rgba(27, 31, 59, 1); }",
                 ),
         )
@@ -222,6 +222,57 @@ class TaigaUiStylePackagesIntegrationTest : BasePlatformTestCase() {
 
         assertEquals(setOf("@taiga-ui/design-tokens"), packages)
         assertResolvedValue("#000000cc", result)
+    }
+
+    fun testResolvesTaigaUi4SharedDurationWithoutProprietaryImport() {
+        writePackage(
+            directory = "core",
+            name = "@taiga-ui/core",
+            version = "4.93.0",
+            exports = "\"./styles/*\": \"./styles/*\"",
+            files =
+                mapOf(
+                    "styles/theme/variables.less" to
+                        """
+                        @import '../mixins/theme/variables.less';
+
+                        &:root,
+                        &:host {
+                            .tui-theme-variables();
+                        }
+                        """.trimIndent(),
+                    "styles/mixins/theme/variables.less" to
+                        """
+                        .tui-theme-variables() {
+                            --tui-duration: 0.3s;
+                            --tui-disabled-opacity: 0.56;
+                        }
+                        """.trimIndent(),
+                ),
+        )
+        writePackage(
+            directory = "proprietary",
+            name = "@taiga-ui/proprietary",
+            version = "4.93.0",
+            exports = "\"./styles/*\": \"./styles/*\"",
+            files =
+                mapOf(
+                    "styles/tbank-theme.less" to
+                        ":root { --tui-proprietary-only: red; }",
+                ),
+        )
+
+        val index = buildIndex(resolvePackageSet())
+        val groups = DesignTokenValueResolver(index).resolveGrouped("--tui-duration")
+        val packages =
+            index
+                .find("--tui-duration")
+                .flatMap { variant -> variant.origins }
+                .mapNotNull { origin -> origin.packageName }
+                .toSet()
+
+        assertEquals(setOf("@taiga-ui/core"), packages)
+        assertResolvedValue("0.3s", groups.single().representative)
     }
 
     fun testResolvesTaigaUi5StylesPackageAndIgnoresUnexportedCoreStyles() {
