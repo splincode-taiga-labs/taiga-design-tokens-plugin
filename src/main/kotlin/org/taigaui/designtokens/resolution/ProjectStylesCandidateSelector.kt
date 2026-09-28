@@ -101,8 +101,7 @@ internal object ProjectStylesCandidateSelector {
         }
     }
 
-    private fun DesignTokenVariant.isLocalOverride(): Boolean =
-        origins.any { origin -> origin.localOverride }
+    private fun DesignTokenVariant.isLocalOverride(): Boolean = origins.any { origin -> origin.localOverride }
 
     private fun DesignTokenVariant.sourcePackageName(): String? =
         origins
