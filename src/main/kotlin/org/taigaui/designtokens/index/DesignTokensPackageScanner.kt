@@ -98,6 +98,6 @@ class DesignTokensPackageScanner(
 
     private companion object {
         const val PROPRIETARY_PACKAGE = "@taiga-ui/proprietary"
-        val SHARED_VARIABLES_FILE = Path.of("theme", "variables.less")
+        val SHARED_VARIABLES_FILE = Path.of("mixins", "theme", "variables.less")
     }
 }
