@@ -1,6 +1,7 @@
 package org.taigaui.designtokens.icons
 
-import com.intellij.openapi.util.IconLoader
+import com.intellij.util.ImageLoader
+import com.intellij.util.ui.JBImageIcon
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -39,15 +40,14 @@ internal class IconSvgPreviewRenderer {
             val targetHeight = maxOf(1, (sourceSize.height * scale).roundToInt())
             val previewSvg = resizeSvgRoot(svg, targetWidth, targetHeight)
             val previewFile = writePreviewSvg(previewSvg)
-            val icon = IconLoader.findIcon(previewFile.toUri().toURL(), false)
 
-            if (icon == null) {
+            try {
+                ImageLoader
+                    .loadFromUrl(previewFile.toUri().toURL())
+                    ?.let(::JBImageIcon)
+            } finally {
                 Files.deleteIfExists(previewFile)
-            } else {
-                previewFile.toFile().deleteOnExit()
             }
-
-            icon
         }.getOrNull()
 }
 
