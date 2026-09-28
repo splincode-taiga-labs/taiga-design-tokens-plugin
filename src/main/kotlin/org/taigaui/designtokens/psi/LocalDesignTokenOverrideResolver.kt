@@ -42,9 +42,7 @@ internal class LocalDesignTokenOverrideResolver(
             }
     }
 
-    private fun effectiveDeclaration(
-        declarations: List<DesignTokenDeclaration>,
-    ): DesignTokenDeclaration? =
+    private fun effectiveDeclaration(declarations: List<DesignTokenDeclaration>): DesignTokenDeclaration? =
         declarations.maxWithOrNull(
             compareBy<DesignTokenDeclaration>(
                 { declaration -> declaration.selectorChain.size },
