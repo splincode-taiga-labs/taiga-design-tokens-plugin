@@ -39,11 +39,15 @@ internal class IconSvgPreviewRenderer {
             val targetHeight = maxOf(1, (sourceSize.height * scale).roundToInt())
             val previewSvg = resizeSvgRoot(svg, targetWidth, targetHeight)
             val previewFile = writePreviewSvg(previewSvg)
+            val icon = IconLoader.findIcon(previewFile.toUri().toURL(), false)
 
-            IconLoader
-                .findIcon(previewFile.toUri().toURL(), false)
-                ?.also { previewFile.toFile().deleteOnExit() }
-                ?: Files.deleteIfExists(previewFile).let { null }
+            if (icon == null) {
+                Files.deleteIfExists(previewFile)
+            } else {
+                previewFile.toFile().deleteOnExit()
+            }
+
+            icon
         }.getOrNull()
 }
 
@@ -58,11 +62,7 @@ private fun readSvgSize(svg: String): SvgSize? =
     SVG_ROOT
         .find(svg)
         ?.value
-        ?.let(::explicitSvgSize)
-        ?: SVG_ROOT
-            .find(svg)
-            ?.value
-            ?.let(::viewBoxSvgSize)
+        ?.let { root -> explicitSvgSize(root) ?: viewBoxSvgSize(root) }
 
 private fun explicitSvgSize(root: String): SvgSize? {
     val width =
@@ -100,32 +100,26 @@ private fun resizeSvgRoot(
     val match = SVG_ROOT.find(svg) ?: return svg
     val resizedRoot =
         match.value
-            .withSvgAttribute(SVG_WIDTH_ATTRIBUTE, width)
-            .withSvgAttribute(SVG_HEIGHT_ATTRIBUTE, height)
+            .withSvgAttribute(SVG_WIDTH_ATTRIBUTE, "width", width)
+            .withSvgAttribute(SVG_HEIGHT_ATTRIBUTE, "height", height)
 
     return svg.replaceRange(match.range, resizedRoot)
 }
 
 private fun String.withSvgAttribute(
     attribute: Regex,
+    name: String,
     value: Int,
 ): String =
     if (attribute.containsMatchIn(this)) {
-        replace(attribute, """ $1"$value"""")
+        replace(attribute) { match -> match.groupValues[1] + "\"$value\"" }
     } else {
         val suffixLength = if (endsWith("/>")) 2 else 1
         val insertionPoint = length - suffixLength
 
         substring(0, insertionPoint) +
-            """ $value""".let { """ ${attribute.attributeName()}="$value"""" } +
+            " $name=\"$value\"" +
             substring(insertionPoint)
-    }
-
-private fun Regex.attributeName(): String =
-    when (this) {
-        SVG_WIDTH_ATTRIBUTE -> "width"
-        SVG_HEIGHT_ATTRIBUTE -> "height"
-        else -> error("Unknown SVG attribute")
     }
 
 private fun writePreviewSvg(svg: String): Path =
@@ -162,18 +156,18 @@ private data class IconPreviewRenderKey(
     val logicalSize: Int,
 )
 
-private val SVG_ROOT = Regex("""<svg\\b[^>]*>""", RegexOption.IGNORE_CASE)
-private val SVG_WIDTH = Regex("""\\swidth\\s*=\\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
-private val SVG_HEIGHT = Regex("""\\sheight\\s*=\\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
-private val SVG_VIEW_BOX = Regex("""\\sviewBox\\s*=\\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
-private val SVG_WIDTH_ATTRIBUTE = Regex("""(\\swidth\\s*=\\s*)["'][^"']*["']""", RegexOption.IGNORE_CASE)
-private val SVG_HEIGHT_ATTRIBUTE = Regex("""(\\sheight\\s*=\\s*)["'][^"']*["']""", RegexOption.IGNORE_CASE)
+private val SVG_ROOT = Regex("""<svg\b[^>]*>""", RegexOption.IGNORE_CASE)
+private val SVG_WIDTH = Regex("""\swidth\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+private val SVG_HEIGHT = Regex("""\sheight\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+private val SVG_VIEW_BOX = Regex("""\sviewBox\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
+private val SVG_WIDTH_ATTRIBUTE = Regex("""(\swidth\s*=\s*)["'][^"']*["']""", RegexOption.IGNORE_CASE)
+private val SVG_HEIGHT_ATTRIBUTE = Regex("""(\sheight\s*=\s*)["'][^"']*["']""", RegexOption.IGNORE_CASE)
 private val SVG_LENGTH =
     Regex(
-        """^([+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?)(?:px)?$""",
+        """^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(?:px)?$""",
         RegexOption.IGNORE_CASE,
     )
-private val VIEW_BOX_SEPARATOR = Regex("""[,\\s]+""")
+private val VIEW_BOX_SEPARATOR = Regex("""[,\s]+""")
 private const val VIEW_BOX_VALUE_COUNT = 4
 private const val PREVIEW_FILE_PREFIX = "taiga-ui-icon-preview-"
 private const val SVG_FILE_SUFFIX = ".svg"
