@@ -77,33 +77,26 @@ private fun explicitSvgSize(root: String): SvgSize? {
     return svgSize(width, height)
 }
 
-private fun viewBoxSvgSize(root: String): SvgSize? {
-    val values =
-        SVG_VIEW_BOX
-            .find(root)
-            ?.groupValues
-            ?.get(1)
-            ?.trim()
-            ?.split(VIEW_BOX_SEPARATOR)
-            ?.mapNotNull(String::toFloatOrNull)
-            ?: return null
-
-    if (values.size != VIEW_BOX_VALUE_COUNT) {
-        return null
-    }
-
-    return svgSize(values[2], values[3])
-}
+private fun viewBoxSvgSize(root: String): SvgSize? =
+    SVG_VIEW_BOX
+        .find(root)
+        ?.groupValues
+        ?.get(1)
+        ?.trim()
+        ?.split(VIEW_BOX_SEPARATOR)
+        ?.mapNotNull(String::toFloatOrNull)
+        ?.takeIf { values -> values.size == VIEW_BOX_VALUE_COUNT }
+        ?.let { values -> svgSize(values[2], values[3]) }
 
 private fun svgSize(
     width: Float?,
     height: Float?,
-): SvgSize? {
-    width ?: return null
-    height ?: return null
-
-    return SvgSize(width, height).takeIf(SvgSize::isValid)
-}
+): SvgSize? =
+    if (width != null && height != null) {
+        SvgSize(width, height).takeIf(SvgSize::isValid)
+    } else {
+        null
+    }
 
 private fun SvgSize.isValid(): Boolean = width > 0F && height > 0F
 
