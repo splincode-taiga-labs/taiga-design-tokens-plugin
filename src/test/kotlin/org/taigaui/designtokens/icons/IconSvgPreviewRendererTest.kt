@@ -1,62 +1,217 @@
 package org.taigaui.designtokens.icons
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import java.awt.Rectangle
 import java.awt.image.BufferedImage
 import java.nio.file.Files
-import javax.swing.ImageIcon
+import java.nio.file.Path
 
 class IconSvgPreviewRendererTest : BasePlatformTestCase() {
-    fun testRendersSvgAtRequestedLogicalSizeWithoutRasterizingSource() {
+    fun testRendersSvgAtRequestedLogicalSize() {
+        withSvg(
+            width = 16,
+            height = 16,
+            body = """<rect width="16" height="16" fill="#000"/>""",
+        ) { svg ->
+            val icon = render(IconSvgSource.Local(svg))
+
+            assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconWidth)
+            assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconHeight)
+            assertEquals(
+                Rectangle(0, 0, ICON_PREVIEW_LOGICAL_SIZE, ICON_PREVIEW_LOGICAL_SIZE),
+                paint(icon).paintedBounds(),
+            )
+        }
+    }
+
+    fun testScalesLargestDimensionAndPreservesSvgAspectRatio() {
+        withSvg(
+            width = 16,
+            height = 8,
+            body = """<rect width="16" height="8" fill="#000"/>""",
+        ) { svg ->
+            val icon = render(IconSvgSource.Local(svg))
+
+            assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconWidth)
+            assertEquals(ICON_PREVIEW_LOGICAL_SIZE / 2, icon.iconHeight)
+        }
+    }
+
+    fun testRendersGlyphAtTargetSizeInsteadOfLeavingOriginalGlyphSize() {
+        withSvg(
+            width = 16,
+            height = 16,
+            body = """<path d="M4 4 H12 V12 H4 Z" fill="#000"/>""",
+        ) { svg ->
+            val paintedBounds = paint(render(IconSvgSource.Local(svg))).paintedBounds()
+
+            assertTrue(
+                "Expected glyph itself to grow with the preview, got $paintedBounds",
+                paintedBounds.width >= 30 && paintedBounds.height >= 30,
+            )
+        }
+    }
+
+    fun testVectorPreviewDoesNotDependOnSourceRasterSize() {
+        val body =
+            """
+            <circle cx="8" cy="8" r="5.25" fill="#000"/>
+            <path d="M2 13 L13 2 L14 3 L3 14 Z" fill="#fff"/>
+            """.trimIndent()
+        val smallSource =
+            renderSvgToImage(
+                width = 16,
+                height = 16,
+                viewBoxWidth = 16,
+                viewBoxHeight = 16,
+                body = body,
+            )
+        val largeSource =
+            renderSvgToImage(
+                width = 64,
+                height = 64,
+                viewBoxWidth = 16,
+                viewBoxHeight = 16,
+                body = body,
+            )
+
+        assertSamePixels(
+            expected = smallSource,
+            actual = largeSource,
+        )
+    }
+
+    fun testRemoteSourceUsesTheSameTargetSizeRenderingContract() {
+        withSvg(
+            width = 16,
+            height = 16,
+            body = """<circle cx="8" cy="8" r="5" fill="#000"/>""",
+        ) { svg ->
+            val icon = render(IconSvgSource.Remote(svg.toUri()))
+
+            assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconWidth)
+            assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconHeight)
+            assertTrue(paint(icon).paintedBounds().width >= 38)
+        }
+    }
+
+    private fun render(source: IconSvgSource) =
+        requireNotNull(
+            IconSvgPreviewRenderer().render(
+                source = source,
+                logicalSize = ICON_PREVIEW_LOGICAL_SIZE,
+            ),
+        )
+
+    private fun renderSvgToImage(
+        width: Int,
+        height: Int,
+        viewBoxWidth: Int,
+        viewBoxHeight: Int,
+        body: String,
+    ): BufferedImage {
+        lateinit var image: BufferedImage
+
+        withSvg(
+            width = width,
+            height = height,
+            viewBoxWidth = viewBoxWidth,
+            viewBoxHeight = viewBoxHeight,
+            body = body,
+        ) { svg ->
+            image = paint(render(IconSvgSource.Local(svg)))
+        }
+
+        return image
+    }
+
+    private fun paint(icon: javax.swing.Icon): BufferedImage {
+        val image =
+            BufferedImage(
+                icon.iconWidth,
+                icon.iconHeight,
+                BufferedImage.TYPE_INT_ARGB,
+            )
+        val graphics = image.createGraphics()
+
+        try {
+            icon.paintIcon(null, graphics, 0, 0)
+        } finally {
+            graphics.dispose()
+        }
+
+        return image
+    }
+
+    private fun assertSamePixels(
+        expected: BufferedImage,
+        actual: BufferedImage,
+    ) {
+        assertEquals(expected.width, actual.width)
+        assertEquals(expected.height, actual.height)
+
+        for (y in 0 until expected.height) {
+            for (x in 0 until expected.width) {
+                assertEquals(
+                    "Pixel mismatch at ($x, $y)",
+                    expected.getRGB(x, y),
+                    actual.getRGB(x, y),
+                )
+            }
+        }
+    }
+
+    private fun BufferedImage.paintedBounds(): Rectangle {
+        var minX = width
+        var minY = height
+        var maxX = -1
+        var maxY = -1
+
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                if (getRGB(x, y).ushr(24) != 0) {
+                    minX = minOf(minX, x)
+                    minY = minOf(minY, y)
+                    maxX = maxOf(maxX, x)
+                    maxY = maxOf(maxY, y)
+                }
+            }
+        }
+
+        return if (maxX < minX || maxY < minY) {
+            Rectangle()
+        } else {
+            Rectangle(
+                minX,
+                minY,
+                maxX - minX + 1,
+                maxY - minY + 1,
+            )
+        }
+    }
+
+    private fun withSvg(
+        width: Int,
+        height: Int,
+        body: String,
+        viewBoxWidth: Int = width,
+        viewBoxHeight: Int = height,
+        block: (Path) -> Unit,
+    ) {
         val svg =
             Files.createTempFile("taiga-ui-icon-preview", ".svg").also { path ->
                 Files.writeString(
                     path,
                     """
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
-                        <rect width="16" height="16" fill="#000"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="$width" height="$height" viewBox="0 0 $viewBoxWidth $viewBoxHeight">
+                        $body
                     </svg>
                     """.trimIndent(),
                 )
             }
 
         try {
-            val icon =
-                requireNotNull(
-                    IconSvgPreviewRenderer().render(
-                        source = IconSvgSource.Local(svg),
-                        logicalSize = ICON_PREVIEW_LOGICAL_SIZE,
-                    ),
-                )
-
-            assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconWidth)
-            assertEquals(ICON_PREVIEW_LOGICAL_SIZE, icon.iconHeight)
-            assertFalse("SVG preview must stay vector-backed until paint", icon is ImageIcon)
-
-            val image =
-                BufferedImage(
-                    ICON_PREVIEW_LOGICAL_SIZE,
-                    ICON_PREVIEW_LOGICAL_SIZE,
-                    BufferedImage.TYPE_INT_ARGB,
-                )
-            val graphics = image.createGraphics()
-
-            try {
-                icon.paintIcon(null, graphics, 0, 0)
-            } finally {
-                graphics.dispose()
-            }
-
-            val paintedPixels =
-                (0 until ICON_PREVIEW_LOGICAL_SIZE).sumOf { y ->
-                    (0 until ICON_PREVIEW_LOGICAL_SIZE).count { x ->
-                        image.getRGB(x, y).ushr(24) != 0
-                    }
-                }
-
-            assertTrue(
-                "Expected vector preview to fill the requested viewport",
-                paintedPixels >= ICON_PREVIEW_LOGICAL_SIZE * ICON_PREVIEW_LOGICAL_SIZE * 3 / 4,
-            )
+            block(svg)
         } finally {
             Files.deleteIfExists(svg)
         }
