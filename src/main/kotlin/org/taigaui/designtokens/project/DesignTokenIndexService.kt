@@ -119,17 +119,7 @@ class DesignTokenIndexService(
     fun resolveToken(
         sourceFile: Path,
         tokenName: String,
-    ): List<DesignTokenResolutionGroup> =
-        resolveToken(
-            sourceFile = sourceFile,
-            tokenName = tokenName,
-            localOverrides = emptyList(),
-        )
-
-    internal fun resolveToken(
-        sourceFile: Path,
-        tokenName: String,
-        localOverrides: List<DesignTokenDeclaration>,
+        localOverrides: List<DesignTokenDeclaration> = emptyList(),
     ): List<DesignTokenResolutionGroup> {
         val snapshot = resolutionSnapshot(sourceFile)
         val resolver =
