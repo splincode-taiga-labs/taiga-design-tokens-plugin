@@ -1,0 +1,14 @@
+.gradle/
+.idea/
+.intellijPlatform/
+build/
+out/
+node_modules/
+demo/dist/
+demo/node_modules/
+
+# Integration fixtures intentionally preserve source shapes used by plugin tests.
+test-fixtures/
+
+# Generated Web Types metadata is validated separately.
+src/main/resources/web-types/
