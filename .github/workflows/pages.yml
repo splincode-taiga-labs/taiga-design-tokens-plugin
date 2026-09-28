@@ -1,4 +1,4 @@
-name: Deploy demo to GitHub Pages
+name: Demo
 
 on:
   push:
@@ -6,15 +6,17 @@ on:
     paths:
       - 'demo/**'
       - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'demo/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -35,13 +37,21 @@ jobs:
         working-directory: demo
         run: npm run build -- --base-href /taiga-design-tokens-plugin/
 
-      - uses: actions/configure-pages@v5
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: demo/dist/demo/browser
 
   deploy:
+    if: github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
