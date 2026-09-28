@@ -8,8 +8,8 @@ import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
 import com.intellij.openapi.util.TextRange
 import com.intellij.polySymbols.PolySymbol
+import com.intellij.polySymbols.PolySymbolQualifiedName
 import com.intellij.polySymbols.completion.PolySymbolCodeCompletionItem
-import com.intellij.polySymbols.js.JS_PROPERTIES
 import com.intellij.polySymbols.query.PolySymbolQueryExecutorFactory
 
 class TypeScriptHostEventPluginCompletionContributor : CompletionContributor() {
@@ -48,8 +48,13 @@ private fun addAngularBindingCompletions(
     val nativeItems =
         queryExecutor
             .codeCompletionQuery(
-                JS_PROPERTIES,
-                request.nameBeforeCaret,
+                listOf(
+                    PolySymbolQualifiedName[
+                        "js",
+                        "properties",
+                        request.nameBeforeCaret,
+                    ],
+                ),
                 request.nameBeforeCaret.length,
             ).run()
     val existingClosingDelimiter = request.existingClosingDelimiter(parameters)
