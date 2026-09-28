@@ -71,8 +71,18 @@ private fun readSvgSize(uri: URI): SvgSize? =
     }.getOrNull()
 
 private fun explicitSvgSize(root: String): SvgSize? {
-    val width = SVG_WIDTH.find(root)?.groupValues?.get(1)?.toSvgLength()
-    val height = SVG_HEIGHT.find(root)?.groupValues?.get(1)?.toSvgLength()
+    val width =
+        SVG_WIDTH
+            .find(root)
+            ?.groupValues
+            ?.get(1)
+            ?.toSvgLength()
+    val height =
+        SVG_HEIGHT
+            .find(root)
+            ?.groupValues
+            ?.get(1)
+            ?.toSvgLength()
 
     return svgSize(width, height)
 }
