@@ -2,6 +2,8 @@
 
 WebStorm plugin for working with Taiga UI design tokens and icons directly in the editor.
 
+**[Live Angular demo](https://taiga-family-labs.github.io/taiga-design-tokens-plugin/)**
+
 The plugin reads the Taiga UI packages installed in the current project, so completion and previews match the version the project actually uses.
 
 ## Design tokens
