@@ -1,0 +1,110 @@
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Taiga UI Design Tokens home">
+      <span class="brand-mark">T</span>
+      <span><strong>Taiga UI</strong><small>Design Tokens for WebStorm</small></span>
+    </a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="https://github.com/taiga-family-labs/taiga-design-tokens-plugin">GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="kicker"><i></i> WebStorm plugin · Taiga UI</p>
+        <h1>Design tokens.<br /><em>Native to your IDE.</em></h1>
+        <p class="lead">
+          Project-aware token intelligence, previews, inspections, and CSS helpers for Taiga UI — directly in WebStorm.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="#features">Explore the plugin</a>
+          <a class="button secondary" href="https://github.com/taiga-family-labs/taiga-design-tokens-plugin"
+            >View source ↗</a
+          >
+        </div>
+        <div class="chips">
+          <span>CSS · Less · SCSS</span>
+          <span>Angular templates</span>
+          <span>Project-aware</span>
+        </div>
+      </div>
+
+      <div class="hero-shot">
+        <div class="glow"></div>
+        <div class="ide-window">
+          <div class="window-bar"><span>WebStorm · editor</span><b>● Plugin active</b></div>
+          <img
+            src="screens/token-hover.webp"
+            width="600"
+            height="380"
+            alt="Taiga UI design token hover preview in WebStorm"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="capabilities" aria-label="Capabilities">
+      <span><b>01</b> Token completion</span>
+      <span><b>02</b> Hover previews</span>
+      <span><b>03</b> Inspections</span>
+      <span><b>04</b> rem → px hints</span>
+    </section>
+
+    <section id="features" class="features">
+      <div class="section-copy">
+        <p class="kicker"><i></i> Stay in the flow</p>
+        <h2>Useful context is <em>one hover away.</em></h2>
+        <p>The plugin turns metadata already installed in your project into native IDE feedback.</p>
+      </div>
+
+      <div class="stage">
+        <div class="feature-copy">
+          <p class="count">0{{ activeIndex() + 1 }} / 0{{ features.length }}</p>
+          <p class="label">{{ activeFeature().label }}</p>
+          <h3>{{ activeFeature().title }}</h3>
+          <p>{{ activeFeature().description }}</p>
+        </div>
+        <div class="ide-window">
+          <div class="window-bar"><span>Preview</span><b>● Live in WebStorm</b></div>
+          <img [src]="activeFeature().image" [alt]="activeFeature().alt" width="600" height="380" />
+        </div>
+        <div class="tabs">
+          @for (feature of features; track feature.label; let index = $index) {
+          <button type="button" [class.active]="activeIndex() === index" (click)="activeIndex.set(index)">
+            <span>0{{ index + 1 }}</span>
+            {{ feature.label }}
+          </button>
+          }
+        </div>
+      </div>
+    </section>
+
+    <section class="project-aware">
+      <div>
+        <p class="kicker"><i></i> Built for real projects</p>
+        <h2>Your version.<br />Your tokens.<br /><em>Your project.</em></h2>
+      </div>
+      <div class="terminal">
+        <code>project/node_modules</code>
+        <p><span>@taiga-ui/design-tokens</span><i></i><b>Hover</b></p>
+        <p><span>@taiga-ui/icons</span><i></i><b>Completion</b></p>
+        <p><span>project styles</span><i></i><b>Overrides</b></p>
+        <small>No frozen catalog: the plugin discovers packages and styles reachable from the current project.</small>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div>
+        <p class="kicker"><i></i> Open source</p>
+        <h2>Make Taiga UI feel <em>built into WebStorm.</em></h2>
+      </div>
+      <a class="button light" href="https://github.com/taiga-family-labs/taiga-design-tokens-plugin"
+        >Explore on GitHub ↗</a
+      >
+    </section>
+  </main>
+
+  <footer><span>Taiga UI Design Tokens</span><span>Angular demo</span></footer>
+</div>

@@ -3,8 +3,13 @@
     "version": "0.1.0",
     "private": true,
     "description": "NPM fixtures used by integration tests for the Taiga UI Design Tokens plugin.",
+    "scripts": {
+        "format": "prettier . --write --ignore-unknown",
+        "format:check": "prettier . --check --ignore-unknown"
+    },
     "devDependencies": {
         "@taiga-ui/design-tokens": "0.310.0",
-        "@taiga-ui/icons": "5.18.0"
+        "@taiga-ui/icons": "5.18.0",
+        "prettier": "3.6.2"
     }
 }

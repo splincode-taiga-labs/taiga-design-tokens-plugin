@@ -25,12 +25,12 @@ Before enabling automated publishing:
 
 Configure these repository or protected-environment secrets:
 
-| Secret | Purpose |
-| --- | --- |
-| `CERTIFICATE_CHAIN` | X.509 certificate chain used by `signPlugin` |
-| `PRIVATE_KEY` | PEM private key used to sign the plugin |
-| `PRIVATE_KEY_PASSWORD` | Password for the private key |
-| `PUBLISH_TOKEN` | JetBrains Marketplace publishing token |
+| Secret                 | Purpose                                      |
+| ---------------------- | -------------------------------------------- |
+| `CERTIFICATE_CHAIN`    | X.509 certificate chain used by `signPlugin` |
+| `PRIVATE_KEY`          | PEM private key used to sign the plugin      |
+| `PRIVATE_KEY_PASSWORD` | Password for the private key                 |
+| `PUBLISH_TOKEN`        | JetBrains Marketplace publishing token       |
 
 The certificate chain and private key must never be committed. The IntelliJ Platform Gradle Plugin accepts the signing values through environment variables; Base64-encoded values are also supported and are convenient for multiline CI secrets.
 
@@ -61,9 +61,9 @@ v0.1.0-beta.1 -> 0.1.0-beta.1
 Channel mapping is fixed:
 
 | GitHub Release | Marketplace channel |
-| --- | --- |
-| prerelease | `beta` |
-| full release | `default` |
+| -------------- | ------------------- |
+| prerelease     | `beta`              |
+| full release   | `default`           |
 
 The release job runs the regular checks, Plugin Verifier, plugin signing, and signature verification before `publishPlugin`. The same workspace artifact is reused for publishing and is also attached to the GitHub Release.
 

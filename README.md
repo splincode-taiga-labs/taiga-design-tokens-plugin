@@ -2,6 +2,8 @@
 
 WebStorm plugin for working with Taiga UI design tokens and icons directly in the editor.
 
+**[Live Angular demo](https://taiga-family-labs.github.io/taiga-design-tokens-plugin/)**
+
 The plugin reads the Taiga UI packages installed in the current project, so completion and previews match the version the project actually uses.
 
 ## Design tokens
@@ -69,8 +71,10 @@ min-width: 21rem;      336px
 Angular template style bindings with numeric `rem` literals show the same conversion next to the binding value:
 
 ```html
-<tui-icon [style.font-size.rem]="1" />          <!-- editor hint: 16px -->
-<tui-icon [style.border-width.rem]="0.25" />   <!-- editor hint: 4px -->
+<tui-icon [style.font-size.rem]="1" />
+<!-- editor hint: 16px -->
+<tui-icon [style.border-width.rem]="0.25" />
+<!-- editor hint: 4px -->
 ```
 
 Dynamic expressions such as `[style.width.rem]="size"` are not evaluated. Multiple `rem` values on the same stylesheet declaration are shown in source order. Inlay hints are visual editor decorations and do not modify the source file.

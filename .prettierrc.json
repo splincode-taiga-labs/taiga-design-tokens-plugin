@@ -1,0 +1,15 @@
+{
+    "printWidth": 120,
+    "proseWrap": "preserve",
+    "singleQuote": true,
+    "tabWidth": 4,
+    "trailingComma": "all",
+    "overrides": [
+        {
+            "files": "demo/**/*",
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ]
+}
