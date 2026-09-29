@@ -128,8 +128,10 @@ tasks {
     }
 
     named("publishPlugin") {
+        val publishVersion = providers.gradleProperty("pluginVersion").get()
+
         doFirst {
-            require(!project.version.toString().endsWith("-SNAPSHOT")) {
+            require(!publishVersion.endsWith("-SNAPSHOT")) {
                 "Refusing to publish a SNAPSHOT plugin version"
             }
         }
