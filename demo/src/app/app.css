@@ -103,7 +103,7 @@ p {
 
 h1 {
   margin-bottom: 28px;
-  font-size: clamp(3.2rem, 6vw, 6.4rem);
+  font-size: clamp(3.2rem, 5.2vw, 5.6rem);
   line-height: 0.88;
   letter-spacing: -0.065em;
   font-weight: 780;
@@ -131,8 +131,8 @@ h2 em {
 .features,
 .project-aware {
   display: grid;
-  grid-template-columns: 0.86fr 1.14fr;
-  gap: 72px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 56px;
 }
 
 .hero {
