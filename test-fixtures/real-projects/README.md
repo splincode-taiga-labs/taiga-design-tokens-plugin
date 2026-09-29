@@ -32,7 +32,7 @@ The JVM tests intentionally create minimal installed-package directories after c
 
 ```bash
 cd test-fixtures/real-projects/angular-npm-taiga-v5
-npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+npm ci --ignore-scripts --no-audit --no-fund
 ```
 
 ### Nx / pnpm

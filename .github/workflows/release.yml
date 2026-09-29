@@ -41,6 +41,9 @@ jobs:
               with:
                   node-version: 22
                   cache: npm
+                  cache-dependency-path: |
+                      package-lock.json
+                      test-fixtures/package-lock.json
 
             - name: Install root npm fixture
               run: npm ci

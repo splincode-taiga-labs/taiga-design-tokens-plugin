@@ -7,6 +7,6 @@
         "taiga-ui-v5"
     ],
     "scripts": {
-        "install:fixtures": "npm install --ignore-scripts --no-audit --no-fund --install-strategy=nested --package-lock=false"
+        "install:fixtures": "npm ci --ignore-scripts --no-audit --no-fund --install-strategy=nested"
     }
 }
