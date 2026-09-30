@@ -4,37 +4,36 @@ on:
     workflow_dispatch:
         inputs:
             version:
-                description: Plugin version to build and sign
+                description: Plugin version to release
                 required: true
                 type: string
             channel:
-                description: Marketplace channel to validate
+                description: JetBrains Marketplace channel
                 required: true
                 default: beta
                 type: choice
                 options:
                     - beta
                     - default
-    release:
-        types:
-            - prereleased
-            - released
 
 permissions:
     contents: write
 
 concurrency:
-    group: release-${{ github.ref }}
+    group: release
     cancel-in-progress: false
 
 jobs:
     release:
-        name: Build, sign, and publish
+        name: Prepare, verify, sign, and publish
         runs-on: ubuntu-latest
 
         steps:
-            - name: Checkout
+            - name: Checkout main
               uses: actions/checkout@v6
+              with:
+                  ref: main
+                  fetch-depth: 0
 
             - name: Set up Node.js
               uses: actions/setup-node@v6
@@ -50,6 +49,145 @@ jobs:
 
             - name: Install Taiga UI version workspaces
               run: npm run install:fixtures --prefix test-fixtures
+
+            - name: Resolve release metadata
+              id: release
+              env:
+                  INPUT_VERSION: ${{ inputs.version }}
+                  INPUT_CHANNEL: ${{ inputs.channel }}
+              run: |
+                  if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+                      echo "::error::Release workflow must be started from the main branch"
+                      exit 1
+                  fi
+
+                  version="${INPUT_VERSION#v}"
+                  channel="${INPUT_CHANNEL}"
+                  tag="v${version}"
+                  base_sha="$(git rev-parse HEAD)"
+
+                  if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+                      echo "::error::Invalid plugin version: ${version}"
+                      exit 1
+                  fi
+
+                  if [[ "${version}" == *-SNAPSHOT ]]; then
+                      echo "::error::Release version must not end with -SNAPSHOT"
+                      exit 1
+                  fi
+
+                  if git show-ref --verify --quiet "refs/tags/${tag}"; then
+                      echo "::error::Tag ${tag} already exists"
+                      exit 1
+                  fi
+
+                  if grep -Eq "^##[[:space:]]+${version}([[:space:]]|$)" CHANGELOG.md; then
+                      echo "::error::CHANGELOG.md already contains release ${version}"
+                      exit 1
+                  fi
+
+                  previous_tag="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+
+                  if [[ -n "${previous_tag}" ]] && [[ "$(git rev-list --count "${previous_tag}..HEAD")" -eq 0 ]]; then
+                      echo "::error::No commits found since ${previous_tag}"
+                      exit 1
+                  fi
+
+                  echo "version=${version}" >> "${GITHUB_OUTPUT}"
+                  echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
+                  echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+                  echo "base_sha=${base_sha}" >> "${GITHUB_OUTPUT}"
+                  echo "previous_tag=${previous_tag}" >> "${GITHUB_OUTPUT}"
+
+            - name: Generate release notes
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  TAG: ${{ steps.release.outputs.tag }}
+                  PREVIOUS_TAG: ${{ steps.release.outputs.previous_tag }}
+              run: |
+                  args=(
+                      --field "tag_name=${TAG}"
+                      --field "target_commitish=main"
+                  )
+
+                  if [[ -n "${PREVIOUS_TAG}" ]]; then
+                      args+=(--field "previous_tag_name=${PREVIOUS_TAG}")
+                  fi
+
+                  gh api                       --method POST                       "repos/${GITHUB_REPOSITORY}/releases/generate-notes"                       "${args[@]}"                       > release-notes.json
+
+                  jq -r '.body' release-notes.json > release-notes.md
+
+                  if [[ ! -s release-notes.md ]]; then
+                      echo "::error::GitHub generated empty release notes"
+                      exit 1
+                  fi
+
+            - name: Update CHANGELOG
+              env:
+                  VERSION: ${{ steps.release.outputs.version }}
+              run: |
+                  python3 <<'PY'
+                  import os
+                  import re
+                  from datetime import date
+                  from pathlib import Path
+
+                  path = Path("CHANGELOG.md")
+                  text = path.read_text()
+                  version = os.environ["VERSION"]
+
+                  notes = Path("release-notes.md").read_text().strip()
+                  changelog_notes = re.sub(r"^## ", "### ", notes, flags=re.MULTILINE)
+                  changelog_notes = re.sub(
+                      r"\n+\*\*Full Changelog\*\*:.*$",
+                      "",
+                      changelog_notes,
+                      flags=re.DOTALL,
+                  ).strip()
+
+                  section = (
+                      f"## {version} - {date.today().isoformat()}\n\n"
+                      f"{changelog_notes}\n"
+                  )
+
+                  unreleased = re.search(r"^## Unreleased\s*$", text, flags=re.MULTILINE)
+
+                  if not unreleased:
+                      raise SystemExit("CHANGELOG.md does not contain an '## Unreleased' section")
+
+                  tail = text[unreleased.end():]
+                  next_release = re.search(
+                      r"^## (?!Unreleased\b).+$",
+                      tail,
+                      flags=re.MULTILINE,
+                  )
+
+                  if next_release:
+                      insert_at = unreleased.end() + next_release.start()
+                      prefix = text[:insert_at].rstrip()
+                      suffix = text[insert_at:].lstrip()
+                      updated = f"{prefix}\n\n{section}\n{suffix}"
+                  else:
+                      updated = f"{text.rstrip()}\n\n{section}"
+
+                  path.write_text(updated)
+                  PY
+
+                  npx prettier CHANGELOG.md --write
+
+            - name: Commit release changelog
+              id: commit
+              env:
+                  VERSION: ${{ steps.release.outputs.version }}
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+                  git add CHANGELOG.md
+                  git commit -m "chore(release): ${VERSION}"
+
+                  echo "sha=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
 
             - name: Set up Java
               uses: actions/setup-java@v5
@@ -69,40 +207,6 @@ jobs:
                   key: intellij-platform-${{ runner.os }}-${{ hashFiles('gradle.properties') }}
                   restore-keys: |
                       intellij-platform-${{ runner.os }}-
-
-            - name: Resolve release metadata
-              id: release
-              env:
-                  RELEASE_TAG: ${{ github.event.release.tag_name }}
-                  RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
-                  INPUT_VERSION: ${{ inputs.version }}
-                  INPUT_CHANNEL: ${{ inputs.channel }}
-              run: |
-                  if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
-                      version="${RELEASE_TAG#v}"
-
-                      if [[ "${RELEASE_PRERELEASE}" == "true" ]]; then
-                          channel="beta"
-                      else
-                          channel="default"
-                      fi
-                  else
-                      version="${INPUT_VERSION}"
-                      channel="${INPUT_CHANNEL}"
-                  fi
-
-                  if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-                      echo "::error::Invalid plugin version: ${version}"
-                      exit 1
-                  fi
-
-                  if [[ "${version}" == *-SNAPSHOT ]]; then
-                      echo "::error::Release version must not end with -SNAPSHOT"
-                      exit 1
-                  fi
-
-                  echo "version=${version}" >> "${GITHUB_OUTPUT}"
-                  echo "channel=${channel}" >> "${GITHUB_OUTPUT}"
 
             - name: Check, build, and verify release candidate
               env:
@@ -144,8 +248,25 @@ jobs:
                   path: build/distributions/*.zip
                   if-no-files-found: warn
 
+            - name: Push release commit and tag
+              env:
+                  BASE_SHA: ${{ steps.release.outputs.base_sha }}
+                  RELEASE_SHA: ${{ steps.commit.outputs.sha }}
+                  TAG: ${{ steps.release.outputs.tag }}
+              run: |
+                  git fetch origin main
+
+                  remote_main="$(git rev-parse origin/main)"
+
+                  if [[ "${remote_main}" != "${BASE_SHA}" ]]; then
+                      echo "::error::main changed during release preparation (${BASE_SHA} -> ${remote_main}); rerun the release workflow"
+                      exit 1
+                  fi
+
+                  git tag -a "${TAG}" "${RELEASE_SHA}" -m "Release ${TAG}"
+                  git push --atomic origin "HEAD:main" "refs/tags/${TAG}"
+
             - name: Publish to JetBrains Marketplace
-              if: ${{ github.event_name == 'release' }}
               env:
                   PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
                   CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
@@ -159,12 +280,31 @@ jobs:
                   -Djava.net.useSystemProxies=false
                   --stacktrace
 
-            - name: Attach signed plugin to GitHub Release
-              if: ${{ github.event_name == 'release' }}
+            - name: Create GitHub Release
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: >-
-                  gh release upload
-                  "${{ github.event.release.tag_name }}"
-                  build/distributions/*-signed.zip
-                  --clobber
+                  TAG: ${{ steps.release.outputs.tag }}
+                  CHANNEL: ${{ steps.release.outputs.channel }}
+              run: |
+                  artifacts=(build/distributions/*-signed.zip)
+
+                  if [[ ! -e "${artifacts[0]}" ]]; then
+                      echo "::error::Signed release artifact was not found"
+                      exit 1
+                  fi
+
+                  args=(
+                      release
+                      create
+                      "${TAG}"
+                      "${artifacts[@]}"
+                      --verify-tag
+                      --title "${TAG}"
+                      --notes-file release-notes.md
+                  )
+
+                  if [[ "${CHANNEL}" == "beta" ]]; then
+                      args+=(--prerelease)
+                  fi
+
+                  gh "${args[@]}"
