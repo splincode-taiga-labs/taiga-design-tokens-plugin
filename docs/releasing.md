@@ -2,13 +2,18 @@
 
 Release automation is tracked by [#53](https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin/issues/53).
 
-The release workflow deliberately separates ordinary CI from Marketplace publishing:
+The release workflow is intentionally explicit and single-entry:
 
-- pull requests and pushes never publish;
-- a manually dispatched **Release** workflow builds, verifies, signs, verifies the signature, and uploads artifacts, but does not publish;
-- publishing happens only when a GitHub Release is published;
-- GitHub prereleases go to the JetBrains Marketplace `beta` channel;
-- full GitHub releases go to the Marketplace `default` channel.
+- pull requests and ordinary pushes never publish;
+- a release starts only from **Actions → Release → Run workflow** on `main`;
+- the workflow generates GitHub release notes from commits/PRs since the previous tag;
+- those notes are inserted into `CHANGELOG.md`;
+- the workflow creates a local `chore(release): <version>` commit and verifies that exact commit;
+- only after build, tests, Plugin Verifier, signing, and signature verification succeed does the workflow atomically push the release commit and tag;
+- the verified signed artifact is published to JetBrains Marketplace;
+- after Marketplace publishing succeeds, the workflow creates the GitHub Release and attaches the same signed ZIP.
+
+This keeps `main`, the release tag, `CHANGELOG.md`, the Marketplace version, and the GitHub Release aligned to the same release commit.
 
 ## Marketplace prerequisite
 
@@ -34,38 +39,51 @@ Configure these repository or protected-environment secrets:
 
 The certificate chain and private key must never be committed. The IntelliJ Platform Gradle Plugin accepts the signing values through environment variables; Base64-encoded values are also supported and are convenient for multiline CI secrets.
 
-## Dry-run a release in CI
+## Publish a release
 
-Run **Actions → Release → Run workflow**.
+Run **Actions → Release → Run workflow** from the `main` branch.
 
 Provide:
 
-- an explicit non-SNAPSHOT version, for example `0.1.0-beta.1`;
-- the target validation channel, normally `beta` before the production release.
+- an explicit non-SNAPSHOT version, for example `0.1.4` or `0.2.0-beta.1`;
+- the Marketplace channel:
+  - `beta` creates a GitHub prerelease;
+  - `default` creates a normal GitHub release.
 
-A manual run executes the same release checks and signing steps but intentionally skips `publishPlugin`.
+The workflow refuses to continue when:
 
-The workflow preserves the generated ZIP files as the `plugin-release-<version>` Actions artifact so the signed distribution can be inspected or installed locally before publishing.
+- it is started from a branch other than `main`;
+- the version is invalid or ends in `-SNAPSHOT`;
+- the release tag already exists;
+- `CHANGELOG.md` already contains the version;
+- there are no commits since the previous tag;
+- `main` changes while the release candidate is being verified.
 
-## Publish a release
+If `main` changes during verification, rerun the release workflow so the release is built from the latest `main`.
 
-Create and publish a GitHub Release from the exact commit/tag to ship.
+## Generated changelog
 
-The workflow derives the plugin version from the release tag:
+Release notes are generated through GitHub's Release Notes API using the previous reachable tag as the start point.
 
-```text
-v0.1.0-beta.1 -> 0.1.0-beta.1
-0.1.0        -> 0.1.0
+The workflow inserts them below `## Unreleased` as:
+
+```md
+## 0.1.4 - 2026-09-30
+
+### What's Changed
+
+- ...
 ```
 
-Channel mapping is fixed:
+GitHub's generated `Full Changelog` footer is omitted from `CHANGELOG.md` but preserved in the GitHub Release notes.
 
-| GitHub Release | Marketplace channel |
-| -------------- | ------------------- |
-| prerelease     | `beta`              |
-| full release   | `default`           |
+The changelog update is committed as:
 
-The release job runs the regular checks, Plugin Verifier, plugin signing, and signature verification before `publishPlugin`. The same workspace artifact is reused for publishing and is also attached to the GitHub Release.
+```text
+chore(release): 0.1.4
+```
+
+The release tag points to this commit.
 
 ## Local signed dry-run
 
@@ -84,22 +102,22 @@ export PRIVATE_KEY_PASSWORD='...'
   verifyPlugin \
   signPlugin \
   verifyPluginSignature \
-  -PpluginVersion=0.1.0-beta.1 \
+  -PpluginVersion=0.1.4 \
   -PmarketplaceChannel=beta
 ```
 
-This does not publish anything.
+This does not update `CHANGELOG.md`, push commits/tags, create a GitHub Release, or publish anything.
 
 ## Local publish
 
-Only run this after inspecting the signed artifact and confirming the version/channel:
+Only run this for recovery/debugging after confirming the exact version and channel:
 
 ```bash
 export PUBLISH_TOKEN='...'
 
 ./gradlew publishPlugin \
-  -PpluginVersion=0.1.0-beta.1 \
+  -PpluginVersion=0.1.4 \
   -PmarketplaceChannel=beta
 ```
 
-`publishPlugin` refuses versions ending in `-SNAPSHOT`. The default Marketplace channel in Gradle is `beta`; production publishing must explicitly use `-PmarketplaceChannel=default` or a full GitHub Release.
+`publishPlugin` refuses versions ending in `-SNAPSHOT`.
