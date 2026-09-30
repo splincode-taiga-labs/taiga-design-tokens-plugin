@@ -1,6 +1,6 @@
 # Releasing
 
-Release automation is tracked by [#53](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/53).
+Release automation is tracked by [#53](https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin/issues/53).
 
 The release workflow deliberately separates ordinary CI from Marketplace publishing:
 
