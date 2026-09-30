@@ -81,7 +81,7 @@ jobs:
                       exit 1
                   fi
 
-                  if grep -Eq "^##[[:space:]]+${version}([[:space:]]|$)" CHANGELOG.md; then
+                  if grep -Fq "## ${version} -" CHANGELOG.md; then
                       echo "::error::CHANGELOG.md already contains release ${version}"
                       exit 1
                   fi
@@ -114,9 +114,9 @@ jobs:
                       args+=(--field "previous_tag_name=${PREVIOUS_TAG}")
                   fi
 
-                  gh api                       --method POST                       "repos/${GITHUB_REPOSITORY}/releases/generate-notes"                       "${args[@]}"                       > release-notes.json
+                  gh api --method POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" "${args[@]}" > release-notes.json
 
-                  jq -r '.body' release-notes.json > release-notes.md
+                  jq -r '.body // empty' release-notes.json > release-notes.md
 
                   if [[ ! -s release-notes.md ]]; then
                       echo "::error::GitHub generated empty release notes"
