@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="4" y1="4" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF8A00"/>
+      <stop offset="0.34" stop-color="#FF2D8D"/>
+      <stop offset="0.68" stop-color="#7B4DFF"/>
+      <stop offset="1" stop-color="#10D1FF"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="9" y1="7" x2="31" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="40" height="40" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <rect x="2.5" y="2.5" width="35" height="35" rx="10" fill="#0B1020"/>
+  <rect x="3.5" y="3.5" width="33" height="33" rx="9" fill="url(#bg)"/>
+  <rect x="3.5" y="3.5" width="33" height="33" rx="9" stroke="#FFFFFF" stroke-opacity="0.14"/>
+  <path d="M8.7 30.8C12.8 24.7 17.9 21.5 22.5 17.8C26.7 14.5 29.8 10.7 31.2 8.1V29.2C31.2 31.4 29.4 33.2 27.2 33.2H11.1C9.2 33.2 8.4 31.9 8.7 30.8Z" fill="url(#shine)"/>
+
+  <g filter="url(#shadow)">
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M32 29.8L20 9L8 29.8H15.28L18.316 25.108H16.103L20.0001 18.946L23.8972 25.108H21.684L24.72 29.8H32Z" fill="#F8FAFF"/>
+  </g>
+</svg>
