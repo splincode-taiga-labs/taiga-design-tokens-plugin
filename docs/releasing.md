@@ -47,8 +47,8 @@ Provide:
 
 - an explicit non-SNAPSHOT version, for example `0.1.4` or `0.2.0-beta.1`;
 - the Marketplace channel:
-  - `beta` creates a GitHub prerelease;
-  - `default` creates a normal GitHub release.
+    - `beta` creates a GitHub prerelease;
+    - `default` creates a normal GitHub release.
 
 The workflow refuses to continue when:
 
