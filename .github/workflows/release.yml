@@ -119,6 +119,9 @@ jobs:
                   -Djava.net.useSystemProxies=false
                   --stacktrace
 
+            - name: Verify packaged plugin icons
+              run: bash scripts/verify-plugin-icons.sh
+
             - name: Sign and verify release candidate
               env:
                   CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
