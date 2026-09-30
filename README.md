@@ -2,6 +2,14 @@
 
 WebStorm plugin for working with Taiga UI design tokens and icons directly in the editor.
 
+## About the project
+
+Taiga UI Design Tokens is developed in the open by **splincode-taiga-labs**, an independent community initiative focused on improving the developer experience around Taiga UI in JetBrains IDEs.
+
+The project aims to make the information that already exists in a Taiga UI codebase — design tokens, icons, event-plugin modifiers, local overrides, and CSS units — discoverable directly in the editor, without maintaining a separate hard-coded catalog.
+
+This project is **not an official Taiga UI or T-Bank product**. Contributions, bug reports, and ideas are welcome through GitHub issues and pull requests.
+
 **[Live Angular demo](https://taiga-family-labs.github.io/taiga-design-tokens-plugin/)**
 
 The plugin reads the Taiga UI packages installed in the current project, so completion and previews match the version the project actually uses.
