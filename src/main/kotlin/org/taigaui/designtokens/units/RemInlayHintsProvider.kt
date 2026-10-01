@@ -10,6 +10,7 @@ import com.intellij.codeInsight.hints.declarative.InlineInlayPosition
 import com.intellij.codeInsight.hints.declarative.SharedBypassCollector
 import com.intellij.lang.Language
 import com.intellij.lang.injection.InjectedLanguageManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -35,6 +36,7 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
         ) {
             if (element === file) {
                 addStylesheetHints(
+                    file = file,
                     content = file.text,
                     sink = sink,
                     mapOffset = { it },
@@ -52,6 +54,7 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
         ) {
             if (element === file) {
                 addAngularTemplateHints(
+                    file = file,
                     content = file.text,
                     sink = sink,
                     mapOffset = { it },
@@ -82,6 +85,7 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
                 when {
                     injectedFile.language.isStylesheetLanguage() ->
                         addStylesheetHints(
+                            file = injectedFile,
                             content = injectedFile.text,
                             sink = sink,
                             mapOffset = { offset -> injectionManager.injectedToHost(injectedFile, offset) },
@@ -89,6 +93,7 @@ internal class RemInlayHintsProvider : InlayHintsProvider {
 
                     injectedFile.language.isHtmlLanguage() ->
                         addAngularTemplateHints(
+                            file = injectedFile,
                             content = injectedFile.text,
                             sink = sink,
                             mapOffset = { offset -> injectionManager.injectedToHost(injectedFile, offset) },
@@ -122,27 +127,50 @@ internal object RemInlayHintCollector {
 }
 
 private fun addStylesheetHints(
+    file: PsiFile,
     content: CharSequence,
     sink: InlayTreeSink,
     mapOffset: (Int) -> Int,
 ) {
-    addHints(RemInlayHintCollector.collect(content), sink, mapOffset)
+    val hints =
+        file.project
+            .service<RemInlayHintCache>()
+            .hints(file, RemInlayHintKind.STYLESHEET) {
+                RemInlayHintCollector.collect(content)
+            }
+
+    addHints(hints, sink, mapOffset)
 }
 
 private fun addAngularTemplateHints(
+    file: PsiFile,
     content: CharSequence,
     sink: InlayTreeSink,
     mapOffset: (Int) -> Int,
 ) {
-    addHints(AngularRemStyleBindingHintCollector.collect(content), sink, mapOffset)
+    val hints =
+        file.project
+            .service<RemInlayHintCache>()
+            .hints(file, RemInlayHintKind.ANGULAR_TEMPLATE) {
+                AngularRemStyleBindingHintCollector.collect(content)
+            }
+
+    addHints(hints, sink, mapOffset)
 }
 
 private fun addAngularHostHints(
     file: PsiFile,
     sink: InlayTreeSink,
 ) {
+    val hints =
+        file.project
+            .service<RemInlayHintCache>()
+            .hints(file, RemInlayHintKind.ANGULAR_HOST) {
+                AngularHostRemStyleBindingHintCollector.collect(file)
+            }
+
     addHints(
-        hints = AngularHostRemStyleBindingHintCollector.collect(file),
+        hints = hints,
         sink = sink,
         mapOffset = { it },
     )
