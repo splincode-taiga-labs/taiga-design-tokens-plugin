@@ -72,6 +72,8 @@ internal data class YarnPnpManifest(
         return result.values.toList()
     }
 
+    // Explicit queue exits make cyclic dependency traversal easier to audit.
+    @Suppress("LoopWithTooManyJumpStatements")
     private fun collectReachableTaigaUiPackages(
         start: YarnPnpLocator,
         result: MutableMap<YarnPnpLocator, YarnPnpPackageInfo>,
@@ -114,6 +116,8 @@ internal data class YarnPnpManifest(
 }
 
 internal class YarnPnpManifestReader {
+    // Missing or malformed PnP metadata must fail closed without executing the loader.
+    @Suppress("ReturnCount")
     fun read(directory: Path): YarnPnpManifest? {
         val normalizedDirectory = directory.toAbsolutePath().normalize()
         val dataFile = normalizedDirectory.resolve(PNP_DATA_FILE)
@@ -257,6 +261,8 @@ internal class YarnPnpManifestReader {
         }
     }
 
+    // This is a deliberately explicit JavaScript string-literal decoder for untrusted loader text.
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
     private fun extractInlineRuntimeState(content: String): String? {
         val markerIndex = content.indexOf(RAW_RUNTIME_STATE)
 
@@ -388,6 +394,8 @@ internal fun containsZipSegment(path: Path): Boolean =
         path.getName(index).toString().endsWith(".zip", ignoreCase = true)
     }
 
+// Invalid virtual path metadata falls back to the original path instead of guessing.
+@Suppress("ReturnCount")
 internal fun resolveYarnVirtualPath(path: Path): Path {
     var current = path.toAbsolutePath().normalize()
 
