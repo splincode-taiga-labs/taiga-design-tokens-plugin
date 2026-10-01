@@ -5,80 +5,75 @@ import java.nio.file.Path
 
 class DesignTokensPackageResolver(
     private val packageJsonReader: PackageJsonReader = PackageJsonReader(),
+    private val packageLocator: TaigaUiPackageLocator = TaigaUiPackageLocator(packageJsonReader),
 ) {
     fun resolve(start: Path): DesignTokensPackage? =
-        findNearestTaigaUiScope(start)
-            ?.let { scopeRoot ->
-                val sourcePackages = discoverSourcePackages(scopeRoot)
+        packageLocator
+            .locate(start)
+            ?.let { scope ->
+                val sourcePackages = discoverSourcePackages(scope)
 
                 sourcePackages
                     .takeIf(List<DesignTokenSourcePackage>::isNotEmpty)
-                    ?.let { packages -> createPackageSet(scopeRoot, packages) }
+                    ?.let { packages -> createPackageSet(scope, packages) }
             }
 
     private fun createPackageSet(
-        scopeRoot: Path,
+        scope: TaigaUiPackageScope,
         sourcePackages: List<DesignTokenSourcePackage>,
     ): DesignTokensPackage {
         val primary = sourcePackages.minBy(::sourcePackageRank)
+        val locatedSourcePackages =
+            sourcePackages.mapNotNull { sourcePackage ->
+                scope.packages[sourcePackage.name]
+            }
 
         return DesignTokensPackage(
             root = primary.root,
             realRoot = primary.realRoot,
             version = primary.version,
             sourcePackages = sourcePackages,
-            cacheVersion = sourcePackages.packageSetVersion(),
-            discoveryRoot = scopeRoot.toAbsolutePath().normalize(),
+            cacheVersion =
+                locatedSourcePackages
+                    .sortedBy(LocatedTaigaUiPackage::name)
+                    .joinToString("|") { located ->
+                        located.name + "@" + located.contentVersion
+                    },
+            discoveryRoot = scope.discoveryRoot.toAbsolutePath().normalize(),
+            cacheIdentity =
+                locatedSourcePackages
+                    .map(LocatedTaigaUiPackage::identity)
+                    .sorted()
+                    .joinToString("|"),
+            invalidationRoots = scope.invalidationRoots,
+            workspaceRoot = scope.workspaceRoot,
         )
     }
 
-    private fun findNearestTaigaUiScope(start: Path): Path? {
-        val normalizedStart = start.toAbsolutePath().normalize()
-        val startDirectory =
-            when {
-                Files.isDirectory(normalizedStart) -> normalizedStart
-                Files.isRegularFile(normalizedStart) -> normalizedStart.parent
-                else -> normalizedStart
-            }
+    private fun discoverSourcePackages(scope: TaigaUiPackageScope): List<DesignTokenSourcePackage> =
+        scope.packages.values
+            .mapNotNull(::readSourcePackage)
+            .sortedWith(SOURCE_PACKAGE_COMPARATOR)
 
-        return generateSequence(startDirectory) { directory -> directory.parent }
-            .map { directory -> directory.resolve(TAIGA_UI_SCOPE) }
-            .firstOrNull(Files::isDirectory)
-    }
-
-    private fun discoverSourcePackages(scopeRoot: Path): List<DesignTokenSourcePackage> =
-        runCatching {
-            Files.list(scopeRoot).use { paths ->
-                paths
-                    .filter(Files::isDirectory)
-                    .map(::readSourcePackage)
-                    .filter { sourcePackage -> sourcePackage != null }
-                    .map { sourcePackage -> requireNotNull(sourcePackage) }
-                    .sorted(SOURCE_PACKAGE_COMPARATOR)
-                    .toList()
-            }
-        }.getOrElse { emptyList() }
-
-    private fun readSourcePackage(logicalRoot: Path): DesignTokenSourcePackage? =
+    private fun readSourcePackage(locatedPackage: LocatedTaigaUiPackage): DesignTokenSourcePackage? =
         packageJsonReader
-            .readMetadata(logicalRoot.resolve(PACKAGE_JSON))
+            .readMetadata(locatedPackage.root.resolve(PACKAGE_JSON))
             ?.takeIf { metadata -> metadata.name.startsWith(TAIGA_UI_PACKAGE_PREFIX) }
-            ?.let { metadata -> createSourcePackage(logicalRoot, metadata) }
+            ?.let { metadata -> createSourcePackage(locatedPackage, metadata) }
 
     private fun createSourcePackage(
-        logicalRoot: Path,
+        locatedPackage: LocatedTaigaUiPackage,
         metadata: PackageJsonMetadata,
     ): DesignTokenSourcePackage? {
-        val realRoot = logicalRoot.toRealPathOrSelf()
-        val sourceRoots = metadata.resolveSourceRoots(realRoot)
+        val sourceRoots = metadata.resolveSourceRoots(locatedPackage.realRoot)
 
         return sourceRoots
             .takeIf(List<Path>::isNotEmpty)
             ?.let { roots ->
                 DesignTokenSourcePackage(
                     name = metadata.name,
-                    root = logicalRoot.toAbsolutePath().normalize(),
-                    realRoot = realRoot,
+                    root = locatedPackage.root.toAbsolutePath().normalize(),
+                    realRoot = locatedPackage.realRoot.toAbsolutePath().normalize(),
                     version = metadata.version,
                     sourceRoots = roots,
                 )
@@ -102,22 +97,7 @@ class DesignTokensPackageResolver(
             else -> 2
         }
 
-    private fun List<DesignTokenSourcePackage>.packageSetVersion(): String =
-        joinToString(separator = "|") { sourcePackage ->
-            val directory =
-                sourcePackage.root.fileName
-                    ?.toString()
-                    .orEmpty()
-
-            "${sourcePackage.name}@${sourcePackage.version}:$directory"
-        }
-
-    private fun Path.toRealPathOrSelf(): Path =
-        runCatching { toRealPath() }
-            .getOrElse { toAbsolutePath().normalize() }
-
     private companion object {
-        val TAIGA_UI_SCOPE = Path.of("node_modules", "@taiga-ui")
         val SOURCE_PACKAGE_COMPARATOR =
             compareBy<DesignTokenSourcePackage>(
                 { sourcePackage -> sourcePackage.name },
