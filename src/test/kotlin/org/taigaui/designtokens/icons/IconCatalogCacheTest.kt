@@ -1,9 +1,11 @@
 package org.taigaui.designtokens.icons
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.URI
 import java.nio.file.Path
 
 class IconCatalogCacheTest {
@@ -54,6 +56,49 @@ class IconCatalogCacheTest {
     }
 
     @Test
+    fun `failed remote refresh retains last successful catalog until retry`() {
+        var now = 1_000L
+        val scopeRoot = scopeRoot("stale-if-error")
+        val cache = IconCatalogCache(IconCatalogClock { now })
+        val successMaxAge = requireNotNull(IconCatalogCachePolicy.REMOTE_SUCCESS.maxAge).toMillis()
+        val retryMaxAge = requireNotNull(IconCatalogCachePolicy.REMOTE_RETRY.maxAge).toMillis()
+
+        assertTrue(
+            cache.publish(
+                scopeRoot,
+                generation = 0L,
+                result(IconCatalogCachePolicy.REMOTE_SUCCESS, "@tui.fancy.success"),
+            ),
+        )
+
+        now += successMaxAge
+        assertFalse(requireNotNull(cache.lookup(scopeRoot)).isFresh)
+
+        assertTrue(cache.publish(scopeRoot, generation = 0L, result(IconCatalogCachePolicy.REMOTE_RETRY)))
+
+        val staleLookup = requireNotNull(cache.lookup(scopeRoot))
+
+        assertEquals(listOf("@tui.fancy.success"), staleLookup.catalog.names)
+        assertTrue(staleLookup.isFresh)
+
+        now += retryMaxAge
+        assertFalse(requireNotNull(cache.lookup(scopeRoot)).isFresh)
+
+        assertTrue(
+            cache.publish(
+                scopeRoot,
+                generation = 0L,
+                result(IconCatalogCachePolicy.REMOTE_SUCCESS, "@tui.fancy.refreshed"),
+            ),
+        )
+
+        val refreshedLookup = requireNotNull(cache.lookup(scopeRoot))
+
+        assertEquals(listOf("@tui.fancy.refreshed"), refreshedLookup.catalog.names)
+        assertTrue(refreshedLookup.isFresh)
+    }
+
+    @Test
     fun `invalidation rejects stale publication from previous generation`() {
         val scopeRoot = scopeRoot("generation")
         val cache = IconCatalogCache()
@@ -91,9 +136,25 @@ class IconCatalogCacheTest {
         assertFalse(IconCatalogInvalidation.isAffected(scopeRoot, workspace.resolve("src/app.ts")))
     }
 
-    private fun result(cachePolicy: IconCatalogCachePolicy): IconCatalogLoadResult =
+    private fun result(
+        cachePolicy: IconCatalogCachePolicy,
+        vararg names: String,
+    ): IconCatalogLoadResult =
         IconCatalogLoadResult(
-            catalog = IconCatalog(emptyList()),
+            catalog =
+                IconCatalog(
+                    names.map { name ->
+                        IconCatalogEntry(
+                            name = name,
+                            svgSource =
+                                IconSvgSource.Remote(
+                                    URI.create(
+                                        "https://example.test/" + name.removePrefix("@tui.") + ".svg",
+                                    ),
+                                ),
+                        )
+                    },
+                ),
             cachePolicy = cachePolicy,
         )
 

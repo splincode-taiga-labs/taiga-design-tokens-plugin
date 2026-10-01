@@ -50,13 +50,23 @@ internal class IconCatalogCache(
             if ((generations[normalizedScope] ?: 0L) != generation) {
                 false
             } else {
+                val retainedCatalog =
+                    entries[normalizedScope]
+                        ?.takeIf { entry ->
+                            result.cachePolicy == IconCatalogCachePolicy.REMOTE_RETRY &&
+                                entry.hasSuccessfulRemoteCatalog
+                        }?.catalog
+
                 entries[normalizedScope] =
                     Entry(
-                        catalog = result.catalog,
+                        catalog = retainedCatalog ?: result.catalog,
                         expiresAtMillis =
                             result.cachePolicy.maxAge
                                 ?.toMillis()
                                 ?.let { maxAgeMillis -> clock.nowMillis() + maxAgeMillis },
+                        hasSuccessfulRemoteCatalog =
+                            result.cachePolicy == IconCatalogCachePolicy.REMOTE_SUCCESS ||
+                                retainedCatalog != null,
                     )
                 true
             }
@@ -84,6 +94,7 @@ internal class IconCatalogCache(
     private data class Entry(
         val catalog: IconCatalog,
         val expiresAtMillis: Long?,
+        val hasSuccessfulRemoteCatalog: Boolean,
     )
 }
 
