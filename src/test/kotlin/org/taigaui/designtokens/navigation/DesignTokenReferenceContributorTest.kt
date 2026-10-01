@@ -90,7 +90,7 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
                 ".demo { color: var(--tui-installed); }",
             )
         val reference = reference(sourceFile, sourcePath, "--tui-installed")
-        val targets = reference.multiResolve(false).map { result -> result.element }
+        val targets = reference.multiResolve(false).mapNotNull { result -> result.element }
 
         assertEquals(1, targets.size)
         assertEquals(
