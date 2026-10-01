@@ -212,7 +212,7 @@ class DesignTokenIndexService(
         resolutionSnapshotCache.clear()
     }
 
-    private fun resolutionSnapshot(
+    internal fun resolutionSnapshot(
         sourceFile: Path,
         requireCompleteNameCatalog: Boolean = false,
     ): DesignTokenResolutionSnapshot {
