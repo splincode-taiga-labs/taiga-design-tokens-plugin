@@ -13,12 +13,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
+    private lateinit var tempRoot: Path
     private lateinit var workspaceRoot: Path
     private lateinit var indexService: DesignTokenIndexService
 
     override fun setUp() {
         super.setUp()
-        workspaceRoot = Path.of(myFixture.tempDirPath).resolve("workspace")
+        tempRoot = Files.createTempDirectory("design-token-navigation")
+        workspaceRoot = tempRoot.resolve("workspace")
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
 
@@ -90,6 +92,7 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
     override fun tearDown() {
         try {
             indexService.clear()
+            tempRoot.toFile().deleteRecursively()
         } finally {
             super.tearDown()
         }
