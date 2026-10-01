@@ -12,13 +12,13 @@ internal fun interface DesignTokenIndexBuilder {
 }
 
 internal data class DesignTokensPackageIdentity(
-    val realRoot: Path,
+    val stableIdentity: String,
     val version: String,
 ) {
     companion object {
         fun from(designTokensPackage: DesignTokensPackage): DesignTokensPackageIdentity =
             DesignTokensPackageIdentity(
-                realRoot = designTokensPackage.realRoot.toAbsolutePath().normalize(),
+                stableIdentity = designTokensPackage.cacheIdentity,
                 version = designTokensPackage.cacheVersion,
             )
     }
@@ -159,7 +159,7 @@ internal class DesignTokenIndexCache(
         logicalRoot: Path,
         logicalRoots: Set<Path>,
     ): Boolean {
-        val replacedVersion = realRoot == identity.realRoot && version != identity.version
+        val replacedVersion = stableIdentity == identity.stableIdentity && version != identity.version
         val replacedTarget = logicalRoot in logicalRoots && this != identity
 
         return replacedVersion || replacedTarget
@@ -242,6 +242,12 @@ internal class DesignTokenIndexCache(
                 root = designTokensPackage.root.toAbsolutePath().normalize(),
                 realRoot = designTokensPackage.realRoot.toAbsolutePath().normalize(),
                 discoveryRoot = designTokensPackage.discoveryRoot.toAbsolutePath().normalize(),
+                invalidationRoots =
+                    designTokensPackage.invalidationRoots
+                        .map(Path::toAbsolutePath)
+                        .map(Path::normalize)
+                        .toSet(),
+                workspaceRoot = designTokensPackage.workspaceRoot?.toAbsolutePath()?.normalize(),
                 sourcePackages = designTokensPackage.sourcePackages.map(::normalizeSourcePackage),
             )
 
@@ -260,6 +266,7 @@ internal class DesignTokenIndexCache(
                 add(root)
                 add(realRoot)
                 add(discoveryRoot)
+                addAll(invalidationRoots)
                 effectiveSourcePackages.forEach { sourcePackage ->
                     add(sourcePackage.root)
                     add(sourcePackage.realRoot)
