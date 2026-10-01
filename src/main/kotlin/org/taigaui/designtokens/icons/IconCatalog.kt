@@ -1,11 +1,11 @@
 package org.taigaui.designtokens.icons
 
+import org.taigaui.designtokens.packageinfo.TaigaUiPackageLocator
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
-import org.taigaui.designtokens.packageinfo.TaigaUiPackageLocator
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
