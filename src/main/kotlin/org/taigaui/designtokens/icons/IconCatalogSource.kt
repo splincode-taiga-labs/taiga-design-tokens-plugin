@@ -1,24 +1,74 @@
 package org.taigaui.designtokens.icons
 
+import org.taigaui.designtokens.packageinfo.TaigaUiPackageScope
 import java.nio.file.Files
 import java.nio.file.Path
 
 internal data class IconCatalogContext(
     val scopeRoot: Path,
+    val proprietaryPackageRoot: Path,
+    val publicIconsRoot: Path,
+    val tdsIconsRoot: Path,
+    val invalidationRoots: Set<Path> = emptySet(),
+    val physicalScopeRoot: Path? = scopeRoot,
 ) {
-    val proprietaryPackageRoot: Path = scopeRoot.resolve(PROPRIETARY_PACKAGE)
-    val publicIconsRoot: Path = scopeRoot.resolve(ICONS_SOURCE)
-    val tdsIconsRoot: Path = scopeRoot.resolve(TDS_ICONS_SOURCE)
-
     val isProprietary: Boolean
         get() = Files.isDirectory(proprietaryPackageRoot)
 
     companion object {
-        fun from(scopeRoot: Path): IconCatalogContext = IconCatalogContext(scopeRoot.toAbsolutePath().normalize())
+        fun from(scopeRoot: Path): IconCatalogContext {
+            val normalizedScope = scopeRoot.toAbsolutePath().normalize()
+
+            return IconCatalogContext(
+                scopeRoot = normalizedScope,
+                proprietaryPackageRoot = normalizedScope.resolve(PROPRIETARY_PACKAGE),
+                publicIconsRoot = normalizedScope.resolve(ICONS_SOURCE),
+                tdsIconsRoot = normalizedScope.resolve(TDS_ICONS_SOURCE),
+            )
+        }
+
+        fun from(scope: TaigaUiPackageScope): IconCatalogContext {
+            val cacheKey = scope.cacheKey.toAbsolutePath().normalize()
+            val packages = scope.packages
+
+            return IconCatalogContext(
+                scopeRoot = cacheKey,
+                proprietaryPackageRoot =
+                    packages[PROPRIETARY_PACKAGE_NAME]
+                        ?.realRoot
+                        ?: cacheKey.resolve(PROPRIETARY_PACKAGE),
+                publicIconsRoot =
+                    packages[ICONS_PACKAGE_NAME]
+                        ?.realRoot
+                        ?.resolve(SRC_DIRECTORY)
+                        ?: cacheKey.resolve(ICONS_SOURCE),
+                tdsIconsRoot =
+                    packages[TDS_ICONS_PACKAGE_NAME]
+                        ?.realRoot
+                        ?.resolve(SRC_DIRECTORY)
+                        ?: cacheKey.resolve(TDS_ICONS_SOURCE),
+                invalidationRoots =
+                    buildSet {
+                        addAll(scope.invalidationRoots)
+                        packages.values.forEach { locatedPackage ->
+                            addAll(locatedPackage.invalidationRoots)
+                        }
+                    },
+                physicalScopeRoot =
+                    scope.discoveryRoot
+                        .takeIf(Files::isDirectory)
+                        ?.toAbsolutePath()
+                        ?.normalize(),
+            )
+        }
 
         private val ICONS_SOURCE = Path.of("icons", "src")
         private val TDS_ICONS_SOURCE = Path.of("tds-icons", "src")
+        private const val SRC_DIRECTORY = "src"
         private const val PROPRIETARY_PACKAGE = "proprietary"
+        private const val ICONS_PACKAGE_NAME = "@taiga-ui/icons"
+        private const val TDS_ICONS_PACKAGE_NAME = "@taiga-ui/tds-icons"
+        private const val PROPRIETARY_PACKAGE_NAME = "@taiga-ui/proprietary"
     }
 }
 
