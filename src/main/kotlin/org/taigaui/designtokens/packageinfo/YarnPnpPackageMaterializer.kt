@@ -115,7 +115,7 @@ internal class YarnPnpPackageMaterializer(
     }
 
     // Zip extraction keeps safety limits and path checks inline so every write is guarded.
-    @Suppress("CyclomaticComplexMethod", "LoopWithTooManyJumpStatements")
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "LoopWithTooManyJumpStatements")
     private fun extractPackage(
         archivePath: Path,
         entryRoot: String,
