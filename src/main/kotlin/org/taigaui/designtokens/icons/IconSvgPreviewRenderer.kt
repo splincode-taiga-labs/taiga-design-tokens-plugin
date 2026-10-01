@@ -8,22 +8,25 @@ import java.nio.file.Path
 import javax.swing.Icon
 import kotlin.math.roundToInt
 
-internal class IconSvgPreviewRenderer {
-    private val cache = mutableMapOf<IconPreviewRenderKey, Icon>()
+internal class IconSvgPreviewRenderer(
+    private val maxCacheEntries: Int = DEFAULT_ICON_PREVIEW_CACHE_ENTRIES,
+) {
+    private val cache = IconPreviewCache(maxCacheEntries)
+
+    internal val cachedPreviewCount: Int
+        get() = cache.size
 
     fun render(
         source: IconSvgSource,
         logicalSize: Int,
     ): Icon? {
-        val key = IconPreviewRenderKey(source.uri, logicalSize)
-        val cached = synchronized(cache) { cache[key] }
+        val key = source.previewRenderKey(logicalSize)
+        val cached = key?.let(cache::get)
 
         return cached
             ?: renderSvg(source, logicalSize)
                 ?.also { icon ->
-                    synchronized(cache) {
-                        cache[key] = icon
-                    }
+                    key?.let { currentKey -> cache.put(currentKey, icon) }
                 }
     }
 
@@ -151,11 +154,6 @@ private data class SvgSize(
     val height: Float,
 )
 
-private data class IconPreviewRenderKey(
-    val uri: URI,
-    val logicalSize: Int,
-)
-
 private val SVG_ROOT = Regex("""<svg\b[^>]*>""", RegexOption.IGNORE_CASE)
 private val SVG_WIDTH = Regex("""\swidth\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
 private val SVG_HEIGHT = Regex("""\sheight\s*=\s*["']([^"']+)["']""", RegexOption.IGNORE_CASE)
@@ -171,5 +169,6 @@ private val VIEW_BOX_SEPARATOR = Regex("""[,\s]+""")
 private const val VIEW_BOX_VALUE_COUNT = 4
 private const val PREVIEW_FILE_PREFIX = "taiga-ui-icon-preview-"
 private const val SVG_FILE_SUFFIX = ".svg"
+private const val DEFAULT_ICON_PREVIEW_CACHE_ENTRIES = 128
 
 internal const val ICON_PREVIEW_LOGICAL_SIZE = 64

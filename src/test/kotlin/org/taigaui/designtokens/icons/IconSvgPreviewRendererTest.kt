@@ -5,6 +5,7 @@ import java.awt.Rectangle
 import java.awt.image.BufferedImage
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 
 class IconSvgPreviewRendererTest : BasePlatformTestCase() {
     fun testRendersSvgAtRequestedLogicalSize() {
@@ -95,13 +96,64 @@ class IconSvgPreviewRendererTest : BasePlatformTestCase() {
         }
     }
 
-    private fun render(source: IconSvgSource) =
-        requireNotNull(
-            IconSvgPreviewRenderer().render(
-                source = source,
-                logicalSize = ICON_PREVIEW_LOGICAL_SIZE,
-            ),
-        )
+    fun testLocalPreviewIsRefreshedWhenTheSameFileChanges() {
+        withSvg(
+            width = 16,
+            height = 16,
+            body = """<rect width="16" height="16" fill="#000"/>""",
+        ) { svg ->
+            val renderer = IconSvgPreviewRenderer()
+            val initial = paint(render(IconSvgSource.Local(svg), renderer)).paintedBounds()
+            val previousTimestamp = Files.getLastModifiedTime(svg)
+
+            Files.writeString(
+                svg,
+                """
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+                    <circle cx="8" cy="8" r="4" fill="#000"/>
+                </svg>
+                """.trimIndent(),
+            )
+            Files.setLastModifiedTime(
+                svg,
+                FileTime.fromMillis(previousTimestamp.toMillis() + 1_000L),
+            )
+
+            val updated = paint(render(IconSvgSource.Local(svg), renderer)).paintedBounds()
+
+            assertFalse(
+                "Expected a changed SVG at the same path to invalidate its cached preview",
+                initial == updated,
+            )
+            assertEquals(1, renderer.cachedPreviewCount)
+        }
+    }
+
+    fun testRenderedPreviewCacheIsBounded() {
+        val renderer = IconSvgPreviewRenderer(maxCacheEntries = 2)
+
+        withSvg(16, 16, """<rect width="16" height="16" fill="#000"/>""") { first ->
+            withSvg(16, 16, """<circle cx="8" cy="8" r="5" fill="#000"/>""") { second ->
+                withSvg(16, 16, """<path d="M2 2 H14 V14 H2 Z" fill="#000"/>""") { third ->
+                    render(IconSvgSource.Local(first), renderer)
+                    render(IconSvgSource.Local(second), renderer)
+                    render(IconSvgSource.Local(third), renderer)
+
+                    assertEquals(2, renderer.cachedPreviewCount)
+                }
+            }
+        }
+    }
+
+    private fun render(
+        source: IconSvgSource,
+        renderer: IconSvgPreviewRenderer = IconSvgPreviewRenderer(),
+    ) = requireNotNull(
+        renderer.render(
+            source = source,
+            logicalSize = ICON_PREVIEW_LOGICAL_SIZE,
+        ),
+    )
 
     private fun renderSvgToImage(
         width: Int,
