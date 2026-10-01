@@ -7,6 +7,7 @@ class DesignTokensPackageResolver(
     private val packageJsonReader: PackageJsonReader = PackageJsonReader(),
 ) {
     private val packageLocator = TaigaUiPackageLocator(packageJsonReader)
+
     fun resolve(start: Path): DesignTokensPackage? =
         packageLocator
             .locate(start)
