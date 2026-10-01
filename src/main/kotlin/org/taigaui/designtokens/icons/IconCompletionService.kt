@@ -14,6 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.taigaui.designtokens.cache.CoalescingRefreshCallbacks
+import org.taigaui.designtokens.cache.RefreshCallback
 import org.taigaui.designtokens.diagnostics.PerformanceDiagnostics
 import org.taigaui.designtokens.diagnostics.PerformanceMetric
 import java.nio.file.Path
@@ -43,7 +45,7 @@ internal class IconCompletionService(
 
     fun namesFor(
         sourceFile: Path,
-        onUpdated: () -> Unit,
+        onUpdated: RefreshCallback<*>,
     ): List<String>? =
         loader
             .resolveScopeRoot(sourceFile)
@@ -65,7 +67,7 @@ internal class IconCompletionService(
         val lookup = cache.lookup(scopeRoot)
 
         if (lookup == null || !lookup.isFresh) {
-            scheduleWarmup(scopeRoot) {}
+            scheduleWarmup(scopeRoot)
         }
 
         return lookup?.catalog?.svgSource(iconName)
@@ -124,7 +126,7 @@ internal class IconCompletionService(
 
     private fun namesForScope(
         scopeRoot: Path,
-        onUpdated: () -> Unit,
+        onUpdated: RefreshCallback<*>,
     ): List<String>? {
         val lookup = cache.lookup(scopeRoot)
 
@@ -137,16 +139,19 @@ internal class IconCompletionService(
 
     private fun scheduleWarmup(
         scopeRoot: Path,
-        callback: () -> Unit,
+        callback: RefreshCallback<*>? = null,
     ) {
         val access =
             synchronized(lock) {
                 pendingWarmups[scopeRoot]
-                    ?.also { current -> current.callbacks.add(callback) }
+                    ?.also { current -> callback?.let(current.callbacks::add) }
                     ?.let { current -> WarmupAccess(current, shouldStart = false) }
                     ?: PendingWarmup(
                         generation = cache.generation(scopeRoot),
-                        callbacks = mutableListOf(callback),
+                        callbacks =
+                            CoalescingRefreshCallbacks().also { callbacks ->
+                                callback?.let(callbacks::add)
+                            },
                     ).also { created -> pendingWarmups[scopeRoot] = created }
                         .let { created -> WarmupAccess(created, shouldStart = true) }
             }
@@ -177,7 +182,7 @@ internal class IconCompletionService(
                         WarmupOutcome.Ignore
                     } else if (cache.publish(scopeRoot, pending.generation, result)) {
                         pendingWarmups.remove(scopeRoot)
-                        WarmupOutcome.Publish(pending.callbacks.toList())
+                        WarmupOutcome.Publish(pending.callbacks.take())
                     } else {
                         val retry =
                             PendingWarmup(
@@ -196,7 +201,7 @@ internal class IconCompletionService(
                 is WarmupOutcome.Publish ->
                     if (outcome.callbacks.isNotEmpty() && !project.isDisposed) {
                         withContext(Dispatchers.EDT) {
-                            outcome.callbacks.forEach { current -> current() }
+                            outcome.callbacks.forEach { callback -> callback.invokeIfActive() }
                         }
                     }
             }
@@ -210,7 +215,7 @@ internal class IconCompletionService(
 
     private data class PendingWarmup(
         val generation: Long,
-        val callbacks: MutableList<() -> Unit>,
+        val callbacks: CoalescingRefreshCallbacks,
     )
 
     private data class WarmupAccess(
@@ -226,7 +231,7 @@ internal class IconCompletionService(
         ) : WarmupOutcome
 
         data class Publish(
-            val callbacks: List<() -> Unit>,
+            val callbacks: List<RefreshCallback<*>>,
         ) : WarmupOutcome
     }
 }

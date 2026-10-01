@@ -55,7 +55,10 @@ private class IconCompletionProvider : CompletionProvider<CompletionParameters>(
         val names =
             request.project
                 .service<IconCompletionService>()
-                .namesFor(request.sourceFile, request::scheduleRefresh)
+                .namesFor(
+                    request.sourceFile,
+                    iconCompletionRefresh(request.project, request.editor, request.sourceFile),
+                )
                 ?: return
         val matchingResult = result.withPrefixMatcher(request.prefix)
 
@@ -126,23 +129,7 @@ private data class IconCompletionRequest(
     val editor: Editor,
     val sourceFile: Path,
     val prefix: String,
-) {
-    fun scheduleRefresh() {
-        val currentContext =
-            if (editor.isDisposed) {
-                null
-            } else {
-                IconCompletionContextFinder.find(
-                    text = editor.document.immutableCharSequence,
-                    offset = editor.caretModel.offset,
-                )
-            }
-
-        if (currentContext != null) {
-            requestIconCompletion(project, editor, sourceFile)
-        }
-    }
-}
+)
 
 private fun removeExistingIconSuffix(context: InsertionContext) {
     val document = context.document

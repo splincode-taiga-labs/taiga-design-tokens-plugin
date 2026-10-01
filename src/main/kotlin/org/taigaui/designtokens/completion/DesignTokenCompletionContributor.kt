@@ -12,6 +12,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import org.taigaui.designtokens.cache.RefreshCallback
 import org.taigaui.designtokens.index.isValidDesignTokenName
 import org.taigaui.designtokens.project.DesignTokenCatalogEntry
 import java.nio.file.Path
@@ -26,8 +27,10 @@ class DesignTokenCompletionContributor : CompletionContributor() {
         val entries =
             request.project
                 .service<DesignTokenCompletionService>()
-                .entriesFor(request.sourceFile, request::scheduleRefresh)
-                .orEmpty()
+                .entriesFor(
+                    request.sourceFile,
+                    designTokenCompletionRefresh(request.project, request.editor),
+                ).orEmpty()
         val catalogNames = entries.map(DesignTokenCatalogEntry::name).toSet()
         val matchingResult = result.withPrefixMatcher(request.prefix)
 
@@ -104,28 +107,32 @@ private fun Editor.designTokenSourceFilePath(): Path? {
         ?.let(::pathOrNull)
 }
 
+private fun designTokenCompletionRefresh(
+    project: Project,
+    editor: Editor,
+): RefreshCallback<Editor> =
+    RefreshCallback(
+        owner = editor,
+        kind = DESIGN_TOKEN_COMPLETION_REFRESH,
+        isActivePredicate = { currentEditor -> !currentEditor.isDisposed },
+    ) { currentEditor ->
+        val currentContext =
+            DesignTokenCompletionContextFinder.find(
+                text = currentEditor.document.immutableCharSequence,
+                offset = currentEditor.caretModel.offset,
+            )
+
+        if (currentContext != null) {
+            AutoPopupController.getInstance(project).scheduleAutoPopup(currentEditor)
+        }
+    }
+
 private data class DesignTokenCompletionRequest(
     val project: Project,
     val editor: Editor,
     val sourceFile: Path,
     val prefix: String,
-) {
-    fun scheduleRefresh() {
-        val currentContext =
-            if (editor.isDisposed) {
-                null
-            } else {
-                DesignTokenCompletionContextFinder.find(
-                    text = editor.document.immutableCharSequence,
-                    offset = editor.caretModel.offset,
-                )
-            }
-
-        if (currentContext != null) {
-            AutoPopupController.getInstance(project).scheduleAutoPopup(editor)
-        }
-    }
-}
+)
 
 private fun removeExistingTokenSuffix(context: InsertionContext) {
     val document = context.document
@@ -143,4 +150,5 @@ private fun removeExistingTokenSuffix(context: InsertionContext) {
 
 internal fun pathOrNull(value: String): Path? = runCatching { Path.of(value) }.getOrNull()
 
+private const val DESIGN_TOKEN_COMPLETION_REFRESH = "design-token-completion"
 private const val COMPLETION_TYPE_TEXT = "Taiga UI design token"
