@@ -28,6 +28,10 @@ internal data class IconCatalogContext(
         }
 
         fun from(scope: TaigaUiPackageScope): IconCatalogContext {
+            if (Files.isDirectory(scope.discoveryRoot)) {
+                return from(scope.discoveryRoot)
+            }
+
             val cacheKey = scope.cacheKey.toAbsolutePath().normalize()
             val packages = scope.packages
 
