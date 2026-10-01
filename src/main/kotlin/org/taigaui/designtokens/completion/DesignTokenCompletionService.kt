@@ -9,6 +9,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.taigaui.designtokens.cache.CoalescingRefreshCallbacks
+import org.taigaui.designtokens.cache.RefreshCallback
 import org.taigaui.designtokens.project.DesignTokenCatalogEntry
 import org.taigaui.designtokens.project.DesignTokenIndexService
 import org.taigaui.designtokens.project.TokenContextKey
@@ -22,45 +24,42 @@ internal class DesignTokenCompletionService(
     private val lock = Any()
     private val snapshots = mutableMapOf<TokenContextKey, List<DesignTokenCatalogEntry>>()
     private val pendingWarmups = mutableSetOf<TokenContextKey>()
-    private val pendingCallbacks = mutableMapOf<TokenContextKey, MutableList<PendingCallback>>()
+    private val pendingCallbacks = mutableMapOf<TokenContextKey, CoalescingRefreshCallbacks>()
 
     fun namesFor(
         sourceFile: Path,
-        onUpdated: () -> Unit,
+        onUpdated: RefreshCallback<*>,
     ): List<String>? = entriesFor(sourceFile, onUpdated)?.map(DesignTokenCatalogEntry::name)
 
     fun namesForInspection(
         sourceFile: Path,
-        onUpdated: () -> Unit,
+        onUpdated: RefreshCallback<*>,
     ): List<String>? = entriesForInspection(sourceFile, onUpdated)?.map(DesignTokenCatalogEntry::name)
 
     fun entriesFor(
         sourceFile: Path,
-        onUpdated: () -> Unit,
+        onUpdated: RefreshCallback<*>,
     ): List<DesignTokenCatalogEntry>? =
         entriesFor(
             sourceFile = sourceFile,
             onUpdated = onUpdated,
             allowStaleSnapshot = true,
-            notifyWhenUnchanged = false,
         )
 
     fun entriesForInspection(
         sourceFile: Path,
-        onUpdated: () -> Unit,
+        onUpdated: RefreshCallback<*>,
     ): List<DesignTokenCatalogEntry>? =
         entriesFor(
             sourceFile = sourceFile,
             onUpdated = onUpdated,
             allowStaleSnapshot = false,
-            notifyWhenUnchanged = true,
         )
 
     private fun entriesFor(
         sourceFile: Path,
-        onUpdated: () -> Unit,
+        onUpdated: RefreshCallback<*>,
         allowStaleSnapshot: Boolean,
-        notifyWhenUnchanged: Boolean,
     ): List<DesignTokenCatalogEntry>? {
         val normalizedSourceFile = sourceFile.toAbsolutePath().normalize()
         val indexService = project.service<DesignTokenIndexService>()
@@ -76,7 +75,7 @@ internal class DesignTokenCompletionService(
         scheduleWarmup(
             contextKey = contextKey,
             sourceFile = normalizedSourceFile,
-            callback = PendingCallback(onUpdated, notifyWhenUnchanged),
+            callback = onUpdated,
         )
 
         return snapshot.takeIf { allowStaleSnapshot }
@@ -85,12 +84,12 @@ internal class DesignTokenCompletionService(
     private fun scheduleWarmup(
         contextKey: TokenContextKey,
         sourceFile: Path,
-        callback: PendingCallback,
+        callback: RefreshCallback<*>,
     ) {
         val shouldStart =
             synchronized(lock) {
                 pendingCallbacks
-                    .getOrPut(contextKey, ::mutableListOf)
+                    .getOrPut(contextKey, ::CoalescingRefreshCallbacks)
                     .add(callback)
                 pendingWarmups.add(contextKey)
             }
@@ -126,19 +125,20 @@ internal class DesignTokenCompletionService(
             synchronized(lock) {
                 val previous = snapshots.put(contextKey, entries)
                 val entriesChanged = previous != entries
-                val pending = pendingCallbacks.remove(contextKey).orEmpty()
+                val pending = pendingCallbacks.remove(contextKey)
 
                 pendingWarmups.remove(contextKey)
-                pending
-                    .filter { callback -> entriesChanged || callback.notifyWhenUnchanged }
-                    .map(PendingCallback::callback)
-                    .takeIf { entries.isNotEmpty() }
-                    .orEmpty()
+
+                if (entries.isEmpty()) {
+                    emptyList()
+                } else {
+                    pending?.take(entriesChanged).orEmpty()
+                }
             }
 
         if (callbacks.isNotEmpty() && !project.isDisposed) {
             withContext(Dispatchers.EDT) {
-                callbacks.forEach { callback -> callback() }
+                callbacks.forEach { callback -> callback.invokeIfActive() }
             }
         }
     }
@@ -151,9 +151,4 @@ internal class DesignTokenCompletionService(
             snapshots[contextKey] = entries
         }
     }
-
-    private data class PendingCallback(
-        val callback: () -> Unit,
-        val notifyWhenUnchanged: Boolean,
-    )
 }

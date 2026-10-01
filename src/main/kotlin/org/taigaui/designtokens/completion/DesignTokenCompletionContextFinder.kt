@@ -13,6 +13,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElementVisitor
 import com.intellij.psi.PsiFile
+import org.taigaui.designtokens.cache.RefreshCallback
 import org.taigaui.designtokens.documentation.DesignTokenNameMatcher
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffset
 import org.taigaui.designtokens.documentation.DesignTokenReferenceAtOffsetFinder
@@ -72,13 +73,19 @@ internal fun PsiFile.designTokenCatalogForInspection(): List<DesignTokenCatalogE
 
     return project
         .service<DesignTokenCompletionService>()
-        .entriesForInspection(sourceFile) {
-            if (isValid) {
+        .entriesForInspection(
+            sourceFile,
+            RefreshCallback(
+                owner = this,
+                kind = DESIGN_TOKEN_INSPECTION_REFRESH,
+                notifyWhenUnchanged = true,
+                isActivePredicate = { file -> file.isValid },
+            ) { file ->
                 DaemonCodeAnalyzer
-                    .getInstance(project)
-                    .restart(this, INSPECTION_RESTART_REASON)
-            }
-        }
+                    .getInstance(file.project)
+                    .restart(file, INSPECTION_RESTART_REASON)
+            },
+        )
 }
 
 private fun PsiFile.inspectionSourceFile(): Path? =
@@ -288,5 +295,6 @@ private fun Char.isQuote(): Boolean = this == '\'' || this == '"'
 
 private fun Char.isIdentifierCharacter(): Boolean = isLetterOrDigit() || this == '-' || this == '_'
 
+private const val DESIGN_TOKEN_INSPECTION_REFRESH = "design-token-inspection"
 private const val UNKNOWN_TOKEN_MESSAGE = "Unknown Taiga UI design token"
 private const val INSPECTION_RESTART_REASON = "Taiga UI design token index updated"

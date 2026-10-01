@@ -19,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.taigaui.designtokens.cache.RefreshCallback
 import java.nio.file.Path
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -122,9 +123,10 @@ internal fun requestIconCompletion(
 
     val service = project.service<IconCompletionService>()
     val names =
-        service.namesFor(sourceFile) {
-            requestIconCompletion(project, editor, sourceFile)
-        }
+        service.namesFor(
+            sourceFile,
+            iconCompletionRefresh(project, editor, sourceFile),
+        )
 
     if (names.isNullOrEmpty()) {
         return
@@ -132,6 +134,19 @@ internal fun requestIconCompletion(
 
     showIconLookup(project, editor, names)
 }
+
+internal fun iconCompletionRefresh(
+    project: Project,
+    editor: Editor,
+    sourceFile: Path,
+): RefreshCallback<Editor> =
+    RefreshCallback(
+        owner = editor,
+        kind = ICON_COMPLETION_REFRESH,
+        isActivePredicate = { currentEditor -> !currentEditor.isDisposed },
+    ) { currentEditor ->
+        requestIconCompletion(project, currentEditor, sourceFile)
+    }
 
 private fun showIconLookup(
     project: Project,
@@ -228,4 +243,5 @@ private fun PsiFile.toSupportedSourceFile(): Path? =
 
 private fun Lookup.containsIconSuggestions(): Boolean = items.any { item -> item.lookupString.startsWith(ICON_PREFIX) }
 
+private const val ICON_COMPLETION_REFRESH = "icon-completion"
 private val ICON_COMPLETION_DEBOUNCE = 120.milliseconds
