@@ -84,6 +84,8 @@ internal class TaigaUiPackageLocator(
         )
     }
 
+    // Guard clauses keep package discovery fail-closed for incomplete metadata.
+    @Suppress("ReturnCount")
     private fun readPhysicalPackage(packageRoot: Path): LocatedTaigaUiPackage? {
         val metadata = packageJsonReader.readMetadata(packageRoot.resolve(PACKAGE_JSON)) ?: return null
 
@@ -103,6 +105,8 @@ internal class TaigaUiPackageLocator(
         )
     }
 
+    // Guard clauses keep package discovery fail-closed for incomplete metadata.
+    @Suppress("ReturnCount")
     private fun locateYarnPnp(startDirectory: Path): TaigaUiPackageScope? {
         val manifest =
             generateSequence(startDirectory) { directory -> directory.parent }
@@ -163,6 +167,8 @@ internal class TaigaUiPackageLocator(
         )
     }
 
+    // Guard clauses keep package discovery fail-closed for incomplete metadata.
+    @Suppress("ReturnCount")
     private fun materializePnpPackage(
         manifest: YarnPnpManifest,
         packageInfo: YarnPnpPackageInfo,
