@@ -100,6 +100,24 @@ internal class IconCatalogCache(
 
 internal object IconCatalogInvalidation {
     fun isAffected(
+        context: IconCatalogContext,
+        changedPath: Path,
+    ): Boolean {
+        val changed = changedPath.normalized()
+        val metadataOrPackageChanged =
+            context.invalidationRoots.any { root ->
+                val normalizedRoot = root.normalized()
+
+                changed == normalizedRoot ||
+                    changed.startsWith(normalizedRoot) ||
+                    normalizedRoot.startsWith(changed)
+            }
+
+        return metadataOrPackageChanged ||
+            context.physicalScopeRoot?.let { scopeRoot -> isAffected(scopeRoot, changed) } == true
+    }
+
+    fun isAffected(
         scopeRoot: Path,
         changedPath: Path,
     ): Boolean {
