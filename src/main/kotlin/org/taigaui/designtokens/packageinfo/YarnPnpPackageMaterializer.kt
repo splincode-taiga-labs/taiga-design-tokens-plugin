@@ -166,6 +166,7 @@ internal class YarnPnpPackageMaterializer(
                             destination,
                             StandardOpenOption.CREATE,
                             StandardOpenOption.TRUNCATE_EXISTING,
+                            StandardOpenOption.WRITE,
                         ).use { output ->
                             val buffer = ByteArray(COPY_BUFFER_SIZE)
 
