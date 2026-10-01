@@ -31,9 +31,14 @@ internal class DesignTokenProjectStylesheetGraph(
     readText: (Path) -> String? = { path ->
         runCatching { Files.readString(path) }.getOrNull()
     },
+    imports: (Path) -> List<String> = { path ->
+        readText(path)
+            ?.let(ProjectStylesheetImportParser::parse)
+            .orEmpty()
+    },
 ) {
     private val entrypointResolver = ProjectStylesheetEntrypointResolver(project, readText)
-    private val importResolver = ProjectStylesheetImportResolver(readText)
+    private val importResolver = ProjectStylesheetImportResolver(imports)
 
     fun createRequest(
         sourceFile: Path,

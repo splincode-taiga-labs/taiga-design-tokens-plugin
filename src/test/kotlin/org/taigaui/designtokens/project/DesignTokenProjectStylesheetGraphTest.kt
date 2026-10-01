@@ -150,6 +150,91 @@ class DesignTokenProjectStylesheetGraphTest : BasePlatformTestCase() {
             assertEquals(listOf(stylesFile.normalized()), scope.sourceFiles)
         }
 
+    fun testReusesParsedImportsForUnchangedFilesAcrossGraphRebuilds() =
+        withWorkspace { workspaceRoot ->
+            val sourceFile =
+                createFile(
+                    workspaceRoot.resolve("src/app/component.scss"),
+                    "color: var(--tui-test);",
+                )
+            val stylesFile =
+                createFile(
+                    workspaceRoot.resolve("src/styles.scss"),
+                    "@use './theme';",
+                )
+            val themeFile =
+                createFile(
+                    workspaceRoot.resolve("src/_theme.scss"),
+                    ":root { --tui-test: #123; }",
+                )
+            createFile(
+                workspaceRoot.resolve("angular.json"),
+                """
+                {
+                  "projects": {
+                    "demo": {
+                      "architect": {
+                        "build": {
+                          "options": {
+                            "styles": ["src/styles.scss"]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """.trimIndent(),
+            )
+
+            val stamps =
+                mutableMapOf(
+                    sourceFile.normalized() to 1L,
+                    stylesFile.normalized() to 1L,
+                    themeFile.normalized() to 1L,
+                )
+            val reads = mutableMapOf<Path, Int>()
+            val importCache =
+                ProjectStylesheetImportCache(
+                    readText = { path ->
+                        val normalized = path.normalized()
+
+                        reads[normalized] = reads.getOrDefault(normalized, 0) + 1
+                        Files.readString(normalized)
+                    },
+                    modificationStampProvider =
+                        ProjectStylesheetModificationStampProvider { path ->
+                            stamps[path.normalized()]
+                        },
+                )
+            val graph =
+                DesignTokenProjectStylesheetGraph(
+                    project = project,
+                    imports = importCache::imports,
+                )
+            val request =
+                graph.createRequest(
+                    sourceFile = sourceFile,
+                    workspaceRootHint = workspaceRoot,
+                )
+
+            graph.buildScope(request)
+            graph.buildScope(request)
+
+            assertEquals(1, reads[stylesFile.normalized()])
+            assertEquals(1, reads[themeFile.normalized()])
+            assertEquals(1, reads[sourceFile.normalized()])
+
+            Files.writeString(themeFile, ":root { --tui-test: #456; }")
+            stamps[themeFile.normalized()] = 2L
+            importCache.invalidate(listOf(themeFile))
+
+            graph.buildScope(request)
+
+            assertEquals(1, reads[stylesFile.normalized()])
+            assertEquals(2, reads[themeFile.normalized()])
+            assertEquals(1, reads[sourceFile.normalized()])
+        }
+
     fun testFollowsImportsFromTheCurrentStylesheet() =
         withWorkspace { workspaceRoot ->
             val sourceFile =

@@ -18,10 +18,19 @@ internal class ProjectStylesheetIndexProvider(
     private val packageResolver: DesignTokensPackageResolver,
     sourceExtractor: DesignTokenSourceExtractor,
 ) {
+    private val importCache =
+        ProjectStylesheetImportCache(
+            readText = ::readProjectText,
+            modificationStampProvider =
+                ProjectStylesheetModificationStampProvider { sourceFile ->
+                    modificationStamp(sourceFile)
+                },
+        )
     private val graph =
         DesignTokenProjectStylesheetGraph(
             project = project,
             readText = ::readProjectText,
+            imports = importCache::imports,
         )
     private val declarationCache =
         ProjectStylesheetDeclarationCache(sourceExtractor) { sourceFile ->
@@ -46,6 +55,7 @@ internal class ProjectStylesheetIndexProvider(
 
     fun invalidate(changedPaths: Collection<Path>): Int {
         declarationCache.invalidate(changedPaths)
+        importCache.invalidate(changedPaths)
 
         return cache.invalidate(changedPaths)
     }
@@ -53,6 +63,7 @@ internal class ProjectStylesheetIndexProvider(
     fun clear() {
         cache.clear()
         declarationCache.clear()
+        importCache.clear()
     }
 
     fun request(
