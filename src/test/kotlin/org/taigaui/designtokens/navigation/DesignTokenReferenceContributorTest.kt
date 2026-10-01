@@ -18,11 +18,11 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
 
     override fun setUp() {
         super.setUp()
-        workspaceRoot = Files.createTempDirectory("design-token-navigation")
+        val packageJson = myFixture.addFileToProject("workspace/package.json", "{}")
+
+        workspaceRoot = Path.of(packageJson.virtualFile.parent.path)
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
-
-        createFile(workspaceRoot.resolve("package.json"), "{}")
         createFile(
             workspaceRoot.resolve("angular.json"),
             """
@@ -90,7 +90,6 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
     override fun tearDown() {
         try {
             indexService.clear()
-            workspaceRoot.toFile().deleteRecursively()
         } finally {
             super.tearDown()
         }
