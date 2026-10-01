@@ -3,7 +3,7 @@ package org.taigaui.designtokens.project
 import java.nio.file.Path
 
 internal class ProjectStylesheetImportResolver(
-    private val readText: (Path) -> String?,
+    private val imports: (Path) -> List<String>,
 ) {
     fun resolveImports(
         sourceFile: Path,
@@ -53,16 +53,15 @@ internal class ProjectStylesheetImportResolver(
             .mapNotNull(ProjectStylesheetPathResolver::resolveSourceFile)
             .firstOrNull()
     }
+}
 
-    private fun imports(sourceFile: Path): List<String> =
-        readText(sourceFile)
-            ?.let { content ->
-                IMPORT_DIRECTIVE_PATTERN
-                    .findAll(content)
-                    .flatMap { directive -> importPaths(directive.groupValues[2]) }
-                    .filter(String::isNotEmpty)
-                    .toList()
-            }.orEmpty()
+internal object ProjectStylesheetImportParser {
+    fun parse(content: CharSequence): List<String> =
+        IMPORT_DIRECTIVE_PATTERN
+            .findAll(content)
+            .flatMap { directive -> importPaths(directive.groupValues[2]) }
+            .filter(String::isNotEmpty)
+            .toList()
 
     private fun importPaths(body: String): Sequence<String> {
         val quoted =
@@ -80,9 +79,7 @@ internal class ProjectStylesheetImportResolver(
         }
     }
 
-    private companion object {
-        val IMPORT_DIRECTIVE_PATTERN = Regex("""(?is)@(import|use|forward)\s+(.*?);""")
-        val QUOTED_IMPORT_PATTERN = Regex("""[\"']([^\"']+)[\"']""")
-        val URL_IMPORT_PATTERN = Regex("""(?i)url\(\s*[^\"']*?([^\s)]+)\s*\)""")
-    }
+    private val IMPORT_DIRECTIVE_PATTERN = Regex("""(?is)@(import|use|forward)\s+(.*?);""")
+    private val QUOTED_IMPORT_PATTERN = Regex("""[\"']([^\"']+)[\"']""")
+    private val URL_IMPORT_PATTERN = Regex("""(?i)url\(\s*[^\"']*?([^\s)]+)\s*\)""")
 }
