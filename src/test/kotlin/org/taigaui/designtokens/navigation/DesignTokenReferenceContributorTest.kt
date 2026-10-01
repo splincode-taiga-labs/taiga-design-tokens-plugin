@@ -3,6 +3,7 @@ package org.taigaui.designtokens.navigation
 import com.intellij.lang.injection.InjectedLanguageManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiPolyVariantReference
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
@@ -22,6 +23,42 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
         indexService.clear()
 
         createFile(workspaceRoot.resolve("package.json"), "{}")
+        createFile(
+            workspaceRoot.resolve("angular.json"),
+            """
+            {
+              "projects": {
+                "test": {
+                  "projectType": "application",
+                  "root": "",
+                  "sourceRoot": "src"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        createFile(
+            workspaceRoot.resolve("node_modules/@angular/core/package.json"),
+            """
+            {
+              "name": "@angular/core",
+              "version": "17.3.0",
+              "types": "index.d.ts"
+            }
+            """.trimIndent(),
+        )
+        createFile(
+            workspaceRoot.resolve("node_modules/@angular/core/index.d.ts"),
+            """
+            export interface ComponentMetadata {
+                selector?: string;
+                template?: string;
+                styles?: string | string[];
+            }
+
+            export declare function Component(metadata: ComponentMetadata): ClassDecorator;
+            """.trimIndent(),
+        )
         createFile(
             workspaceRoot.resolve("node_modules/@taiga-ui/design-tokens/package.json"),
             """{"name":"@taiga-ui/design-tokens","version":"0.310.0"}""",
@@ -146,13 +183,14 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
                 @Component({
                     selector: 'demo',
                     template: '',
-                    styles: [`.demo { color: var(--tui-installed); }`],
+                    styles: `.demo { color: var(--tui-installed); }`,
                 })
                 export class Demo {}
                 """.trimIndent(),
             )
 
         myFixture.configureFromExistingVirtualFile(sourceFile)
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
         indexService.completionTokenNames(sourcePath)
 
         val injectedFiles = mutableListOf<com.intellij.psi.PsiFile>()
