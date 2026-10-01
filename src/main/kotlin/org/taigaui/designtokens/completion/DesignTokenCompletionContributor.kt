@@ -51,29 +51,33 @@ class DesignTokenCompletionContributor : CompletionContributor() {
             }
         }
 
-        entries.forEach { entry ->
-            matchingResult.addElement(entry.toLookupElement())
-        }
+        entries
+            .sortedWith(COMPLETION_ENTRY_COMPARATOR)
+            .forEach { entry ->
+                matchingResult.addElement(entry.toLookupElement())
+            }
         result.stopHere()
     }
 }
 
-private fun DesignTokenCatalogEntry.toLookupElement(): LookupElementBuilder {
+internal fun DesignTokenCatalogEntry.toLookupElement(): LookupElementBuilder {
     val base =
         LookupElementBuilder
             .create(name)
-            .withTypeText(COMPLETION_TYPE_TEXT, true)
+            .withTypeText(sourceLabel, true)
             .withInsertHandler { insertionContext, _ ->
                 removeExistingTokenSuffix(insertionContext)
             }
+    val decorated =
+        if (deprecation == null) {
+            base
+        } else {
+            base
+                .withStrikeoutness(true)
+                .withTailText(" (deprecated)", true)
+        }
 
-    return if (deprecation == null) {
-        base
-    } else {
-        base
-            .withStrikeoutness(true)
-            .withTailText(" (deprecated)", true)
-    }
+    return decorated
 }
 
 private fun CompletionParameters.toDesignTokenCompletionRequest(): DesignTokenCompletionRequest? =
@@ -150,5 +154,8 @@ private fun removeExistingTokenSuffix(context: InsertionContext) {
 
 internal fun pathOrNull(value: String): Path? = runCatching { Path.of(value) }.getOrNull()
 
+private val COMPLETION_ENTRY_COMPARATOR =
+    compareByDescending<DesignTokenCatalogEntry> { entry -> entry.completionPriority }
+        .thenBy(DesignTokenCatalogEntry::name)
+
 private const val DESIGN_TOKEN_COMPLETION_REFRESH = "design-token-completion"
-private const val COMPLETION_TYPE_TEXT = "Taiga UI design token"
