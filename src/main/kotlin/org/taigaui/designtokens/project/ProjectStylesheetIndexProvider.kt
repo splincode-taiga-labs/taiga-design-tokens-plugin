@@ -78,9 +78,11 @@ internal class ProjectStylesheetIndexProvider(
 
         val workspaceRootHint =
             designTokensPackage
-                ?.discoveryRoot
-                ?.parent
-                ?.parent
+                ?.workspaceRoot
+                ?: designTokensPackage
+                    ?.discoveryRoot
+                    ?.parent
+                    ?.parent
 
         return graph.createRequest(
             sourceFile = normalizedSourceFile,

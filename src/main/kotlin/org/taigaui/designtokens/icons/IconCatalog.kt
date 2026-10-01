@@ -1,13 +1,14 @@
 package org.taigaui.designtokens.icons
 
+import org.taigaui.designtokens.packageinfo.TaigaUiPackageLocator
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.ConcurrentHashMap
 
 internal fun interface IconCatalogFetcher {
     fun fetch(): String?
@@ -57,32 +58,31 @@ internal data class IconCatalogLoadResult(
 
 internal class IconCatalogLoader(
     sources: List<IconCatalogSource>,
+    private val packageLocator: TaigaUiPackageLocator = TaigaUiPackageLocator(),
 ) {
     private val sources = sources.toList()
+    private val resolvedContexts = ConcurrentHashMap<Path, IconCatalogContext>()
 
     constructor(remoteFetcher: IconCatalogFetcher = TbankIconCatalogFetcher()) :
         this(defaultIconCatalogSources(remoteFetcher))
 
-    fun resolveScopeRoot(sourceFile: Path): Path? {
-        val normalizedSource = sourceFile.toAbsolutePath().normalize()
-        val startDirectory =
-            when {
-                Files.isDirectory(normalizedSource) -> normalizedSource
-                normalizedSource.parent != null -> normalizedSource.parent
-                else -> return null
-            }
-
-        return generateSequence(startDirectory) { directory -> directory.parent }
-            .map { directory -> directory.resolve(TAIGA_UI_SCOPE) }
-            .firstOrNull(Files::isDirectory)
-    }
+    fun resolveScopeRoot(sourceFile: Path): Path? =
+        packageLocator
+            .locate(sourceFile)
+            ?.let(IconCatalogContext::from)
+            ?.also { context ->
+                resolvedContexts[context.scopeRoot] = context
+            }?.scopeRoot
 
     fun load(scopeRoot: Path): List<String> = loadCatalog(scopeRoot).names
 
     fun loadCatalog(scopeRoot: Path): IconCatalog = loadCatalogWithPolicy(scopeRoot).catalog
 
     fun loadCatalogWithPolicy(scopeRoot: Path): IconCatalogLoadResult {
-        val context = IconCatalogContext.from(scopeRoot)
+        val normalizedScope = scopeRoot.toAbsolutePath().normalize()
+        val context =
+            resolvedContexts[normalizedScope]
+                ?: IconCatalogContext.from(normalizedScope)
 
         return sources
             .firstOrNull { source -> source.supports(context) }
@@ -90,8 +90,25 @@ internal class IconCatalogLoader(
             ?: EMPTY_CATALOG
     }
 
+    fun isAffected(
+        scopeRoot: Path,
+        changedPath: Path,
+    ): Boolean {
+        val normalizedScope = scopeRoot.toAbsolutePath().normalize()
+        val context = resolvedContexts[normalizedScope]
+
+        return if (context == null) {
+            IconCatalogInvalidation.isAffected(normalizedScope, changedPath)
+        } else {
+            IconCatalogInvalidation.isAffected(context, changedPath)
+        }
+    }
+
+    fun clearResolvedContexts() {
+        resolvedContexts.clear()
+    }
+
     private companion object {
-        val TAIGA_UI_SCOPE = Path.of("node_modules", "@taiga-ui")
         val EMPTY_CATALOG =
             IconCatalogLoadResult(
                 catalog = IconCatalog(emptyList()),

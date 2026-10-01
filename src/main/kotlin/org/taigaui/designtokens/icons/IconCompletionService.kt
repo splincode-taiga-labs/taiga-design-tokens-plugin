@@ -92,7 +92,7 @@ internal class IconCompletionService(
                 (cache.scopeRoots + pendingWarmups.keys)
                     .filter { scopeRoot ->
                         normalizedPaths.any { changedPath ->
-                            IconCatalogInvalidation.isAffected(scopeRoot, changedPath)
+                            loader.isAffected(scopeRoot, changedPath)
                         }
                     }.toSet()
             }
@@ -106,6 +106,7 @@ internal class IconCompletionService(
         synchronized(lock) {
             pendingWarmups.clear()
             cache.clear()
+            loader.clearResolvedContexts()
         }
     }
 
