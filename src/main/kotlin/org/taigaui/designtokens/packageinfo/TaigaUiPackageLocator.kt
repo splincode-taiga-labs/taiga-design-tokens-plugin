@@ -29,7 +29,7 @@ internal data class TaigaUiPackageScope(
                     System.getProperty("java.io.tmpdir"),
                     "taiga-design-tokens-plugin",
                     "yarn-pnp-scopes",
-                    stablePnpHash(identity),
+                    stablePnpHash(identity + "|" + contentVersion),
                 ).toAbsolutePath()
                 .normalize()
         }
