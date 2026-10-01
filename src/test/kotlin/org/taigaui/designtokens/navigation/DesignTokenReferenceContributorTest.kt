@@ -18,11 +18,11 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
 
     override fun setUp() {
         super.setUp()
-        val packageJson = myFixture.addFileToProject("workspace/package.json", "{}")
-
-        workspaceRoot = Path.of(packageJson.virtualFile.parent.path)
+        workspaceRoot = Path.of(myFixture.tempDirPath).resolve("workspace")
         indexService = project.getService(DesignTokenIndexService::class.java)
         indexService.clear()
+
+        createFile(workspaceRoot.resolve("package.json"), "{}")
         createFile(
             workspaceRoot.resolve("angular.json"),
             """
