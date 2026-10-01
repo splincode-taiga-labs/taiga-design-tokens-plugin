@@ -68,6 +68,8 @@ internal class YarnPnpPackageMaterializer(
         )
     }
 
+    // Each failed archive check exits immediately so unsafe cache entries are never published.
+    @Suppress("ReturnCount")
     private fun materializeArchive(
         archivePath: Path,
         entryRoot: String,
@@ -112,6 +114,8 @@ internal class YarnPnpPackageMaterializer(
         )
     }
 
+    // Zip extraction keeps safety limits and path checks inline so every write is guarded.
+    @Suppress("CyclomaticComplexMethod", "LoopWithTooManyJumpStatements")
     private fun extractPackage(
         archivePath: Path,
         entryRoot: String,
