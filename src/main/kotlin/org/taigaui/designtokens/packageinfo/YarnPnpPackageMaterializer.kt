@@ -165,33 +165,35 @@ internal class YarnPnpPackageMaterializer(
                     }
 
                     Files.createDirectories(destination.parent)
-                    zip.getInputStream(entry).use { input ->
-                        Files.newOutputStream(
-                            destination,
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING,
-                            StandardOpenOption.WRITE,
-                        )
-                            .use { output ->
-                            val buffer = ByteArray(COPY_BUFFER_SIZE)
+                    zip
+                        .getInputStream(entry)
+                        .use { input ->
+                            Files
+                                .newOutputStream(
+                                    destination,
+                                    StandardOpenOption.CREATE,
+                                    StandardOpenOption.TRUNCATE_EXISTING,
+                                    StandardOpenOption.WRITE,
+                                ).use { output ->
+                                    val buffer = ByteArray(COPY_BUFFER_SIZE)
 
-                            while (true) {
-                                val count = input.read(buffer)
+                                    while (true) {
+                                        val count = input.read(buffer)
 
-                                if (count < 0) {
-                                    break
+                                        if (count < 0) {
+                                            break
+                                        }
+
+                                        extractedBytes += count
+
+                                        if (extractedBytes > MAX_EXTRACTED_BYTES) {
+                                            return@runCatching false
+                                        }
+
+                                        output.write(buffer, 0, count)
+                                    }
                                 }
-
-                                extractedBytes += count
-
-                                if (extractedBytes > MAX_EXTRACTED_BYTES) {
-                                    return@runCatching false
-                                }
-
-                                output.write(buffer, 0, count)
-                            }
                         }
-                    }
                 }
             }
 
