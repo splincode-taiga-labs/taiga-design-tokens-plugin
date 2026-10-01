@@ -67,7 +67,7 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
                 ".demo { color: var(--tui-project); }",
             )
         val reference = reference(sourceFile, sourcePath, "--tui-project")
-        val targets = reference.multiResolve(false).map { result -> result.element }
+        val targets = reference.multiResolve(false).mapNotNull { result -> result.element }
 
         assertEquals(1, targets.size)
         assertEquals(
@@ -173,15 +173,19 @@ class DesignTokenReferenceContributorTest : BasePlatformTestCase() {
             injectedFiles.firstOrNull { file -> "--tui-installed" in file.text }
                 ?: error("Expected injected stylesheet PSI")
         val references = referencesAtToken(injected, "--tui-installed")
+        val target =
+            requireNotNull(
+                references
+                    .single()
+                    .multiResolve(false)
+                    .single()
+                    .element,
+            )
 
         assertEquals(1, references.size)
         assertEquals(
             workspaceRoot.resolve("node_modules/@taiga-ui/design-tokens/tokens.css").normalized(),
-            references
-                .single()
-                .multiResolve(false)
-                .single()
-                .element
+            target
                 .containingFile
                 .virtualFile
                 .path
