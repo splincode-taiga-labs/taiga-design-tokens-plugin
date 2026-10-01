@@ -5,6 +5,8 @@ import org.taigaui.designtokens.icons.IconCompletionService
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class YarnPnpIntegrationTest : BasePlatformTestCase() {
     private lateinit var tempRoot: Path
@@ -33,24 +35,25 @@ class YarnPnpIntegrationTest : BasePlatformTestCase() {
     fun testResolvesTokensAndIconsWithoutNodeModules() {
         val workspace = tempRoot.resolve("workspace")
         val sourceFile = createSourceFile(workspace)
-        val designTokensRoot = workspace.resolve(".yarn/packages/design-tokens")
-        val iconsRoot = workspace.resolve(".yarn/packages/icons")
+        val designTokensArchive = workspace.resolve(".yarn/cache/design-tokens.zip")
+        val iconsArchive = workspace.resolve(".yarn/cache/icons.zip")
 
-        createDesignTokensPackage(
-            root = designTokensRoot,
+        createDesignTokensArchive(
+            archive = designTokensArchive,
             version = "0.322.0",
             tokenValue = "#123456",
         )
-        createIconsPackage(
-            root = iconsRoot,
+        createIconsArchive(
+            archive = iconsArchive,
             version = "5.25.0",
             iconPath = "actions/add.svg",
         )
         writePnpLoader(
             workspace = workspace,
-            designTokensLocation = "./.yarn/packages/design-tokens/",
+            designTokensLocation =
+                "./.yarn/cache/design-tokens.zip/node_modules/@taiga-ui/design-tokens/",
             designTokensReference = "npm:0.322.0",
-            iconsLocation = "./.yarn/packages/icons/",
+            iconsLocation = "./.yarn/cache/icons.zip/node_modules/@taiga-ui/icons/",
             iconsReference = "npm:5.25.0",
         )
 
@@ -115,6 +118,51 @@ class YarnPnpIntegrationTest : BasePlatformTestCase() {
         Files.writeString(sourceFile, ".app { color: var(--tui-pnp-token); }")
 
         return sourceFile
+    }
+
+    private fun createDesignTokensArchive(
+        archive: Path,
+        version: String,
+        tokenValue: String,
+    ) {
+        createZip(
+            archive,
+            mapOf(
+                "node_modules/@taiga-ui/design-tokens/package.json" to
+                    """{"name":"@taiga-ui/design-tokens","version":"$version"}""",
+                "node_modules/@taiga-ui/design-tokens/tokens.css" to
+                    ":root { --tui-pnp-token: $tokenValue; }",
+            ),
+        )
+    }
+
+    private fun createIconsArchive(
+        archive: Path,
+        version: String,
+        iconPath: String,
+    ) {
+        createZip(
+            archive,
+            mapOf(
+                "node_modules/@taiga-ui/icons/package.json" to
+                    """{"name":"@taiga-ui/icons","version":"$version"}""",
+                "node_modules/@taiga-ui/icons/src/$iconPath" to "<svg></svg>",
+            ),
+        )
+    }
+
+    private fun createZip(
+        archive: Path,
+        entries: Map<String, String>,
+    ) {
+        Files.createDirectories(archive.parent)
+        ZipOutputStream(Files.newOutputStream(archive)).use { output ->
+            entries.forEach { (name, value) ->
+                output.putNextEntry(ZipEntry(name))
+                output.write(value.toByteArray())
+                output.closeEntry()
+            }
+        }
     }
 
     private fun createDesignTokensPackage(
