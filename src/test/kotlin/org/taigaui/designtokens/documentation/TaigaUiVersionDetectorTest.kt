@@ -45,6 +45,19 @@ class TaigaUiVersionDetectorTest {
     }
 
     @Test
+    fun ignoresIndependentDesignTokensVersionWhenCoreIsMissing() {
+        val workspace = temporaryFolder.newFolder("without-core").toPath()
+        createPackage(workspace, "design-tokens", "0.322.0")
+        createPackage(workspace, "kit", "5.18.0")
+        val sourceFile = createSource(workspace)
+
+        val context = requireNotNull(detector.detect(sourceFile))
+
+        assertEquals(5, context.majorVersion)
+        assertEquals("@taiga-ui/kit", context.versionSourcePackage)
+    }
+
+    @Test
     fun returnsNullWhenTaigaUiPackagesAreMissing() {
         val workspace = temporaryFolder.newFolder("missing").toPath()
         val sourceFile = createSource(workspace)
