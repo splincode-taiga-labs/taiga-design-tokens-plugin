@@ -148,7 +148,6 @@ The resolver keeps deterministic order only where the source graph proves it. Co
 
 Recursive `var(...)` references use the same context-aware candidate selection model, with cycle protection and grouped source information preserved for editor presentation.
 
-
 ## Taiga UI documentation subsystem
 
 The documentation subsystem provides a structured, version-aware enrichment index for native IDE documentation and discovery features.
