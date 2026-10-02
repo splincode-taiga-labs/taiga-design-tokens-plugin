@@ -87,15 +87,11 @@ internal class TaigaDocsIndexStore(
             val published = publish(source, expectedGeneration, result.index)
 
             if (published && result.origin == TaigaDocsLoadOrigin.DISK_CACHE) {
-                scheduleBackgroundRefresh(source)
+                refreshLoad(source, allowCachedFallback = false)
             }
 
             result.index.takeIf { published }
         }
-    }
-
-    private fun scheduleBackgroundRefresh(source: TaigaDocsSource) {
-        refreshLoad(source, allowCachedFallback = false)
     }
 
     private fun refreshLoad(
