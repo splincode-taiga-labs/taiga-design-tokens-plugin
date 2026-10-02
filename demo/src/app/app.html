@@ -6,28 +6,47 @@
     </a>
     <nav>
       <a href="#features">Features</a>
-      <a href="https://github.com/taiga-family-labs/taiga-design-tokens-plugin">GitHub ↗</a>
+      <a href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin" rel="noreferrer" target="_blank">
+        GitHub ↗
+      </a>
     </nav>
   </header>
 
   <main id="top">
     <section class="hero">
       <div class="hero-copy">
-        <p class="kicker"><i></i> WebStorm plugin · Taiga UI</p>
-        <h1>Design tokens.<br /><em>Native to your IDE.</em></h1>
+        <p class="kicker"><i></i> Community WebStorm plugin · Taiga UI</p>
+        <h1>Taiga UI tooling.<br /><em>Native to your IDE.</em></h1>
         <p class="lead">
-          Project-aware token intelligence, previews, inspections, and CSS helpers for Taiga UI — directly in WebStorm.
+          Project-aware design tokens, icon previews, CSS hints, and event-plugin completions — directly in WebStorm.
         </p>
-        <div class="actions">
-          <a class="button primary" href="#features">Explore the plugin</a>
-          <a class="button secondary" href="https://github.com/taiga-family-labs/taiga-design-tokens-plugin"
-            >View source ↗</a
+
+        <div class="install-row">
+          <div class="marketplace-install">
+            <span class="install-label">Install from JetBrains Marketplace</span>
+            <iframe
+              width="245"
+              height="48"
+              src="https://plugins.jetbrains.com/embeddable/install/34582"
+              title="Install Taiga UI Design Tokens from JetBrains Marketplace"
+            ></iframe>
+          </div>
+
+          <a
+            class="button secondary"
+            href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin"
+            rel="noreferrer"
+            target="_blank"
           >
+            View source ↗
+          </a>
         </div>
+
         <div class="chips">
           <span>CSS · Less · SCSS</span>
           <span>Angular templates</span>
           <span>Project-aware</span>
+          <span>WebStorm</span>
         </div>
       </div>
 
@@ -36,9 +55,9 @@
         <div class="ide-window">
           <div class="window-bar"><span>WebStorm · editor</span><b>● Plugin active</b></div>
           <img
-            src="screens/token-hover.webp"
-            width="600"
-            height="380"
+            src="screens/design-token-preview.webp"
+            width="1200"
+            height="760"
             alt="Taiga UI design token hover preview in WebStorm"
           />
         </div>
@@ -46,38 +65,43 @@
     </section>
 
     <section class="capabilities" aria-label="Capabilities">
-      <span><b>01</b> Token completion</span>
-      <span><b>02</b> Hover previews</span>
-      <span><b>03</b> Inspections</span>
-      <span><b>04</b> rem → px hints</span>
+      <span><b>01</b> Token previews</span>
+      <span><b>02</b> Icon completion</span>
+      <span><b>03</b> rem → px hints</span>
+      <span><b>04</b> Event plugins</span>
     </section>
 
     <section id="features" class="features">
       <div class="section-copy">
-        <p class="kicker"><i></i> Stay in the flow</p>
-        <h2>Useful context is <em>one hover away.</em></h2>
-        <p>The plugin turns metadata already installed in your project into native IDE feedback.</p>
+        <p class="kicker"><i></i> See it in WebStorm</p>
+        <h2>Real editor UI.<br /><em>Real project context.</em></h2>
+        <p>
+          Every screenshot below comes from the plugin running in WebStorm. Click any image to open the full 1200 × 760
+          version.
+        </p>
       </div>
 
-      <div class="stage">
-        <div class="feature-copy">
-          <p class="count">0{{ activeIndex() + 1 }} / 0{{ features.length }}</p>
-          <p class="label">{{ activeFeature().label }}</p>
-          <h3>{{ activeFeature().title }}</h3>
-          <p>{{ activeFeature().description }}</p>
-        </div>
-        <div class="ide-window">
-          <div class="window-bar"><span>Preview</span><b>● Live in WebStorm</b></div>
-          <img [src]="activeFeature().image" [alt]="activeFeature().alt" width="600" height="380" />
-        </div>
-        <div class="tabs">
-          @for (feature of features; track feature.label; let index = $index) {
-          <button type="button" [class.active]="activeIndex() === index" (click)="activeIndex.set(index)">
-            <span>0{{ index + 1 }}</span>
-            {{ feature.label }}
-          </button>
-          }
-        </div>
+      <div class="feature-grid">
+        @for (feature of features; track feature.label; let index = $index) {
+        <article class="feature-card">
+          <a
+            class="feature-shot"
+            [href]="feature.image"
+            target="_blank"
+            rel="noreferrer"
+            [attr.aria-label]="'Open full-size screenshot: ' + feature.label"
+          >
+            <img [src]="feature.image" [alt]="feature.alt" width="1200" height="760" loading="lazy" />
+          </a>
+
+          <div class="feature-copy">
+            <p class="count">0{{ index + 1 }} / 0{{ features.length }}</p>
+            <p class="label">{{ feature.label }}</p>
+            <h3>{{ feature.title }}</h3>
+            <p>{{ feature.description }}</p>
+          </div>
+        </article>
+        }
       </div>
     </section>
 
@@ -88,8 +112,9 @@
       </div>
       <div class="terminal">
         <code>project/node_modules</code>
-        <p><span>@taiga-ui/design-tokens</span><i></i><b>Hover</b></p>
+        <p><span>@taiga-ui/design-tokens</span><i></i><b>Preview</b></p>
         <p><span>@taiga-ui/icons</span><i></i><b>Completion</b></p>
+        <p><span>@taiga-ui/event-plugins</span><i></i><b>Completion</b></p>
         <p><span>project styles</span><i></i><b>Overrides</b></p>
         <small>No frozen catalog: the plugin discovers packages and styles reachable from the current project.</small>
       </div>
@@ -97,14 +122,29 @@
 
     <section class="cta">
       <div>
-        <p class="kicker"><i></i> Open source</p>
+        <p class="kicker"><i></i> Open source · Community maintained</p>
         <h2>Make Taiga UI feel <em>built into WebStorm.</em></h2>
       </div>
-      <a class="button light" href="https://github.com/taiga-family-labs/taiga-design-tokens-plugin"
-        >Explore on GitHub ↗</a
-      >
+
+      <div class="cta-actions">
+        <iframe
+          width="245"
+          height="48"
+          src="https://plugins.jetbrains.com/embeddable/install/34582"
+          title="Install Taiga UI Design Tokens from JetBrains Marketplace"
+          loading="lazy"
+        ></iframe>
+        <a
+          class="button light"
+          href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin"
+          rel="noreferrer"
+          target="_blank"
+        >
+          Explore on GitHub ↗
+        </a>
+      </div>
     </section>
   </main>
 
-  <footer><span>Taiga UI Design Tokens</span><span>Angular demo</span></footer>
+  <footer><span>Taiga UI Design Tokens</span><span>Independent community plugin</span></footer>
 </div>
