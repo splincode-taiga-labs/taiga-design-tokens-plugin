@@ -1,11 +1,11 @@
 <idea-plugin>
     <id>org.taigaui.designtokens</id>
-    <name>Taiga UI Design Tokens</name>
+    <name>Taiga UI Companion</name>
     <vendor url="https://github.com/splincode">splincode</vendor>
 
     <description><![CDATA[
         <p>
-            <strong>Taiga UI Design Tokens</strong> is a community-maintained WebStorm plugin for developers working with Taiga UI.
+            <strong>Taiga UI Companion</strong> is a community-maintained WebStorm plugin for developers working with Taiga UI.
             It brings project-aware design tokens, icons, CSS units, and event-plugin tooling directly into the editor.
         </p>
 
