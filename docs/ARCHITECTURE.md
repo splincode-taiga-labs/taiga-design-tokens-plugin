@@ -175,7 +175,7 @@ Installed project packages are the source of truth for:
 
 Official documentation can enrich that local truth with descriptions, examples, API explanations, documentation links, and migration guidance. Remote documentation must never make a missing local API appear available or authorize a destructive/source-changing fix by itself.
 
-The docs snapshot therefore filters parsed entities against packages installed in the resolved local package scope. Future editor integrations should additionally intersect documented symbols/properties with local declarations when presenting API availability.
+The docs snapshot therefore filters parsed entities against packages installed in the resolved local package scope and excludes entities introduced after the locally installed Taiga UI version. Future editor integrations should additionally intersect documented symbols/properties with local declarations when presenting API availability.
 
 ### Loading and cache lifecycle
 
