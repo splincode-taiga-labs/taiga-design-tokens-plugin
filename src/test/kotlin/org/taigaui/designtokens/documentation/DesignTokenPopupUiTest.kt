@@ -29,16 +29,50 @@ class DesignTokenPopupUiTest : BasePlatformTestCase() {
 
         panel.showLoading("--tui-text-primary")
 
-        assertTrue(panel.allComponents().any { component -> componentText(component) == "--tui-text-primary" })
-        assertTrue(panel.allComponents().any { component -> componentText(component) == "Loading design token graph…" })
+        assertTrue(
+            panel
+                .allComponents()
+                .any { component ->
+                    componentText(component) == "--tui-text-primary"
+                },
+        )
+        assertTrue(
+            panel
+                .allComponents()
+                .any { component ->
+                    componentText(component) == "Loading design token graph…"
+                },
+        )
         assertTrue(preferredSizes.isNotEmpty())
 
         panel.showModel(fullModel())
 
-        assertTrue(panel.allComponents().any { component -> componentText(component) == "Deprecated" })
-        assertTrue(panel.allComponents().any { component -> componentText(component) == "Use --tui-text-secondary instead." })
-        assertTrue(panel.allComponents().any { component -> componentText(component) == "@taiga-ui/design-tokens" })
-        assertTrue(panel.allComponents().any { component -> componentText(component) == "@taiga-ui/proprietary" })
+        assertTrue(
+            panel
+                .allComponents()
+                .any { component -> componentText(component) == "Deprecated" },
+        )
+        assertTrue(
+            panel
+                .allComponents()
+                .any { component ->
+                    componentText(component) == "Use --tui-text-secondary instead."
+                },
+        )
+        assertTrue(
+            panel
+                .allComponents()
+                .any { component ->
+                    componentText(component) == "@taiga-ui/design-tokens"
+                },
+        )
+        assertTrue(
+            panel
+                .allComponents()
+                .any { component ->
+                    componentText(component) == "@taiga-ui/proprietary"
+                },
+        )
 
         val toggle =
             panel
@@ -49,7 +83,11 @@ class DesignTokenPopupUiTest : BasePlatformTestCase() {
         toggle.doClick()
 
         assertTrue(toggle.text.startsWith("▾ Reference chain"))
-        assertTrue(panel.allComponents().any { component -> componentText(component) == "--tui-base" })
+        assertTrue(
+            panel
+                .allComponents()
+                .any { component -> componentText(component) == "--tui-base" },
+        )
 
         val navigateButton =
             panel
