@@ -157,8 +157,8 @@ The current source model is:
 1. detect the nearest installed Taiga UI package scope for the source file;
 2. prefer `@taiga-ui/core` as the project version source and derive the installed major version from local `package.json`;
 3. map supported majors to the official documentation source:
-   - Taiga UI 4 → `https://taiga-ui.dev/v4/llms-full.txt`;
-   - Taiga UI 5 → `https://taiga-ui.dev/llms-full.txt`;
+    - Taiga UI 4 → `https://taiga-ui.dev/v4/llms-full.txt`;
+    - Taiga UI 5 → `https://taiga-ui.dev/llms-full.txt`;
 4. parse the import map and entity sections into an immutable index;
 5. expose lookup by public symbol, selector, and documentation section ID where the source provides enough metadata.
 
