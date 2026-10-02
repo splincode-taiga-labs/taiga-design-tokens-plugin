@@ -19,18 +19,23 @@ internal enum class TaigaDocKind {
             title: String,
             metadataType: String?,
         ): TaigaDocKind =
-            when {
-                title.equals("tokens", ignoreCase = true) -> TOKEN
-                route == "components" || metadataType == "components" -> COMPONENT
-                route == "directives" || metadataType == "directives" -> DIRECTIVE
-                route == "pipes" || metadataType == "pipes" -> PIPE
-                route == "services" || metadataType == "services" -> SERVICE
-                route == "types" || metadataType == "types" -> TYPE
-                route == "tokens" || metadataType == "tokens" -> TOKEN
-                route == "utils" || metadataType?.contains("utils") == true -> UTILITY
-                route == "classes" || metadataType == "classes" -> CLASS
-                else -> UNKNOWN
+            if (title.equals("tokens", ignoreCase = true)) {
+                TOKEN
+            } else {
+                BY_ROUTE[route] ?: metadataType?.let(BY_ROUTE::get) ?: UNKNOWN
             }
+
+        private val BY_ROUTE =
+            mapOf(
+                "components" to COMPONENT,
+                "directives" to DIRECTIVE,
+                "pipes" to PIPE,
+                "services" to SERVICE,
+                "types" to TYPE,
+                "tokens" to TOKEN,
+                "utils" to UTILITY,
+                "classes" to CLASS,
+            )
     }
 }
 
