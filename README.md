@@ -1,5 +1,7 @@
 # Taiga UI Companion
 
+[![codecov](https://codecov.io/gh/splincode-taiga-labs/taiga-ui-jetbrains-plugin/branch/main/graph/badge.svg)](https://codecov.io/gh/splincode-taiga-labs/taiga-ui-jetbrains-plugin)
+
 Community WebStorm plugin that brings project-aware Taiga UI tooling directly into the editor.
 
 ## About the project
