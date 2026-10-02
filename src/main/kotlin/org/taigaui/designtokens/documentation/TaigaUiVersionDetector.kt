@@ -19,12 +19,14 @@ internal class TaigaUiVersionDetector(
     fun detect(sourceFile: Path): TaigaUiProjectContext? {
         val scope = packageLocator.locate(sourceFile) ?: return null
         val candidates =
-            scope.packages.values.sortedWith(
-                compareBy(
-                    { located -> if (located.name == CORE_PACKAGE) 0 else 1 },
-                    { located -> located.name },
-                ),
-            )
+            scope.packages.values
+                .filterNot { located -> located.name in INDEPENDENT_VERSION_PACKAGES }
+                .sortedWith(
+                    compareBy(
+                        { located -> if (located.name == CORE_PACKAGE) 0 else 1 },
+                        { located -> located.name },
+                    ),
+                )
 
         candidates.forEach { located ->
             val version = packageJsonReader.readVersion(located.root.resolve(PACKAGE_JSON)) ?: return@forEach
@@ -52,6 +54,7 @@ internal class TaigaUiVersionDetector(
     private companion object {
         const val CORE_PACKAGE = "@taiga-ui/core"
         const val PACKAGE_JSON = "package.json"
+        val INDEPENDENT_VERSION_PACKAGES = setOf("@taiga-ui/design-tokens")
         val MAJOR_VERSION = Regex("^(\\d+)(?:\\.|-|$)")
     }
 }
