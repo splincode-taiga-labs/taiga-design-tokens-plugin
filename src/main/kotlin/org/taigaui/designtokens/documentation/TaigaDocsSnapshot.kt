@@ -16,5 +16,36 @@ internal class TaigaDocsSnapshot(
         index.findBySectionId(sectionId)?.takeIf(::isAvailableInProject)
 
     private fun isAvailableInProject(entity: TaigaEntityDoc): Boolean =
+        hasInstalledPackage(entity) && wasIntroducedByInstalledVersion(entity)
+
+    private fun hasInstalledPackage(entity: TaigaEntityDoc): Boolean =
         entity.packageNames.isEmpty() || entity.packageNames.any(projectContext.installedPackages::contains)
+
+    private fun wasIntroducedByInstalledVersion(entity: TaigaEntityDoc): Boolean {
+        val introduced = entity.version?.toNumericVersion() ?: return true
+        val installed = projectContext.version.toNumericVersion() ?: return true
+
+        return introduced <= installed
+    }
 }
+
+private data class NumericVersion(
+    val major: Int,
+    val minor: Int,
+    val patch: Int,
+) : Comparable<NumericVersion> {
+    override fun compareTo(other: NumericVersion): Int =
+        compareValuesBy(this, other, NumericVersion::major, NumericVersion::minor, NumericVersion::patch)
+}
+
+private fun String.toNumericVersion(): NumericVersion? {
+    val match = VERSION.find(trim()) ?: return null
+
+    return NumericVersion(
+        major = match.groupValues[1].toIntOrNull() ?: return null,
+        minor = match.groupValues[2].toIntOrNull() ?: 0,
+        patch = match.groupValues[3].toIntOrNull() ?: 0,
+    )
+}
+
+private val VERSION = Regex("^(\\d+)(?:\\.(\\d+))?(?:\\.(\\d+))?")
