@@ -6,11 +6,7 @@
     </a>
     <nav>
       <a href="#features">Features</a>
-      <a
-        href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin"
-        rel="noreferrer"
-        target="_blank"
-      >
+      <a href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin" rel="noreferrer" target="_blank">
         GitHub ↗
       </a>
     </nav>
@@ -80,31 +76,31 @@
         <p class="kicker"><i></i> See it in WebStorm</p>
         <h2>Real editor UI.<br /><em>Real project context.</em></h2>
         <p>
-          Every screenshot below comes from the plugin running in WebStorm. Click any image to open the full
-          1200 × 760 version.
+          Every screenshot below comes from the plugin running in WebStorm. Click any image to open the full 1200 × 760
+          version.
         </p>
       </div>
 
       <div class="feature-grid">
         @for (feature of features; track feature.label; let index = $index) {
-          <article class="feature-card">
-            <a
-              class="feature-shot"
-              [href]="feature.image"
-              target="_blank"
-              rel="noreferrer"
-              [attr.aria-label]="'Open full-size screenshot: ' + feature.label"
-            >
-              <img [src]="feature.image" [alt]="feature.alt" width="1200" height="760" loading="lazy" />
-            </a>
+        <article class="feature-card">
+          <a
+            class="feature-shot"
+            [href]="feature.image"
+            target="_blank"
+            rel="noreferrer"
+            [attr.aria-label]="'Open full-size screenshot: ' + feature.label"
+          >
+            <img [src]="feature.image" [alt]="feature.alt" width="1200" height="760" loading="lazy" />
+          </a>
 
-            <div class="feature-copy">
-              <p class="count">0{{ index + 1 }} / 0{{ features.length }}</p>
-              <p class="label">{{ feature.label }}</p>
-              <h3>{{ feature.title }}</h3>
-              <p>{{ feature.description }}</p>
-            </div>
-          </article>
+          <div class="feature-copy">
+            <p class="count">0{{ index + 1 }} / 0{{ features.length }}</p>
+            <p class="label">{{ feature.label }}</p>
+            <h3>{{ feature.title }}</h3>
+            <p>{{ feature.description }}</p>
+          </div>
+        </article>
         }
       </div>
     </section>
