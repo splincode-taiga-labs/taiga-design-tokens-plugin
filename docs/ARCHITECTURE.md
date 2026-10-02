@@ -1,6 +1,6 @@
 # Architecture
 
-This document is the architectural contract for the Taiga UI Design Tokens Plugin.
+This document is the architectural contract for the Taiga UI Companion plugin.
 
 Keep `README.md` focused on product capabilities. Changes that introduce a new subsystem, data source, cache boundary, or dependency between architectural layers should update this document in the same pull request.
 
