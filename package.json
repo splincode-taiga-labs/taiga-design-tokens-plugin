@@ -5,7 +5,7 @@
     "description": "NPM fixtures used by integration tests for the Taiga UI Design Tokens plugin.",
     "scripts": {
         "format": "prettier . --write --ignore-unknown",
-        "format:check": "prettier . --check --ignore-unknown"
+        "format:check": "prettier . --write --ignore-unknown && git diff -- demo/src/app/app.html demo/src/app/app.ts && false"
     },
     "devDependencies": {
         "@taiga-ui/design-tokens": "0.310.0",
