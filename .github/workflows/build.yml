@@ -67,7 +67,6 @@ jobs:
                   -Djava.net.useSystemProxies=false
                   --stacktrace
 
-
             - name: Upload coverage to Codecov
               uses: codecov/codecov-action@v5
               with:
