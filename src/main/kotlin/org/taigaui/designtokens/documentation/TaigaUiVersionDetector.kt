@@ -17,31 +17,34 @@ internal class TaigaUiVersionDetector(
     private val packageJsonReader: PackageJsonReader = PackageJsonReader(),
 ) {
     fun detect(sourceFile: Path): TaigaUiProjectContext? {
-        val scope = packageLocator.locate(sourceFile) ?: return null
+        val scope = packageLocator.locate(sourceFile)
         val candidates =
-            scope.packages.values
-                .filterNot { located -> located.name in INDEPENDENT_VERSION_PACKAGES }
-                .sortedWith(
+            scope
+                ?.packages
+                ?.values
+                ?.filterNot { located -> located.name in INDEPENDENT_VERSION_PACKAGES }
+                ?.sortedWith(
                     compareBy(
                         { located -> if (located.name == CORE_PACKAGE) 0 else 1 },
                         { located -> located.name },
                     ),
-                )
+                ).orEmpty()
 
-        candidates.forEach { located ->
-            val version = packageJsonReader.readVersion(located.root.resolve(PACKAGE_JSON)) ?: return@forEach
-            val majorVersion = parseMajor(version) ?: return@forEach
-
-            return TaigaUiProjectContext(
-                version = version,
-                majorVersion = majorVersion,
-                versionSourcePackage = located.name,
-                installedPackages = scope.packages.keys.toSortedSet(),
-                packageScopeIdentity = scope.identity,
-            )
+        return candidates.firstNotNullOfOrNull { located ->
+            packageJsonReader
+                .readVersion(located.root.resolve(PACKAGE_JSON))
+                ?.let { version ->
+                    parseMajor(version)?.let { majorVersion ->
+                        TaigaUiProjectContext(
+                            version = version,
+                            majorVersion = majorVersion,
+                            versionSourcePackage = located.name,
+                            installedPackages = requireNotNull(scope).packages.keys.toSortedSet(),
+                            packageScopeIdentity = scope.identity,
+                        )
+                    }
+                }
         }
-
-        return null
     }
 
     private fun parseMajor(version: String): Int? =
