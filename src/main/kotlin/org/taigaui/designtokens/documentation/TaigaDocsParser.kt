@@ -146,31 +146,37 @@ internal class TaigaDocsParser {
     private fun parseExample(body: List<String>): TaigaExample? {
         val heading = body.indexOfFirst { it.trim() == EXAMPLE_HEADING }
         val fence =
-            body.indices
-                .drop(heading + 1)
-                .firstOrNull { body[it].trim().startsWith(CODE_FENCE) }
-                ?: return null
-
-        if (heading < 0 || body.subList(heading + 1, fence).any { it.startsWith("### ") }) {
-            return null
-        }
-
+            heading
+                .takeIf { it >= 0 }
+                ?.let { start ->
+                    body.indices
+                        .drop(start + 1)
+                        .firstOrNull { body[it].trim().startsWith(CODE_FENCE) }
+                }?.takeIf { start ->
+                    body.subList(heading + 1, start).none { it.startsWith("### ") }
+                }
         val end =
-            ((fence + 1) until body.size)
-                .firstOrNull { body[it].trim().startsWith(CODE_FENCE) }
-                ?: return null
+            fence?.let { start ->
+                ((start + 1) until body.size)
+                    .firstOrNull { body[it].trim().startsWith(CODE_FENCE) }
+            }
         val code =
-            body
-                .subList(fence + 1, end)
-                .joinToString("\n")
-                .trimEnd()
-                .takeIf(String::isNotBlank)
-                ?: return null
+            if (fence != null && end != null) {
+                body
+                    .subList(fence + 1, end)
+                    .joinToString("\n")
+                    .trimEnd()
+                    .takeIf(String::isNotBlank)
+            } else {
+                null
+            }
 
-        return TaigaExample(
-            language = body[fence].trim().removePrefix(CODE_FENCE).trim().ifEmpty { null },
-            code = code,
-        )
+        return code?.let {
+            TaigaExample(
+                language = body.getValue(fence).trim().removePrefix(CODE_FENCE).trim().ifEmpty { null },
+                code = it,
+            )
+        }
     }
 
     private fun parseApiTable(
