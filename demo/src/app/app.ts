@@ -34,7 +34,8 @@ export class App {
     {
       label: 'Icon autocomplete',
       title: 'Native completion with a visual preview',
-      description:\n        'Browse the icon catalog from the project and preview the currently selected icon without leaving code.',
+      description:
+        'Browse the icon catalog from the project and preview the currently selected icon without leaving code.',
       image: 'screens/icon-autocomplete.webp',
       alt: 'WebStorm autocomplete for Taiga UI icons with a visual preview',
     },
@@ -55,14 +56,16 @@ export class App {
     {
       label: 'Event plugin completions',
       title: 'Discover ng-event-plugins modifiers from code',
-      description:\n        'Complete modifiers such as capture, once, prevent, throttle, and zoneless with contextual documentation.',
+      description:
+        'Complete modifiers such as capture, once, prevent, throttle, and zoneless with contextual documentation.',
       image: 'screens/event-plugin-completions.webp',
       alt: 'WebStorm autocomplete for ng-event-plugins modifiers with documentation',
     },
     {
       label: 'Longtap completion',
       title: 'Advanced event plugins are one completion away',
-      description:\n        'Host bindings get contextual Taiga UI event-plugin suggestions such as longtap and their descriptions.',
+      description:
+        'Host bindings get contextual Taiga UI event-plugin suggestions such as longtap and their descriptions.',
       image: 'screens/longtap-completion.webp',
       alt: 'WebStorm host binding autocomplete for the longtap Taiga UI event plugin',
     },
