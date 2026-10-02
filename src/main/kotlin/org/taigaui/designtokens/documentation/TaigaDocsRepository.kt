@@ -43,15 +43,19 @@ internal class TaigaDocsRepository(
             }
 
     fun loadFresh(source: TaigaDocsSource): TaigaDocsLoadResult? {
-        val content = fetcher.fetch(source)?.takeIf(String::isNotBlank) ?: return null
-        val index = parser.parse(source, content) ?: return null
+        val content = fetcher.fetch(source)?.takeIf(String::isNotBlank)
+        val index = content?.let { parser.parse(source, it) }
 
-        cache.write(source, content)
+        if (content != null && index != null) {
+            cache.write(source, content)
+        }
 
-        return TaigaDocsLoadResult(
-            index = index,
-            origin = TaigaDocsLoadOrigin.REMOTE,
-        )
+        return index?.let {
+            TaigaDocsLoadResult(
+                index = it,
+                origin = TaigaDocsLoadOrigin.REMOTE,
+            )
+        }
     }
 
     fun invalidate(source: TaigaDocsSource): Boolean = cache.invalidate(source)
