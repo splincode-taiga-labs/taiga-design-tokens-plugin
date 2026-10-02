@@ -8,6 +8,7 @@ on:
 
 permissions:
     contents: read
+    id-token: write
 
 concurrency:
     group: build-${{ github.workflow }}-${{ github.ref }}
@@ -65,6 +66,16 @@ jobs:
                   verifyPluginProjectConfiguration
                   -Djava.net.useSystemProxies=false
                   --stacktrace
+
+            - name: Upload coverage to Codecov
+              uses: codecov/codecov-action@v5
+              with:
+                  use_oidc: true
+                  files: ./build/reports/jacoco/test/jacocoTestReport.xml
+                  disable_search: true
+                  flags: unit
+                  name: unit-tests
+                  fail_ci_if_error: true
 
             - name: Verify packaged plugin icons
               run: bash scripts/verify-plugin-icons.sh
