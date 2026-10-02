@@ -3,6 +3,8 @@
 build/
 out/
 node_modules/
+demo/.angular/
+demo/dist/
 *.iml
 
 .DS_Store

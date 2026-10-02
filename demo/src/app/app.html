@@ -1,102 +1,124 @@
-<div class="page">
-  <header class="topbar">
+<div class="page" id="top">
+  <a class="skip-link" href="#features">Skip to features</a>
+
+  <header class="topbar container">
     <a class="brand" href="#top" aria-label="Taiga UI Design Tokens home">
-      <span class="brand-mark">T</span>
-      <span><strong>Taiga UI</strong><small>Design Tokens for WebStorm</small></span>
+      <img src="plugin-icon.svg" width="40" height="40" alt="" />
+      <span><strong>Taiga UI Design Tokens</strong><small>Community plugin for WebStorm</small></span>
     </a>
-    <nav>
+    <nav aria-label="Main navigation">
       <a href="#features">Features</a>
-      <a href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin" rel="noreferrer" target="_blank">
-        GitHub ↗
-      </a>
+      <a href="#how-it-works">How it works</a>
+      <a class="nav-source" [href]="repositoryUrl" target="_blank" rel="noreferrer"
+        >GitHub <span aria-hidden="true">↗</span></a
+      >
     </nav>
   </header>
 
-  <main id="top">
-    <section class="hero">
+  <main>
+    <section class="hero container" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="kicker"><i></i> Community WebStorm plugin · Taiga UI</p>
-        <h1>Taiga UI tooling.<br /><em>Native to your IDE.</em></h1>
-        <p class="lead">
-          Project-aware design tokens, icon previews, CSS hints, and event-plugin completions — directly in WebStorm.
+        <p class="eyebrow">
+          <span class="status-dot" aria-hidden="true"></span> Made for WebStorm. Built for Taiga UI.
         </p>
-
-        <div class="install-row">
-          <div class="marketplace-install">
-            <span class="install-label">Install from JetBrains Marketplace</span>
-            <iframe
-              width="245"
-              height="48"
-              src="https://plugins.jetbrains.com/embeddable/install/34582"
-              title="Install Taiga UI Design Tokens from JetBrains Marketplace"
-            ></iframe>
-          </div>
-
-          <a
-            class="button secondary"
-            href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin"
-            rel="noreferrer"
-            target="_blank"
-          >
-            View source ↗
+        <h1 id="hero-title">Your design system.<br /><em>In your editor.</em></h1>
+        <p class="lead">
+          Design tokens, icon previews, CSS hints, and helpful completions. Right where you write code.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" [href]="marketplaceUrl" target="_blank" rel="noreferrer">
+            Get the plugin <span aria-hidden="true">↗</span>
           </a>
+          <a class="text-link" href="#features">See it in action <span aria-hidden="true">↓</span></a>
         </div>
-
-        <div class="chips">
-          <span>CSS · Less · SCSS</span>
-          <span>Angular templates</span>
-          <span>Project-aware</span>
-          <span>WebStorm</span>
+        <p class="hero-note">Open source · Project-aware · WebStorm 2025.3–2026.2</p>
+        <div class="language-tags" aria-label="Supported languages">
+          <span>CSS</span><span>Less</span><span>SCSS</span><span>Angular</span><span>TypeScript</span>
         </div>
       </div>
 
-      <div class="hero-shot">
-        <div class="glow"></div>
-        <div class="ide-window">
-          <div class="window-bar"><span>WebStorm · editor</span><b>● Plugin active</b></div>
+      <figure class="hero-preview">
+        <div class="editor-bar">
+          <span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span>styles.less</span>
+          <span class="editor-label">WebStorm</span>
+        </div>
+        <button
+          class="screenshot-button hero-image"
+          type="button"
+          (click)="openPreview(features[0]!)"
+          aria-label="Enlarge design token preview screenshot"
+        >
           <img
             src="screens/design-token-preview.webp"
             width="1200"
             height="760"
-            alt="Taiga UI design token hover preview in WebStorm"
+            fetchpriority="high"
+            alt="WebStorm showing resolved Taiga UI token values for every theme and platform"
           />
-        </div>
+          <span class="zoom-label"><span aria-hidden="true">⤢</span> View screenshot</span>
+        </button>
+        <figcaption><span class="status-dot" aria-hidden="true"></span> One hover. The whole picture.</figcaption>
+      </figure>
+    </section>
+
+    <div class="capabilities container" aria-label="Plugin capabilities">
+      <div>
+        <span class="capability-index">01</span><strong>Design tokens</strong>
+        <p>Values, themes & reference chains</p>
       </div>
-    </section>
+      <div>
+        <span class="capability-index">02</span><strong>Icon previews</strong>
+        <p>See what you are selecting</p>
+      </div>
+      <div>
+        <span class="capability-index">03</span><strong>CSS unit hints</strong>
+        <p>rem → px, right in your code</p>
+      </div>
+      <div>
+        <span class="capability-index">04</span><strong>Event completions</strong>
+        <p>Helpful modifiers as you type</p>
+      </div>
+    </div>
 
-    <section class="capabilities" aria-label="Capabilities">
-      <span><b>01</b> Token previews</span>
-      <span><b>02</b> Icon completion</span>
-      <span><b>03</b> rem → px hints</span>
-      <span><b>04</b> Event plugins</span>
-    </section>
-
-    <section id="features" class="features">
-      <div class="section-copy">
-        <p class="kicker"><i></i> See it in WebStorm</p>
-        <h2>Real editor UI.<br /><em>Real project context.</em></h2>
-        <p>
-          Every screenshot below comes from the plugin running in WebStorm. Click any image to open the full 1200 × 760
-          version.
+    <section class="features container" id="features" aria-labelledby="features-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">A closer look</p>
+          <h2 id="features-title">Small details.<br />A smoother workflow.</h2>
+        </div>
+        <p class="section-description">
+          Real screenshots from WebStorm. Explore the features, then open any image for a closer look.
         </p>
       </div>
 
-      <div class="feature-grid">
-        @for (feature of features; track feature.label; let index = $index) {
-        <article class="feature-card">
-          <a
-            class="feature-shot"
-            [href]="feature.image"
-            target="_blank"
-            rel="noreferrer"
-            [attr.aria-label]="'Open full-size screenshot: ' + feature.label"
-          >
-            <img [src]="feature.image" [alt]="feature.alt" width="1200" height="760" loading="lazy" />
-          </a>
+      <div class="filters" role="group" aria-label="Filter screenshots by feature">
+        @for (filter of categories; track filter) {
+        <button
+          type="button"
+          [class.active]="category() === filter"
+          [attr.aria-pressed]="category() === filter"
+          (click)="category.set(filter)"
+        >
+          {{ filter }} @if (filter === 'All features') { <span class="filter-count">{{ features.length }}</span> }
+        </button>
+        }
+      </div>
 
+      <div class="feature-grid" aria-live="polite" aria-atomic="false">
+        @for (feature of visibleFeatures(); track feature.image) {
+        <article class="feature-card">
+          <button
+            class="screenshot-button feature-shot"
+            type="button"
+            (click)="openPreview(feature)"
+            [attr.aria-label]="'Enlarge screenshot: ' + feature.label"
+          >
+            <img [src]="feature.image" [alt]="feature.alt" width="1200" height="760" loading="lazy" decoding="async" />
+            <span class="zoom-label"><span aria-hidden="true">⤢</span> View screenshot</span>
+          </button>
           <div class="feature-copy">
-            <p class="count">0{{ index + 1 }} / 0{{ features.length }}</p>
-            <p class="label">{{ feature.label }}</p>
+            <p class="feature-label">{{ feature.label }}</p>
             <h3>{{ feature.title }}</h3>
             <p>{{ feature.description }}</p>
           </div>
@@ -105,28 +127,60 @@
       </div>
     </section>
 
-    <section class="project-aware">
-      <div>
-        <p class="kicker"><i></i> Built for real projects</p>
-        <h2>Your version.<br />Your tokens.<br /><em>Your project.</em></h2>
+    <section class="project-section container" id="how-it-works" aria-labelledby="project-title">
+      <div class="project-copy">
+        <p class="eyebrow">Your code comes first</p>
+        <h2 id="project-title">Your project is<br />the source of truth.</h2>
+        <p>
+          The plugin reads your installed packages and project styles. Suggestions match the Taiga UI version you
+          actually use.
+        </p>
+        <ul>
+          <li>Installed token and icon catalogs</li>
+          <li>Local overrides alongside package values</li>
+          <li>Project context, including monorepos</li>
+        </ul>
       </div>
-      <div class="terminal">
-        <code>project/node_modules</code>
-        <p><span>@taiga-ui/design-tokens</span><i></i><b>Preview</b></p>
-        <p><span>@taiga-ui/icons</span><i></i><b>Completion</b></p>
-        <p><span>@taiga-ui/event-plugins</span><i></i><b>Completion</b></p>
-        <p><span>project styles</span><i></i><b>Overrides</b></p>
-        <small>No frozen catalog: the plugin discovers packages and styles reachable from the current project.</small>
+      <div class="project-files" aria-label="Plugin data sources">
+        <div class="project-files-heading"><span class="folder-symbol" aria-hidden="true">⌁</span> Your project</div>
+        <div class="file-row">
+          <span class="file-symbol" aria-hidden="true">&#123; &#125;</span>
+          <div><code>&#64;taiga-ui/design-tokens</code><small>Resolved values & themes</small></div>
+          <span class="file-tag">Tokens</span>
+        </div>
+        <div class="file-row">
+          <span class="file-symbol" aria-hidden="true">◇</span>
+          <div><code>&#64;taiga-ui/icons</code><small>Completion & visual previews</small></div>
+          <span class="file-tag">Icons</span>
+        </div>
+        <div class="file-row">
+          <span class="file-symbol" aria-hidden="true">#</span>
+          <div><code>Your stylesheets</code><small>Reachable CSS, Less & SCSS overrides</small></div>
+          <span class="file-tag">Local</span>
+        </div>
+        <div class="project-files-footer">
+          <span class="status-dot" aria-hidden="true"></span> Discovered from your project.
+        </div>
       </div>
     </section>
 
-    <section class="cta">
+    <section class="install-section container" id="install" aria-labelledby="install-title">
       <div>
-        <p class="kicker"><i></i> Open source · Community maintained</p>
-        <h2>Make Taiga UI feel <em>built into WebStorm.</em></h2>
+        <p class="eyebrow">A small upgrade to your everyday</p>
+        <h2 id="install-title">Meet your new editor companion.</h2>
+        <p>
+          Find <strong>Taiga UI Design Tokens</strong> in WebStorm:<br /><span class="settings-path"
+            >Settings → Plugins → Marketplace</span
+          >
+        </p>
+        <a class="text-link" [href]="repositoryUrl" target="_blank" rel="noreferrer"
+          >Explore the source on GitHub <span aria-hidden="true">↗</span></a
+        >
       </div>
-
-      <div class="cta-actions">
+      <div class="marketplace-install">
+        <img src="plugin-icon.svg" width="72" height="72" alt="Taiga UI Design Tokens plugin logo" loading="lazy" />
+        <strong>Taiga UI Design Tokens</strong>
+        <span>Available on JetBrains Marketplace</span>
         <iframe
           width="245"
           height="48"
@@ -134,17 +188,50 @@
           title="Install Taiga UI Design Tokens from JetBrains Marketplace"
           loading="lazy"
         ></iframe>
-        <a
-          class="button light"
-          href="https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin"
-          rel="noreferrer"
-          target="_blank"
+        <a [href]="marketplaceUrl" target="_blank" rel="noreferrer"
+          >Open Marketplace <span aria-hidden="true">↗</span></a
         >
-          Explore on GitHub ↗
-        </a>
       </div>
     </section>
   </main>
 
-  <footer><span>Taiga UI Design Tokens</span><span>Independent community plugin</span></footer>
+  <footer class="container">
+    <div class="footer-brand">
+      <img src="plugin-icon.svg" width="28" height="28" alt="" /><span
+        >Built by <a href="https://github.com/splincode" target="_blank" rel="noreferrer">splincode</a>.</span
+      >
+    </div>
+    <p>An independent community plugin. Not an official Taiga UI or T-Bank product.</p>
+    <a [href]="repositoryUrl" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+  </footer>
 </div>
+
+<dialog
+  #previewDialog
+  class="preview-dialog"
+  aria-labelledby="preview-title"
+  (click)="closeOnBackdrop($event)"
+  (close)="selectedFeature.set(null)"
+  (keydown.arrowleft)="movePreview(-1, $event)"
+  (keydown.arrowright)="movePreview(1, $event)"
+>
+  <div class="preview-heading">
+    <h2 id="preview-title">{{ selectedFeature()?.label ?? 'Screenshot preview' }}</h2>
+    <button class="icon-button" type="button" aria-label="Close screenshot preview" (click)="closePreview()" autofocus>
+      ×
+    </button>
+  </div>
+  @if (selectedFeature(); as feature) {
+  <img class="preview-image" [src]="feature.image" [alt]="feature.alt" width="1200" height="760" />
+  <div class="preview-footer">
+    <div class="preview-navigation">
+      <button class="icon-button" type="button" aria-label="Previous screenshot" (click)="movePreview(-1)">←</button>
+      <span aria-live="polite">{{ selectedIndex() + 1 }} / {{ features.length }}</span>
+      <button class="icon-button" type="button" aria-label="Next screenshot" (click)="movePreview(1)">→</button>
+    </div>
+    <a [href]="feature.image" target="_blank" rel="noreferrer"
+      >Open original <span class="original-size">· 1200 × 760</span> ↗</a
+    >
+  </div>
+  }
+</dialog>

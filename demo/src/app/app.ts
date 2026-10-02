@@ -1,6 +1,9 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, signal, viewChild } from '@angular/core';
+
+type Category = 'All features' | 'Design tokens' | 'Icons' | 'CSS hints' | 'Events';
 
 interface Feature {
+  readonly category: Category;
   readonly label: string;
   readonly title: string;
   readonly description: string;
@@ -15,59 +18,113 @@ interface Feature {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
+  protected readonly repositoryUrl = 'https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin';
+  protected readonly marketplaceUrl = 'https://plugins.jetbrains.com/plugin/34582';
+  protected readonly categories: readonly Category[] = [
+    'All features',
+    'Design tokens',
+    'Icons',
+    'CSS hints',
+    'Events',
+  ];
+  protected readonly category = signal<Category>('All features');
+  protected readonly selectedFeature = signal<Feature | null>(null);
+  private readonly previewDialog = viewChild.required<ElementRef<HTMLDialogElement>>('previewDialog');
+
   protected readonly features: readonly Feature[] = [
     {
+      category: 'Design tokens',
       label: 'Design token preview',
-      title: 'Resolved token values for every theme and platform',
-      description:
-        'Inspect effective desktop, mobile, light, and dark values together with color swatches and reference chains.',
+      title: 'One token. Every theme and platform.',
+      description: 'See resolved values, color swatches, and reference chains together in a single hover.',
       image: 'screens/design-token-preview.webp',
-      alt: 'WebStorm popup with resolved Taiga UI design token values for desktop, mobile, light, and dark themes',
+      alt: 'WebStorm hover showing desktop, mobile, light, and dark values of --tui-background-base',
     },
     {
+      category: 'Icons',
       label: 'Icon hover preview',
-      title: 'See the icon before you use it',
-      description: 'Hover a complete @tui icon reference to open a sharp visual preview directly in the editor.',
+      title: 'Know exactly which icon you are using.',
+      description: 'Hover an @tui reference to see the icon right beside your code.',
       image: 'screens/icon-hover-preview.webp',
-      alt: 'WebStorm editor showing a Taiga UI icon hover preview',
+      alt: 'An eye icon preview beside a complete @tui icon reference in WebStorm',
     },
     {
+      category: 'Icons',
       label: 'Icon autocomplete',
-      title: 'Native completion with a visual preview',
-      description:
-        'Browse the icon catalog from the project and preview the currently selected icon without leaving code.',
+      title: 'Find the right icon as you type.',
+      description: 'Browse icons available in your project, with a preview of the selected completion.',
       image: 'screens/icon-autocomplete.webp',
-      alt: 'WebStorm autocomplete for Taiga UI icons with a visual preview',
+      alt: 'WebStorm icon completion in an Angular template with an emoji bank icon preview',
     },
     {
+      category: 'Icons',
       label: 'Fancy icon autocomplete',
-      title: 'Fancy icons are discoverable too',
-      description: 'Explore nested fancy icon names with the same project-aware completion and preview experience.',
+      title: 'Explore the whole icon family.',
+      description: 'Nested icon names and fancy icons get the same native completion and visual previews.',
       image: 'screens/fancy-icon-autocomplete.webp',
-      alt: 'WebStorm autocomplete for Taiga UI fancy icons with a currency icon preview',
+      alt: 'WebStorm completing @tui.fancy icon names with a ruble currency icon preview',
     },
     {
-      label: 'CSS unit hint',
-      title: 'Small CSS calculations stay inline',
-      description: 'Literal rem values get unobtrusive pixel equivalents in CSS and Angular style bindings.',
+      category: 'CSS hints',
+      label: 'CSS unit hints',
+      title: 'Less mental math. More flow.',
+      description: 'See rem values in pixels, inline in stylesheets and Angular style bindings. Based on 1rem = 16px.',
       image: 'screens/css-unit-hint.webp',
-      alt: 'Angular template with an inline 0.25rem to 4px editor hint',
+      alt: 'An Angular style binding showing the inline conversion of 0.25rem to 4px',
     },
     {
+      category: 'Events',
       label: 'Event plugin completions',
-      title: 'Discover ng-event-plugins modifiers from code',
-      description:
-        'Complete modifiers such as capture, once, prevent, throttle, and zoneless with contextual documentation.',
+      title: 'The right modifier, without the lookup.',
+      description: 'Discover ng-event-plugins modifiers and their documentation while writing a template.',
       image: 'screens/event-plugin-completions.webp',
-      alt: 'WebStorm autocomplete for ng-event-plugins modifiers with documentation',
+      alt: 'WebStorm completing capture, once, prevent, and other ng-event-plugins modifiers with documentation',
     },
     {
-      label: 'Longtap completion',
-      title: 'Advanced event plugins are one completion away',
-      description:
-        'Host bindings get contextual Taiga UI event-plugin suggestions such as longtap and their descriptions.',
+      category: 'Events',
+      label: 'Host binding completions',
+      title: 'Helpful in your component, too.',
+      description: 'Get contextual Taiga UI event suggestions, including longtap, inside TypeScript host bindings.',
       image: 'screens/longtap-completion.webp',
-      alt: 'WebStorm host binding autocomplete for the longtap Taiga UI event plugin',
+      alt: 'WebStorm suggesting the longtap event with its description inside Angular component host metadata',
     },
   ];
+
+  protected readonly visibleFeatures = computed(() =>
+    this.features.filter((feature) => this.category() === 'All features' || feature.category === this.category()),
+  );
+  protected readonly selectedIndex = computed(() => {
+    const selected = this.selectedFeature();
+    return selected ? this.features.indexOf(selected) : -1;
+  });
+
+  protected openPreview(feature: Feature): void {
+    this.selectedFeature.set(feature);
+    this.previewDialog().nativeElement.showModal();
+  }
+
+  protected closePreview(): void {
+    this.previewDialog().nativeElement.close();
+  }
+
+  protected movePreview(direction: number, event?: Event): void {
+    event?.preventDefault();
+    const index = (this.selectedIndex() + direction + this.features.length) % this.features.length;
+    this.selectedFeature.set(this.features[index] ?? null);
+  }
+
+  protected closeOnBackdrop(event: MouseEvent): void {
+    const dialog = this.previewDialog().nativeElement;
+    const bounds = dialog.getBoundingClientRect();
+
+    if (
+      event.target === dialog &&
+      (event.clientX < bounds.left ||
+        event.clientX > bounds.right ||
+        event.clientY < bounds.top ||
+        event.clientY > bounds.bottom)
+    ) {
+      this.closePreview();
+    }
+  }
 }

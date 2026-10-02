@@ -10,7 +10,7 @@ The project aims to make the information that already exists in a Taiga UI codeb
 
 This project is **not an official Taiga UI or T-Bank product**. Contributions, bug reports, and ideas are welcome through GitHub issues and pull requests.
 
-**[Live Angular demo](https://taiga-family-labs.github.io/taiga-design-tokens-plugin/)**
+**[Live Angular demo](https://splincode-taiga-labs.github.io/taiga-design-tokens-plugin/)**
 
 The plugin reads the Taiga UI packages installed in the current project, so completion and previews match the version the project actually uses.
 
