@@ -18,19 +18,19 @@ internal class TaigaDocsService(
     private val indexStore = TaigaDocsIndexStore(coroutineScope)
 
     suspend fun snapshotFor(sourceFile: Path): TaigaDocsSnapshot? {
-        val context = detectContext(sourceFile) ?: return null
-        val source = TaigaDocsSources.forMajor(context.majorVersion) ?: return null
-        val index = indexStore.indexFor(source) ?: return null
+        val context = detectContext(sourceFile)
+        val source = context?.let { TaigaDocsSources.forMajor(it.majorVersion) }
+        val index = source?.let { indexStore.indexFor(it) }
 
-        return TaigaDocsSnapshot(context, index)
+        return if (context != null && index != null) TaigaDocsSnapshot(context, index) else null
     }
 
     suspend fun refresh(sourceFile: Path): TaigaDocsSnapshot? {
-        val context = detectContext(sourceFile) ?: return null
-        val source = TaigaDocsSources.forMajor(context.majorVersion) ?: return null
-        val index = indexStore.refresh(source) ?: return null
+        val context = detectContext(sourceFile)
+        val source = context?.let { TaigaDocsSources.forMajor(it.majorVersion) }
+        val index = source?.let { indexStore.refresh(it) }
 
-        return TaigaDocsSnapshot(context, index)
+        return if (context != null && index != null) TaigaDocsSnapshot(context, index) else null
     }
 
     fun warmUp(sourceFile: Path) {
