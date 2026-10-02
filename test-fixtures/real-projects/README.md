@@ -1,6 +1,6 @@
 # Real-project validation fixtures
 
-These checked-in projects are release-validation fixtures for [#51](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/51). JVM integration tests exercise their real `angular.json`, Nx `project.json`, stylesheet graph, project overrides, deprecation metadata, and package-context isolation. The same projects can also be opened in the sandbox WebStorm for manual editor validation.
+These checked-in projects are release-validation fixtures for [#51](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/51). JVM integration tests exercise their real `angular.json`, Nx `project.json`, stylesheet graph, project overrides, deprecation metadata, and package-context isolation. The same projects can also be opened in the sandbox WebStorm for manual editor validation.
 
 ## Matrix
 

@@ -527,4 +527,4 @@ private const val MIN_POPUP_WIDTH = 460
 private const val MAX_SCREEN_WIDTH_RATIO = 0.72
 private const val CURSOR_X_INSET = 16
 private const val REPORT_BUG_URL =
-    "https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/new?labels=bug"
+    "https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/new?labels=bug"

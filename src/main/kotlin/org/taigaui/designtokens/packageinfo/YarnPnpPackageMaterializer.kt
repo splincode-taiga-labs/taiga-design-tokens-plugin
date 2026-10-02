@@ -17,7 +17,7 @@ internal class YarnPnpPackageMaterializer(
     private val cacheRoot: Path =
         Path.of(
             System.getProperty("java.io.tmpdir"),
-            "taiga-design-tokens-plugin",
+            "taiga-ui-jetbrains-plugin",
             "yarn-pnp-packages",
             ProcessHandle.current().pid().toString(),
         ),

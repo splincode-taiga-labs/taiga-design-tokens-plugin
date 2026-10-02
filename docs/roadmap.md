@@ -1,6 +1,92 @@
-# Implementation roadmap
+# Taiga UI Companion roadmap
 
-The plugin is developed in small reviewable stages. Each production change should leave the project in a buildable state and pass the relevant tests, ktlint, detekt, plugin structure checks, and CI.
+Taiga UI Companion is developed in small, reviewable increments. Completed stages are kept here as historical milestones; active implementation details and acceptance criteria live in GitHub issues and epics.
+
+Each production change should leave the project in a buildable state and pass the relevant tests, ktlint, detekt, plugin structure checks, and CI.
+
+## Current roadmap
+
+### Release follow-up
+
+The production publishing pipeline is already in place and production releases have shipped through **v0.1.3**.
+
+[#54 — Prepare the first production-ready plugin release](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/54) remains open only for final release follow-up:
+
+- [x] signing and Marketplace publishing are implemented via [#53](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/53);
+- [x] production release notes/changelog follow-up is completed by [#79](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/pull/79);
+- [x] production releases are published, latest: [v0.1.3](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/releases/tag/v0.1.3);
+- [ ] install the Marketplace-delivered artifact on a supported IDE and smoke-test the core token/icon workflows.
+
+### Stage 8 — Taiga UI Companion
+
+Status: planned / in progress.
+
+The current product roadmap is tracked by [#109 — Taiga UI Developer Companion for WebStorm](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/109).
+
+The main direction is to grow from design-token tooling into a broader project-aware Taiga UI companion while keeping installed project packages as the source of truth.
+
+#### Phase 1 — Documentation foundation
+
+- [ ] [#99 — Version-aware Taiga UI documentation index](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/99)
+
+Build a structured, cached, version-aware documentation index using official Taiga UI documentation as enrichment while keeping installed packages authoritative for actual API availability.
+
+#### Phase 2 — Documentation inside the editor
+
+- [ ] [#100 — Taiga UI component docs in Quick Documentation](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/100)
+- [ ] [#101 — Documentation for Taiga UI inputs and outputs](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/101)
+- [ ] [#102 — Taiga UI Search Everywhere contributor](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/102)
+
+Prefer native IntelliJ/WebStorm surfaces such as Quick Documentation and Search Everywhere instead of introducing parallel custom UI.
+
+#### Phase 3 — Safer coding assistance
+
+- [ ] [#103 — Inspect incorrect Taiga UI import packages and provide a quick fix](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/103)
+
+Installed `node_modules/@taiga-ui/*` exports remain authoritative for diagnostics and source-changing fixes.
+
+#### Phase 4 — Visual discovery
+
+- [ ] [#104 — Visual Taiga UI icon browser and picker](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/104)
+- [ ] [#105 — Taiga UI design token explorer](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/105)
+- [ ] [#106 — Suggest Taiga UI design tokens for literal CSS values](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/106)
+
+These features should reuse the existing icon catalog, token index, resolver, source navigation, and project-aware precedence instead of creating duplicate discovery pipelines.
+
+#### Phase 5 — Project-level workflows
+
+- [ ] [#107 — Taiga UI project doctor](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/107)
+- [ ] [#108 — Taiga UI migration assistant for remaining v4 → v5 issues](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/108)
+
+Project Doctor should establish reusable project-level diagnostics. Migration Assistant can then build on those diagnostics plus official migration documentation.
+
+#### Recommended implementation order
+
+```text
+#99   Documentation index
+ ↓
+#100  Component Quick Documentation
+ ↓
+#101  Inputs / Outputs documentation
+ ↓
+#102  Search Everywhere
+ ↓
+#103  Import inspection + quick fix
+ ↓
+#104  Icon Browser
+ ↓
+#105  Token Explorer
+ ↓
+#106  CSS value → Taiga token
+ ↓
+#107  Project Doctor
+ ↓
+#108  Migration Assistant
+```
+
+The detailed dependency map, architecture principles, and Definition of Done are maintained in [Epic #109](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/109) to avoid duplicating implementation-level requirements here.
+
+## Completed milestones
 
 ## Stage 1 — Project scaffold
 
@@ -127,7 +213,7 @@ Implemented:
 - Offer `Replace with ...` only when metadata names one explicit, unambiguous replacement.
 - Let project-defined overrides suppress package-level deprecation for the effective local token.
 - Keep deprecation state context-aware for monorepos with different installed Taiga UI versions.
-- Implemented and verified by [#47](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/47) / [#55](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/pull/55).
+- Implemented and verified by [#47](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/47) / [#55](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/pull/55).
 
 ### Icon completion and preview
 
@@ -152,7 +238,7 @@ Implemented:
 - Support Taiga UI event-plugin modifiers in Angular templates through versioned Web Types.
 - Support native events, global targets, Taiga modifiers, validation, hover documentation, and TypeScript `host` metadata.
 - Keep TypeScript host auto-completion responsive with debounced completion startup.
-- Implemented by [#31](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/31) / [#56](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/pull/56).
+- Implemented by [#31](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/31) / [#56](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/pull/56).
 
 ### Plugin settings
 
@@ -161,13 +247,13 @@ Implemented:
 - Allow the design-token hover popup to be enabled or disabled.
 - Keep both editor features enabled by default.
 - Apply presentation changes without changing token resolution semantics.
-- Tracked by [#49](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
+- Tracked by [#49](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/49).
 
 ## Stage 6 — Performance and architecture hardening
 
 Status: implemented.
 
-Tracked and completed by [#18](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/18).
+Tracked and completed by [#18](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/18).
 
 Implemented:
 
@@ -187,33 +273,17 @@ Acceptance goals from #18 are covered by the merged implementation and CI regres
 
 ## Stage 7 — Release and production hardening
 
-Status: in progress.
+Status: production release shipped; final manual follow-up remains in #54.
 
-Tracked by:
+Completed:
 
-- [x] [#50 — Define supported IDE matrix and add Plugin Verifier CI](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/50).
-- [x] [#51 — Validate packaged plugin against real Angular and Nx projects](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/51).
-- [x] [#52 — Audit editor popups, previews and inlay hints for accessibility](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/52).
-- [ ] [#53 — Add plugin signing and JetBrains Marketplace publishing](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/53).
-- [ ] [#54 — Prepare the first production-ready plugin release](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/54).
+- [x] [#50 — Define supported IDE matrix and add Plugin Verifier CI](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/50).
+- [x] [#51 — Validate packaged plugin against real Angular and Nx projects](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/51).
+- [x] [#52 — Audit editor popups, previews and inlay hints for accessibility](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/52).
+- [x] [#53 — Add plugin signing and JetBrains Marketplace publishing](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/53).
+- [x] Production releases published through [v0.1.3](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/releases/tag/v0.1.3).
+- [x] Release notes/changelog follow-up completed by [#79](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/pull/79).
 
-Recommended order:
+Remaining:
 
-1. Define and continuously verify the supported IDE/platform matrix (#50).
-2. Validate the packaged plugin against representative real projects (#51).
-3. Complete the accessibility/focus audit (#52).
-4. Configure signing and controlled Marketplace publishing (#53).
-5. Complete the final release checklist and publish the first production-ready release (#54).
-
-## Current execution order
-
-```text
-#53 signing / Marketplace
-  ↓
-#54 first production-ready release
-```
-
-The supported IDE matrix and Plugin Verifier CI from #50 are implemented and green on `main`.
-Real-project validation from #51 and the accessibility audit from #52 are implemented and covered by CI/manual validation guidance.
-
-The production release should happen only after the signing and publishing pipeline is green.
+- [ ] [#54](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/54) — complete the final Marketplace-delivered artifact smoke test on a supported IDE.

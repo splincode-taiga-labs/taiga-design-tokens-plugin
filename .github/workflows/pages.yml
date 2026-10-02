@@ -37,7 +37,7 @@ jobs:
 
             - name: Build Angular demo
               working-directory: demo
-              run: npm run build -- --base-href /taiga-design-tokens-plugin/
+              run: npm run build -- --base-href /taiga-ui-jetbrains-plugin/
 
             - name: Configure GitHub Pages
               if: github.event_name != 'pull_request'

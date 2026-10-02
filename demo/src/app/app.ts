@@ -18,7 +18,7 @@ interface Feature {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App {
-  protected readonly repositoryUrl = 'https://github.com/splincode-taiga-labs/taiga-design-tokens-plugin';
+  protected readonly repositoryUrl = 'https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin';
   protected readonly marketplaceUrl = 'https://plugins.jetbrains.com/plugin/34582';
   protected readonly categories: readonly Category[] = [
     'All features',
