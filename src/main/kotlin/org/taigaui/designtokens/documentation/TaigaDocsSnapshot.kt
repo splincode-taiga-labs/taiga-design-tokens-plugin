@@ -22,10 +22,10 @@ internal class TaigaDocsSnapshot(
         entity.packageNames.isEmpty() || entity.packageNames.any(projectContext.installedPackages::contains)
 
     private fun wasIntroducedByInstalledVersion(entity: TaigaEntityDoc): Boolean {
-        val introduced = entity.version?.toNumericVersion() ?: return true
-        val installed = projectContext.version.toNumericVersion() ?: return true
+        val introduced = entity.version?.toNumericVersion()
+        val installed = projectContext.version.toNumericVersion()
 
-        return introduced <= installed
+        return introduced == null || installed == null || introduced <= installed
     }
 }
 
@@ -38,14 +38,13 @@ private data class NumericVersion(
         compareValuesBy(this, other, NumericVersion::major, NumericVersion::minor, NumericVersion::patch)
 }
 
-private fun String.toNumericVersion(): NumericVersion? {
-    val match = VERSION.find(trim()) ?: return null
-
-    return NumericVersion(
-        major = match.groupValues[1].toIntOrNull() ?: return null,
-        minor = match.groupValues[2].toIntOrNull() ?: 0,
-        patch = match.groupValues[3].toIntOrNull() ?: 0,
-    )
-}
+private fun String.toNumericVersion(): NumericVersion? =
+    VERSION.find(trim())?.let { match ->
+        NumericVersion(
+            major = match.groupValues[1].toInt(),
+            minor = match.groupValues[2].toIntOrNull() ?: 0,
+            patch = match.groupValues[3].toIntOrNull() ?: 0,
+        )
+    }
 
 private val VERSION = Regex("^(\\d+)(?:\\.(\\d+))?(?:\\.(\\d+))?")
