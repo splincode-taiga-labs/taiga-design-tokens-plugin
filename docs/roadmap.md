@@ -127,7 +127,7 @@ Implemented:
 - Offer `Replace with ...` only when metadata names one explicit, unambiguous replacement.
 - Let project-defined overrides suppress package-level deprecation for the effective local token.
 - Keep deprecation state context-aware for monorepos with different installed Taiga UI versions.
-- Implemented and verified by [#47](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/47) / [#55](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/pull/55).
+- Implemented and verified by [#47](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/47) / [#55](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/pull/55).
 
 ### Icon completion and preview
 
@@ -152,7 +152,7 @@ Implemented:
 - Support Taiga UI event-plugin modifiers in Angular templates through versioned Web Types.
 - Support native events, global targets, Taiga modifiers, validation, hover documentation, and TypeScript `host` metadata.
 - Keep TypeScript host auto-completion responsive with debounced completion startup.
-- Implemented by [#31](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/31) / [#56](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/pull/56).
+- Implemented by [#31](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/31) / [#56](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/pull/56).
 
 ### Plugin settings
 
@@ -161,13 +161,13 @@ Implemented:
 - Allow the design-token hover popup to be enabled or disabled.
 - Keep both editor features enabled by default.
 - Apply presentation changes without changing token resolution semantics.
-- Tracked by [#49](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/49).
+- Tracked by [#49](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/49).
 
 ## Stage 6 — Performance and architecture hardening
 
 Status: implemented.
 
-Tracked and completed by [#18](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/18).
+Tracked and completed by [#18](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/18).
 
 Implemented:
 
@@ -191,11 +191,11 @@ Status: in progress.
 
 Tracked by:
 
-- [x] [#50 — Define supported IDE matrix and add Plugin Verifier CI](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/50).
-- [x] [#51 — Validate packaged plugin against real Angular and Nx projects](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/51).
-- [x] [#52 — Audit editor popups, previews and inlay hints for accessibility](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/52).
-- [ ] [#53 — Add plugin signing and JetBrains Marketplace publishing](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/53).
-- [ ] [#54 — Prepare the first production-ready plugin release](https://github.com/taiga-family-labs/taiga-design-tokens-plugin/issues/54).
+- [x] [#50 — Define supported IDE matrix and add Plugin Verifier CI](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/50).
+- [x] [#51 — Validate packaged plugin against real Angular and Nx projects](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/51).
+- [x] [#52 — Audit editor popups, previews and inlay hints for accessibility](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/52).
+- [ ] [#53 — Add plugin signing and JetBrains Marketplace publishing](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/53).
+- [ ] [#54 — Prepare the first production-ready plugin release](https://github.com/splincode-taiga-labs/taiga-ui-jetbrains-plugin/issues/54).
 
 Recommended order:
 

@@ -27,7 +27,7 @@ internal data class TaigaUiPackageScope(
             Path
                 .of(
                     System.getProperty("java.io.tmpdir"),
-                    "taiga-design-tokens-plugin",
+                    "taiga-ui-jetbrains-plugin",
                     "yarn-pnp-scopes",
                     stablePnpHash(identity + "|" + contentVersion),
                 ).toAbsolutePath()

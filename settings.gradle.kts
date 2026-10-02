@@ -12,4 +12,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "taiga-design-tokens-plugin"
+rootProject.name = "taiga-ui-jetbrains-plugin"
