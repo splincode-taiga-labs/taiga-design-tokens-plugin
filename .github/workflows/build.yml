@@ -67,6 +67,53 @@ jobs:
                   -Djava.net.useSystemProxies=false
                   --stacktrace
 
+            - name: Print JaCoCo coverage diagnostics
+              run: |
+                  python - <<'PY'
+                  import xml.etree.ElementTree as ET
+                  from pathlib import Path
+
+                  report = Path("build/reports/jacoco/test/jacocoTestReport.xml")
+                  root = ET.parse(report).getroot()
+
+                  def counter(node, kind):
+                      item = next(
+                          (c for c in node.findall("counter") if c.attrib["type"] == kind),
+                          None,
+                      )
+                      if item is None:
+                          return 0, 0
+                      return int(item.attrib["missed"]), int(item.attrib["covered"])
+
+                  for kind in ("LINE", "BRANCH", "METHOD", "CLASS"):
+                      missed, covered = counter(root, kind)
+                      total = missed + covered
+                      percent = 100.0 if total == 0 else covered * 100.0 / total
+                      print(
+                          f"COVERAGE {kind}: {percent:.2f}% "
+                          f"(covered={covered}, missed={missed}, total={total})"
+                      )
+
+                  print("MISSED SOURCE LINES:")
+                  missed_files = 0
+                  for package in root.findall("package"):
+                      package_name = package.attrib["name"]
+                      for source in package.findall("sourcefile"):
+                          missed_lines = [
+                              line.attrib["nr"]
+                              for line in source.findall("line")
+                              if int(line.attrib.get("mi", "0")) > 0
+                          ]
+                          if not missed_lines:
+                              continue
+
+                          missed_files += 1
+                          path = f"{package_name}/{source.attrib['name']}"
+                          print(f"{path}: {','.join(missed_lines)}")
+
+                  print(f"MISSED SOURCE FILES: {missed_files}")
+                  PY
+
             - name: Upload coverage to Codecov
               uses: codecov/codecov-action@v5
               with:
