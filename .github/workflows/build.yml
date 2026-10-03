@@ -110,6 +110,32 @@ jobs:
                           github_output.write(f"{key}_covered={covered}\n")
                           github_output.write(f"{key}_missed={missed}\n")
                           github_output.write(f"{key}_total={total}\n")
+
+                  missed_files = []
+                  for package in root.findall("package"):
+                      package_name = package.attrib["name"]
+
+                      for source in package.findall("sourcefile"):
+                          lines = [
+                              line.attrib["nr"]
+                              for line in source.findall("line")
+                              if int(line.attrib.get("mi", "0")) > 0
+                          ]
+
+                          if lines:
+                              missed_files.append(
+                                  (
+                                      len(lines),
+                                      f"{package_name}/{source.attrib['name']}",
+                                      lines,
+                                  ),
+                              )
+
+                  print("TOP MISSED SOURCE FILES:")
+                  for missed, path, lines in sorted(missed_files, reverse=True)[:40]:
+                      print(f"MISSED {missed:4d} {path}: {','.join(lines)}")
+
+                  print(f"MISSED SOURCE FILES: {len(missed_files)}")
                   PY
 
             - name: Publish JaCoCo coverage to pull request
