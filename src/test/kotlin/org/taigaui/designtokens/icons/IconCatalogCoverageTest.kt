@@ -75,7 +75,9 @@ class IconCatalogCoverageTest {
         assertTrue(
             entries.all { entry ->
                 entry.svgSource is IconSvgSource.Remote &&
-                    entry.svgSource.uri.toString().endsWith(".svg")
+                    entry.svgSource.uri
+                        .toString()
+                        .endsWith(".svg")
             },
         )
     }
