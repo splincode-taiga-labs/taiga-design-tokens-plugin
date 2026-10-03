@@ -68,7 +68,13 @@ jobs:
                   -Djava.net.useSystemProxies=false
                   --stacktrace
 
+            - name: Generate JaCoCo report after failed tests
+              if: failure()
+              continue-on-error: true
+              run: ./gradlew jacocoTestReport -x test -Djava.net.useSystemProxies=false --stacktrace
+
             - name: Collect JaCoCo coverage metrics
+              if: always() && hashFiles('build/reports/jacoco/test/jacocoTestReport.xml') != ''
               id: jacoco
               run: |
                   python - <<'PY'
