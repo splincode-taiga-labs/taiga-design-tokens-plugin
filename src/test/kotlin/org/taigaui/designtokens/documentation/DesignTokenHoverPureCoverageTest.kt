@@ -13,7 +13,10 @@ import org.taigaui.designtokens.resolution.DesignTokenColorValue
 import org.taigaui.designtokens.resolution.DesignTokenResolutionNode
 import org.taigaui.designtokens.resolution.DesignTokenUnresolvedReason
 import org.taigaui.designtokens.resolution.DesignTokenValueResolution
+import java.awt.Color
 import java.awt.Point
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 class DesignTokenHoverPureCoverageTest {
     @Test
@@ -25,7 +28,14 @@ class DesignTokenHoverPureCoverageTest {
         assertTrue(DesignTokenReferenceHitTester.contains(start, end, 16, Point(29, 35)))
         assertFalse(DesignTokenReferenceHitTester.contains(start, end, 16, Point(30, 20)))
         assertFalse(DesignTokenReferenceHitTester.contains(start, end, 16, Point(20, 36)))
-        assertFalse(DesignTokenReferenceHitTester.contains(start, Point(30, 21), 16, Point(20, 20)))
+        assertFalse(
+            DesignTokenReferenceHitTester.contains(
+                start,
+                Point(30, 21),
+                16,
+                Point(20, 20),
+            ),
+        )
     }
 
     @Test
@@ -44,9 +54,18 @@ class DesignTokenHoverPureCoverageTest {
         assertEquals("rgba(170, 187, 204, 0.87)", resolvedColor("#abcd", "#abcd").rgbaText())
         assertEquals("rgba(17, 34, 51, 1)", resolvedColor("#112233", "#112233").rgbaText())
         assertEquals("rgba(17, 34, 51, 0.27)", resolvedColor("#11223344", "#11223344").rgbaText())
-        assertEquals("rgba(255, 0, 128, 1)", resolvedColor("rgb(100% 0% 50%)", "not-hex").rgbaText())
-        assertEquals("rgba(255, 0, 128, 0.5)", resolvedColor("rgb(255 0 128 / 50%)", "not-hex").rgbaText())
-        assertEquals("rgba(255, 0, 128, 0.5)", resolvedColor("rgba(255, 0, 128, 0.5)", "not-hex").rgbaText())
+        assertEquals(
+            "rgba(255, 0, 128, 1)",
+            resolvedColor("rgb(100% 0% 50%)", "not-hex").rgbaText(),
+        )
+        assertEquals(
+            "rgba(255, 0, 128, 0.5)",
+            resolvedColor("rgb(255 0 128 / 50%)", "not-hex").rgbaText(),
+        )
+        assertEquals(
+            "rgba(255, 0, 128, 0.5)",
+            resolvedColor("rgba(255, 0, 128, 0.5)", "not-hex").rgbaText(),
+        )
     }
 
     @Test
@@ -55,10 +74,22 @@ class DesignTokenHoverPureCoverageTest {
         assertNull(resolvedColor("rgb(a b c)", "not-hex").toHoverColorOrNull())
         assertNull(resolvedColor("rgb(1 2)", "not-hex").toHoverColorOrNull())
 
-        assertEquals("rgba(255, 0, 255, 1)", resolvedColor("rgb(999 -1 300)", "not-hex").rgbaText())
-        assertEquals("rgba(255, 0, 0, 1)", resolvedColor("rgb(120% -10% 0%)", "not-hex").rgbaText())
-        assertEquals("rgba(1, 2, 3, 0)", resolvedColor("rgba(1, 2, 3, -2)", "not-hex").rgbaText())
-        assertEquals("rgba(1, 2, 3, 1)", resolvedColor("rgba(1, 2, 3, 2)", "not-hex").rgbaText())
+        assertEquals(
+            "rgba(255, 0, 255, 1)",
+            resolvedColor("rgb(999 -1 300)", "not-hex").rgbaText(),
+        )
+        assertEquals(
+            "rgba(255, 0, 0, 1)",
+            resolvedColor("rgb(120% -10% 0%)", "not-hex").rgbaText(),
+        )
+        assertEquals(
+            "rgba(1, 2, 3, 0)",
+            resolvedColor("rgba(1, 2, 3, -2)", "not-hex").rgbaText(),
+        )
+        assertEquals(
+            "rgba(1, 2, 3, 1)",
+            resolvedColor("rgba(1, 2, 3, 2)", "not-hex").rgbaText(),
+        )
     }
 
     @Test
@@ -67,9 +98,15 @@ class DesignTokenHoverPureCoverageTest {
         val rem = DesignTokenValueResolution.Resolved("raw", "1rem")
         val plain = DesignTokenValueResolution.Resolved("raw", "solid")
 
-        assertEquals("rgba(1, 2, 3, 0.5)", rgba.hoverReferenceValueText(java.awt.Color(1, 2, 3, 128)))
+        assertEquals(
+            "rgba(1, 2, 3, 0.5)",
+            rgba.hoverReferenceValueText(Color(1, 2, 3, 128)),
+        )
         assertEquals("1rem, 16px", rem.hoverReferenceValueText(null))
-        assertEquals("solid, rgba(1, 2, 3, 1)", plain.hoverReferenceValueText(java.awt.Color(1, 2, 3)))
+        assertEquals(
+            "solid, rgba(1, 2, 3, 1)",
+            plain.hoverReferenceValueText(Color(1, 2, 3)),
+        )
     }
 
     @Test
@@ -78,11 +115,22 @@ class DesignTokenHoverPureCoverageTest {
 
         assertEquals(
             "Missing reference: --missing",
-            unresolved(DesignTokenUnresolvedReason.MissingReference("--missing", context)).hoverValueText(),
+            unresolved(
+                DesignTokenUnresolvedReason.MissingReference(
+                    "--missing",
+                    context,
+                ),
+            ).hoverValueText(),
         )
         assertEquals(
             "Ambiguous reference: --ambiguous (0 candidates)",
-            unresolved(DesignTokenUnresolvedReason.AmbiguousReference("--ambiguous", context, emptyList())).hoverValueText(),
+            unresolved(
+                DesignTokenUnresolvedReason.AmbiguousReference(
+                    "--ambiguous",
+                    context,
+                    emptyList(),
+                ),
+            ).hoverValueText(),
         )
         assertEquals(
             "Circular reference: --a → --b",
@@ -97,29 +145,57 @@ class DesignTokenHoverPureCoverageTest {
         )
         assertEquals(
             "Invalid expression at offset 3: broken",
-            unresolved(DesignTokenUnresolvedReason.InvalidExpression(3, "broken")).hoverValueText(),
+            unresolved(
+                DesignTokenUnresolvedReason.InvalidExpression(
+                    3,
+                    "broken",
+                ),
+            ).hoverValueText(),
         )
     }
 
     @Test
     fun `platform labels compact compatible context matrices and expand irregular ones`() {
-        fun context(platform: DesignTokenPlatform, theme: DesignTokenTheme) = DesignTokenContext(platform, theme)
+        fun context(
+            platform: DesignTokenPlatform,
+            theme: DesignTokenTheme,
+        ): DesignTokenContext = DesignTokenContext(platform, theme)
 
         assertEquals(
             "🖥️ Desktop · Light ☀️",
-            listOf(context(DesignTokenPlatform.DESKTOP, DesignTokenTheme.LIGHT)).hoverPlatformLabel(),
+            listOf(
+                context(
+                    DesignTokenPlatform.DESKTOP,
+                    DesignTokenTheme.LIGHT,
+                ),
+            ).hoverPlatformLabel(),
         )
         assertEquals(
             "📱 Mobile · Any theme",
-            listOf(context(DesignTokenPlatform.MOBILE, DesignTokenTheme.UNSPECIFIED)).hoverPlatformLabel(),
+            listOf(
+                context(
+                    DesignTokenPlatform.MOBILE,
+                    DesignTokenTheme.UNSPECIFIED,
+                ),
+            ).hoverPlatformLabel(),
         )
         assertEquals(
             "📱 iOS · Dark 🌚",
-            listOf(context(DesignTokenPlatform.IOS, DesignTokenTheme.DARK)).hoverPlatformLabel(),
+            listOf(
+                context(
+                    DesignTokenPlatform.IOS,
+                    DesignTokenTheme.DARK,
+                ),
+            ).hoverPlatformLabel(),
         )
         assertEquals(
             "🤖 Android · Light ☀️",
-            listOf(context(DesignTokenPlatform.ANDROID, DesignTokenTheme.LIGHT)).hoverPlatformLabel(),
+            listOf(
+                context(
+                    DesignTokenPlatform.ANDROID,
+                    DesignTokenTheme.LIGHT,
+                ),
+            ).hoverPlatformLabel(),
         )
         assertEquals(
             "All platforms · Light ☀️ and dark 🌚",
@@ -133,8 +209,14 @@ class DesignTokenHoverPureCoverageTest {
         assertEquals(
             "📱 Mobile · Any theme",
             listOf(
-                context(DesignTokenPlatform.IOS, DesignTokenTheme.UNSPECIFIED),
-                context(DesignTokenPlatform.ANDROID, DesignTokenTheme.UNSPECIFIED),
+                context(
+                    DesignTokenPlatform.IOS,
+                    DesignTokenTheme.UNSPECIFIED,
+                ),
+                context(
+                    DesignTokenPlatform.ANDROID,
+                    DesignTokenTheme.UNSPECIFIED,
+                ),
             ).hoverPlatformLabel(),
         )
         assertEquals(
@@ -146,7 +228,10 @@ class DesignTokenHoverPureCoverageTest {
         )
     }
 
-    private fun resolvedColor(cssText: String, canonicalValue: String): DesignTokenValueResolution.Resolved =
+    private fun resolvedColor(
+        cssText: String,
+        canonicalValue: String,
+    ): DesignTokenValueResolution.Resolved =
         DesignTokenValueResolution.Resolved(
             rawValue = cssText,
             value = cssText,
@@ -159,11 +244,25 @@ class DesignTokenHoverPureCoverageTest {
         )
 
     private fun DesignTokenValueResolution.Resolved.rgbaText(): String =
-        requireNotNull(toHoverColorOrNull()).let { color -> "rgba(${color.red}, ${color.green}, ${color.blue}, ${formatAlpha(color.alpha)})" }
+        requireNotNull(toHoverColorOrNull()).let { color ->
+            "rgba(${color.red}, ${color.green}, ${color.blue}, ${formatAlpha(color.alpha)})"
+        }
 
     private fun formatAlpha(alpha: Int): String =
-        if (alpha == 255) "1" else java.math.BigDecimal(alpha).divide(java.math.BigDecimal(255), 2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString()
+        if (alpha == 255) {
+            "1"
+        } else {
+            BigDecimal(alpha)
+                .divide(BigDecimal(255), 2, RoundingMode.HALF_UP)
+                .stripTrailingZeros()
+                .toPlainString()
+        }
 
-    private fun unresolved(reason: DesignTokenUnresolvedReason): DesignTokenValueResolution.Unresolved =
-        DesignTokenValueResolution.Unresolved(rawValue = "raw", reason = reason)
+    private fun unresolved(
+        reason: DesignTokenUnresolvedReason,
+    ): DesignTokenValueResolution.Unresolved =
+        DesignTokenValueResolution.Unresolved(
+            rawValue = "raw",
+            reason = reason,
+        )
 }
