@@ -52,7 +52,10 @@ class DesignTokenCandidateSelectorTest {
         assertEquals(
             PROJECT_STYLES_PACKAGE,
             (selection as DesignTokenCandidateSelection.Selected)
-                .variant.origins.single().packageName,
+                .variant
+                .origins
+                .single()
+                .packageName,
         )
     }
 
@@ -74,7 +77,10 @@ class DesignTokenCandidateSelectorTest {
         assertEquals(
             "@taiga-ui/proprietary",
             (selection as DesignTokenCandidateSelection.Selected)
-                .variant.origins.single().packageName,
+                .variant
+                .origins
+                .single()
+                .packageName,
         )
     }
 
