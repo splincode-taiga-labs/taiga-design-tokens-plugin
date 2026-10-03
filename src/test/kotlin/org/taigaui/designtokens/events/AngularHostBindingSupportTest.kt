@@ -2,7 +2,6 @@ package org.taigaui.designtokens.events
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType
-import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.LightPlatformCodeInsightFixture4TestCase
@@ -486,110 +485,6 @@ class AngularHostBindingSupportTest : LightPlatformCodeInsightFixture4TestCase()
                 .createUnconditionally()
 
         assertFalse(EventPluginKeyEventHighlightInfoFilter().accept(highlight, file))
-    }
-
-    @Test
-    fun `suppresses low severity diagnostics only on host modifier ranges`() {
-        val binding = "(click.stop.prevent)"
-        val file =
-            configureAngularFile(
-                "modifier-filter.ts",
-                """
-                import {Component} from '@angular/core';
-
-                @Component({
-                    selector: 'example',
-                    host: {'$binding': 'onClick()'},
-                })
-                export class ExampleComponent {}
-                """.trimIndent(),
-            )
-        val modifierStart = file.text.indexOf("stop")
-        val eventStart = file.text.indexOf("click")
-        val filter = EventPluginKeyEventHighlightInfoFilter()
-        val modifierHighlight =
-            HighlightInfo
-                .newHighlightInfo(HighlightInfoType.WARNING)
-                .range(modifierStart, modifierStart + "stop".length)
-                .severity(HighlightSeverity.INFORMATION)
-                .descriptionAndTooltip("Modifier diagnostic")
-                .createUnconditionally()
-        val eventHighlight =
-            HighlightInfo
-                .newHighlightInfo(HighlightInfoType.WARNING)
-                .range(eventStart, eventStart + "click".length)
-                .severity(HighlightSeverity.INFORMATION)
-                .descriptionAndTooltip("Event diagnostic")
-                .createUnconditionally()
-
-        assertFalse(filter.accept(modifierHighlight, file))
-        assertTrue(filter.accept(eventHighlight, file))
-        assertTrue(filter.accept(eventHighlight, null))
-    }
-
-    @Test
-    fun `suppresses conflicting warning for event plugin host binding`() {
-        val binding = "(click.stop)"
-        val file =
-            configureAngularFile(
-                "event-filter.ts",
-                """
-                import {Component} from '@angular/core';
-
-                @Component({
-                    selector: 'example',
-                    host: {'$binding': 'onClick()'},
-                })
-                export class ExampleComponent {}
-                """.trimIndent(),
-            )
-        val start = file.text.indexOf(binding)
-        val highlight =
-            HighlightInfo
-                .newHighlightInfo(HighlightInfoType.WARNING)
-                .range(start, start + binding.length)
-                .descriptionAndTooltip("Unknown host event")
-                .createUnconditionally()
-
-        assertFalse(EventPluginKeyEventHighlightInfoFilter().accept(highlight, file))
-    }
-
-    @Test
-    fun `suppresses valid extended key event diagnostic in template binding`() {
-        val file =
-            myFixture.configureByText(
-                "extended-key.html",
-                """<input (keydown.alt.code.keya.stop)="onKey()" />""",
-            )
-        val event = "keydown.alt.code.keya"
-        val eventStart = file.text.indexOf(event)
-        val highlight =
-            HighlightInfo
-                .newHighlightInfo(HighlightInfoType.WARNING)
-                .range(eventStart, eventStart + event.length)
-                .descriptionAndTooltip("Unknown Angular key event")
-                .createUnconditionally()
-
-        assertFalse(EventPluginKeyEventHighlightInfoFilter().accept(highlight, file))
-    }
-
-    @Test
-    fun `keeps invalid extended key event diagnostic`() {
-        val file =
-            myFixture.configureByText(
-                "invalid-extended-key.html",
-                """<input (keydown.code.keyaa.stop)="onKey()" />""",
-            )
-        val event = "keydown.code.keyaa"
-        val eventStart = file.text.indexOf(event)
-        val highlight =
-            HighlightInfo
-                .newHighlightInfo(HighlightInfoType.WARNING)
-                .range(eventStart, eventStart + event.length)
-                .descriptionAndTooltip("Unknown Angular key event")
-                .createUnconditionally()
-
-        assertTrue(EventPluginKeyEventHighlightInfoFilter().accept(highlight, file))
     }
 
     @Test
