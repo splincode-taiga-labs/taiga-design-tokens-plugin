@@ -6,20 +6,36 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.file.Files
+import java.nio.file.Path
 
 class ProjectStylesheetPathResolverCoverageTest {
     @Test
     fun `recognizes supported stylesheet extensions case-insensitively`() {
-        assertTrue(ProjectStylesheetPathResolver.isStylesheet(java.nio.file.Path.of("a.css")))
-        assertTrue(ProjectStylesheetPathResolver.isStylesheet(java.nio.file.Path.of("a.LESS")))
-        assertTrue(ProjectStylesheetPathResolver.isStylesheet(java.nio.file.Path.of("a.scss")))
-        assertFalse(ProjectStylesheetPathResolver.isStylesheet(java.nio.file.Path.of("a.ts")))
-        assertFalse(ProjectStylesheetPathResolver.isStylesheet(java.nio.file.Path.of("README")))
+        assertTrue(
+            ProjectStylesheetPathResolver
+                .isStylesheet(Path.of("a.css")),
+        )
+        assertTrue(
+            ProjectStylesheetPathResolver
+                .isStylesheet(Path.of("a.LESS")),
+        )
+        assertTrue(
+            ProjectStylesheetPathResolver
+                .isStylesheet(Path.of("a.scss")),
+        )
+        assertFalse(
+            ProjectStylesheetPathResolver
+                .isStylesheet(Path.of("a.ts")),
+        )
+        assertFalse(
+            ProjectStylesheetPathResolver
+                .isStylesheet(Path.of("README")),
+        )
     }
 
     @Test
     fun `detects node modules only inside workspace`() {
-        val workspace = java.nio.file.Path.of("workspace")
+        val workspace = Path.of("workspace")
 
         assertTrue(
             ProjectStylesheetPathResolver.isNodeModulesPath(
@@ -77,11 +93,13 @@ class ProjectStylesheetPathResolverCoverageTest {
             "data:text/css,body{}",
             "sass:color",
         ).forEach { value ->
-            assertTrue("Expected external: $value", ProjectStylesheetPathResolver.isExternalImport(value))
+            assertTrue(
+                "Expected external: $value",
+                ProjectStylesheetPathResolver.isExternalImport(value),
+            )
         }
 
         assertFalse(ProjectStylesheetPathResolver.isExternalImport("./local.scss"))
-
         assertTrue(ProjectStylesheetPathResolver.isPackageImport("@taiga-ui/core/styles/taiga-ui-local.less"))
         assertTrue(ProjectStylesheetPathResolver.isPackageImport("node_modules/pkg/styles.css"))
         assertFalse(ProjectStylesheetPathResolver.isPackageImport("./node_modules/pkg/styles.css"))
