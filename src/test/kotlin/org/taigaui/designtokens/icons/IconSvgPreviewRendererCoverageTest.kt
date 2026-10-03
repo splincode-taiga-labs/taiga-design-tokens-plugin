@@ -5,7 +5,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 
