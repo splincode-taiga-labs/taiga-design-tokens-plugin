@@ -28,16 +28,21 @@ class EventPluginPureCoverageTest {
     @Test
     fun `binding finder rejects invalid offsets boundaries and attributes without values`() {
         assertNull(EventPluginBindingAtOffsetFinder.find("", 0))
-        assertNull(EventPluginBindingAtOffsetFinder.find("(click.stop)="x"", -1))
-        assertNull(EventPluginBindingAtOffsetFinder.find("(click.stop)="x"", 100))
+        assertNull(EventPluginBindingAtOffsetFinder.find("(click.stop)=\"x\"", -1))
+        assertNull(EventPluginBindingAtOffsetFinder.find("(click.stop)=\"x\"", 100))
         assertNull(EventPluginBindingAtOffsetFinder.find("(click.stop)", 4))
-        assertNull(EventPluginBindingAtOffsetFinder.find("""x "(click.stop)" = "x"""", 7))
-        assertNull(EventPluginBindingAtOffsetFinder.find("(click.stop > x)="x"", 5))
+        assertNull(
+            EventPluginBindingAtOffsetFinder.find(
+                "prefix '(click.stop)' = value",
+                10,
+            ),
+        )
+        assertNull(EventPluginBindingAtOffsetFinder.find("(click.stop > x)=\"x\"", 5))
     }
 
     @Test
     fun `binding finder does not scan beyond maximum binding length`() {
-        val text = "(" + "a".repeat(200) + ")="x""
+        val text = "(" + "a".repeat(200) + ")=\"x\""
 
         assertNull(
             EventPluginBindingAtOffsetFinder.find(
