@@ -142,7 +142,7 @@ class YarnPnpPackageMaterializerTest {
         val root = Files.createTempDirectory("pnp-materializer-invalid")
 
         try {
-            val invalidArchive = Files.writeString(root.resolve("invalid.zip"), "not-a-zip")
+            Files.writeString(root.resolve("invalid.zip"), "not-a-zip")
             assertNull(
                 YarnPnpPackageMaterializer(root.resolve("cache-invalid"))
                     .materialize(
