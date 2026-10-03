@@ -30,8 +30,9 @@ class DesignTokenCustomPropertyPreviewTest : BasePlatformTestCase() {
         assertEquals("Project custom property", model.sections.single().packageName)
         assertEquals("calc(1rem + 2px)", row.resolvedValue)
         assertTrue(row.platform.startsWith("styles.css:"))
-        assertNotNull(row.navigationTarget)
-        assertTrue(requireNotNull(row.navigationTarget).line > 1)
+        val navigationTarget = requireNotNull(row.navigationTarget)
+
+        assertTrue(navigationTarget.line > 1)
     }
 
     fun testFallsBackToProjectSearchAndSortsDeclarations() {
