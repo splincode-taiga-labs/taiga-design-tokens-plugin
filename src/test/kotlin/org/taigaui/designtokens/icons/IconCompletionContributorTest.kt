@@ -10,8 +10,10 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.runInEdtAndGet
 import org.junit.Assert.assertFalse
+import java.awt.image.BufferedImage
 import java.nio.file.Files
 import java.nio.file.Path
+import javax.swing.ImageIcon
 
 class IconCompletionContributorTest : BasePlatformTestCase() {
     private lateinit var workspaceRoot: Path
@@ -85,6 +87,15 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
         invokePrivate(controller, "attach", lookup)
 
         assertNotNull(waitForPrivateField(controller, "previewKey"))
+
+        invokePrivate(
+            controller,
+            "showIcon",
+            lookup,
+            requireNotNull(lookup.currentItem).lookupString,
+            ImageIcon(BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)),
+        )
+
         assertNotNull(waitForPrivateField(controller, "previewPanel"))
     }
 
@@ -163,16 +174,16 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
     private fun invokePrivate(
         target: Any,
         methodName: String,
-        argument: Any,
+        vararg arguments: Any?,
     ) {
         val method =
             target.javaClass.declaredMethods
                 .single { candidate ->
                     candidate.name == methodName &&
-                        candidate.parameterCount == 1
+                        candidate.parameterCount == arguments.size
                 }.apply { isAccessible = true }
 
-        runInEdtAndGet { method.invoke(target, argument) }
+        runInEdtAndGet { method.invoke(target, *arguments) }
     }
 
     private fun waitForPrivateField(

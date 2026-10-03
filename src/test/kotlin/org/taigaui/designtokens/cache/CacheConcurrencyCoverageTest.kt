@@ -21,6 +21,7 @@ class CacheConcurrencyCoverageTest {
         val flight = GenerationAwareSingleFlight<String, String, Metadata>(::Metadata)
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)
+        val joined = CountDownLatch(1)
         val builds = AtomicInteger()
         val pool = Executors.newFixedThreadPool(2)
 
@@ -46,7 +47,10 @@ class CacheConcurrencyCoverageTest {
                 pool.submit<String> {
                     flight.getOrBuild(
                         key = "a",
-                        updateMetadata = { it.requests++ },
+                        updateMetadata = {
+                            it.requests++
+                            joined.countDown()
+                        },
                         build = {
                             builds.incrementAndGet()
                             "other"
@@ -55,6 +59,7 @@ class CacheConcurrencyCoverageTest {
                     )
                 }
 
+            assertTrue(joined.await(5, TimeUnit.SECONDS))
             release.countDown()
 
             assertEquals("value", first.get(5, TimeUnit.SECONDS))
