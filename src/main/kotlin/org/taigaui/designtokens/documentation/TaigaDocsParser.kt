@@ -155,28 +155,23 @@ internal class TaigaDocsParser {
                 }?.takeIf { start ->
                     body.subList(heading + 1, start).none { it.startsWith("### ") }
                 }
+        val start = fence ?: return null
         val end =
-            fence?.let { start ->
-                ((start + 1) until body.size)
-                    .firstOrNull { body[it].trim().startsWith(CODE_FENCE) }
-            }
+            ((start + 1) until body.size)
+                .firstOrNull { body[it].trim().startsWith(CODE_FENCE) }
+                ?: return null
         val code =
-            if (fence != null && end != null) {
-                body
-                    .subList(fence + 1, end)
-                    .joinToString("\n")
-                    .trimEnd()
-                    .takeIf(String::isNotBlank)
-            } else {
-                null
-            }
+            body
+                .subList(start + 1, end)
+                .joinToString("\n")
+                .trimEnd()
+                .takeIf(String::isNotBlank)
+                ?: return null
 
-        return code?.let {
-            TaigaExample(
-                language = body.getValue(fence).trim().removePrefix(CODE_FENCE).trim().ifEmpty { null },
-                code = it,
-            )
-        }
+        return TaigaExample(
+            language = body.getValue(start).trim().removePrefix(CODE_FENCE).trim().ifEmpty { null },
+            code = code,
+        )
     }
 
     private fun parseApiTable(
