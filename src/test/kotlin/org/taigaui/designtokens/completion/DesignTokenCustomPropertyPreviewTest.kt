@@ -24,7 +24,12 @@ class DesignTokenCustomPropertyPreviewTest : BasePlatformTestCase() {
         val lookup = LookupElementBuilder.create(element, token)
 
         val model = lookup.toCustomPropertyPreviewModel(token, project)
-        val row = requireNotNull(model).sections.single().rows.single()
+        val row =
+            requireNotNull(model)
+                .sections
+                .single()
+                .rows
+                .single()
 
         assertEquals(token, model.tokenName)
         assertEquals("Project custom property", model.sections.single().packageName)
