@@ -155,13 +155,13 @@ class DesignTokenCompletionServiceTest : BasePlatformTestCase() {
         )
     }
 
-    private fun callback(calls: AtomicInteger): RefreshCallback<Any> =
+    private fun callback(calls: AtomicInteger): RefreshCallback<AtomicInteger> =
         RefreshCallback(
-            owner = this,
+            owner = calls,
             kind = "test",
             notifyWhenUnchanged = true,
-        ) {
-            calls.incrementAndGet()
+        ) { counter ->
+            counter.incrementAndGet()
         }
 
     private fun waitForCalls(
