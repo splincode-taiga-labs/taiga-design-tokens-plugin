@@ -258,9 +258,7 @@ class DesignTokenHoverPureCoverageTest {
                 .toPlainString()
         }
 
-    private fun unresolved(
-        reason: DesignTokenUnresolvedReason,
-    ): DesignTokenValueResolution.Unresolved =
+    private fun unresolved(reason: DesignTokenUnresolvedReason): DesignTokenValueResolution.Unresolved =
         DesignTokenValueResolution.Unresolved(
             rawValue = "raw",
             reason = reason,
