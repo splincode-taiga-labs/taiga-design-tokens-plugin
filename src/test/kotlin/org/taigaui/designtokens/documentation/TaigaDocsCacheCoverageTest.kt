@@ -60,14 +60,27 @@ class TaigaDocsCacheCoverageTest {
         val fresh = requireNotNull(repository.loadFresh(source))
 
         assertEquals(TaigaDocsLoadOrigin.REMOTE, fresh.origin)
-        assertEquals("Remote", fresh.index.entities.single().description)
+        assertEquals(
+            "Remote",
+            fresh.index.entities
+                .single()
+                .description,
+        )
 
         remote = docs("Updated")
         val refreshed = requireNotNull(repository.refresh(source))
 
         assertEquals(TaigaDocsLoadOrigin.REMOTE, refreshed.origin)
-        assertEquals("Updated", refreshed.index.entities.single().description)
-        assertEquals(TaigaDocsLoadOrigin.DISK_CACHE, requireNotNull(repository.loadCached(source)).origin)
+        assertEquals(
+            "Updated",
+            refreshed.index.entities
+                .single()
+                .description,
+        )
+        assertEquals(
+            TaigaDocsLoadOrigin.DISK_CACHE,
+            requireNotNull(repository.loadCached(source)).origin,
+        )
 
         assertTrue(repository.invalidate(source))
         assertNull(repository.loadCached(source))
