@@ -1,6 +1,9 @@
 package org.taigaui.designtokens.completion
 
+import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import org.taigaui.designtokens.project.DesignTokenIndexService
@@ -91,6 +94,24 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         val suggestions = complete("--tui-ra")
 
         assertFalse(suggestions.contains("--tui-radius.%"))
+    }
+
+    fun testCompletionPreviewControllerBuildsPreviewForActiveLookup() {
+        val sourcePath = configureCompletion("--tui-")
+
+        indexService.completionTokenNames(sourcePath)
+        val variants = requireNotNull(myFixture.completeBasic())
+
+        assertTrue(variants.size > 1)
+
+        val controller = project.service<DesignTokenCompletionPreviewController>()
+
+        controller.ensureAttached()
+
+        val panel = waitForPrivateField(controller, "previewPanel")
+
+        assertNotNull(panel)
+        assertNotNull(runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) })
     }
 
     fun testCompletesSingleInstalledTokenMatch() {
@@ -351,6 +372,28 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         myFixture.editor.caretModel.moveToOffset(caretOffset)
 
         return sourcePath
+    }
+
+    private fun waitForPrivateField(
+        target: Any,
+        fieldName: String,
+    ): Any? {
+        val field =
+            target.javaClass
+                .getDeclaredField(fieldName)
+                .apply { isAccessible = true }
+
+        repeat(200) {
+            val value = runInEdtAndGet { field.get(target) }
+
+            if (value != null) {
+                return value
+            }
+
+            Thread.sleep(10)
+        }
+
+        return runInEdtAndGet { field.get(target) }
     }
 
     private fun createFile(
