@@ -1,6 +1,6 @@
 package org.taigaui.designtokens.events
 
-import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.event.EditorMouseEventArea
@@ -46,7 +46,7 @@ class EventPluginsHoverPopupControllerTest : BasePlatformTestCase() {
         controller.mouseMoved(editorMouseEvent(offset, EditorMouseEventArea.EDITING_AREA))
         assertNotNull(waitForPrivateField(controller, "activeKey"))
 
-        runWriteAction {
+        WriteCommandAction.runWriteCommandAction(project) {
             editor.document.insertString(0, " ")
         }
         PsiDocumentManager.getInstance(project).commitDocument(editor.document)
