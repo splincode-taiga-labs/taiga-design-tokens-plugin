@@ -50,7 +50,6 @@ class YarnPnpManifestTest {
         val core = YarnPnpLocator("@taiga-ui/core", "npm:1")
         val icons = YarnPnpLocator("@taiga-ui/icons", "npm:2")
         val unrelated = YarnPnpLocator("rxjs", "npm:7")
-        val missing = YarnPnpLocator("@taiga-ui/missing", "npm:0")
         val packages =
             mapOf(
                 top to
