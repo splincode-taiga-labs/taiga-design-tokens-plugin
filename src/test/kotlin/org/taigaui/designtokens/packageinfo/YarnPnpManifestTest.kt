@@ -237,6 +237,130 @@ class YarnPnpManifestTest {
     }
 
     @Test
+    fun `manifest without top level package returns null issuer and tolerates missing traversal start`() {
+        val root = Files.createTempDirectory("pnp-no-top")
+        val only = YarnPnpLocator("app", "workspace:.")
+
+        val manifest =
+            manifest(
+                root,
+                packages = mapOf(only to info(only, "./app")),
+            )
+
+        assertNull(manifest.findIssuer(root.resolve("outside/file.ts")))
+        assertTrue(manifest.reachableTaigaUiPackages(YarnPnpLocator("missing", "npm:1")).isEmpty())
+    }
+
+    @Test
+    fun `reader defaults optional manifest fields and handles absent registries and dependencies`() {
+        val root = Files.createTempDirectory("pnp-reader-defaults")
+        val data = root.resolve(".pnp.data.json")
+
+        Files.writeString(
+            data,
+            """
+            {
+              "enableTopLevelFallback": null,
+              "packageRegistryData": [
+                [
+                  null,
+                  [
+                    [
+                      null,
+                      {
+                        "packageLocation": "./"
+                      }
+                    ]
+                  ]
+                ]
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val manifest = requireNotNull(YarnPnpManifestReader().read(root))
+
+        assertFalse(manifest.enableTopLevelFallback)
+        assertTrue(
+            requireNotNull(manifest.packages[YarnPnpLocator(null, null)])
+                .packageDependencies
+                .isEmpty(),
+        )
+
+        Files.writeString(
+            data,
+            """{"enableTopLevelFallback":false,"packageRegistryData":{}}""",
+        )
+
+        assertTrue(requireNotNull(YarnPnpManifestReader().read(root)).packages.isEmpty())
+
+        Files.writeString(
+            data,
+            """{"enableTopLevelFallback":false}""",
+        )
+
+        assertTrue(requireNotNull(YarnPnpManifestReader().read(root)).packages.isEmpty())
+    }
+
+    @Test
+    fun `reader ignores non primitive dependency names references and incomplete aliases`() {
+        val root = Files.createTempDirectory("pnp-reader-dependency-shapes")
+        val data = root.resolve(".pnp.data.json")
+        Files.writeString(
+            data,
+            """
+            {
+              "packageRegistryData": [
+                [
+                  null,
+                  [
+                    [
+                      null,
+                      {
+                        "packageLocation": "./",
+                        "packageDependencies": [
+                          [{}, "npm:1"],
+                          ["primitive", "npm:2"],
+                          ["object-target", {}],
+                          ["empty-alias", []],
+                          ["one-alias", ["@taiga-ui/core"]],
+                          ["null-alias", [null, "npm:3"]]
+                        ]
+                      }
+                    ]
+                  ]
+                ]
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val top =
+            requireNotNull(
+                requireNotNull(YarnPnpManifestReader().read(root))
+                    .packages[YarnPnpLocator(null, null)],
+            )
+
+        assertEquals(
+            mapOf("primitive" to YarnPnpDependency("primitive", "npm:2")),
+            top.packageDependencies,
+        )
+    }
+
+    @Test
+    fun `private file version fails closed for missing path`() {
+        val method =
+            YarnPnpManifestReader::class.java
+                .getDeclaredMethod("fileVersion", Path::class.java)
+                .apply { isAccessible = true }
+
+        assertEquals(
+            "unknown",
+            method.invoke(YarnPnpManifestReader(), Path.of("definitely-missing-pnp-source")),
+        )
+    }
+
+    @Test
     fun `portable and virtual path helpers handle invalid metadata safely`() {
         val root = Files.createTempDirectory("pnp-path-helpers")
         val portable = resolvePortablePackageLocation(root, "packages\\core")
