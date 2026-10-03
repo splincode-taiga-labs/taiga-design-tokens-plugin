@@ -103,6 +103,34 @@ class DesignTokenCompletionContextFinderTest {
     }
 
     @Test
+    fun `scanner skips nested parentheses and escaped quoted text before active var`() {
+        assertPrefix(
+            """fn((1, 2), "escaped \" value") var(--tui-active<caret>)""",
+            "--tui-active",
+        )
+    }
+
+    @Test
+    fun `scanner ignores unterminated single quote before token text`() {
+        assertNoContext(
+            """.demo { content: 'unterminated var(--tui-te<caret>)""",
+        )
+    }
+
+    @Test
+    fun `scanner accepts digits underscores and hyphens in prefix`() {
+        assertPrefix(
+            ".demo { color: var(--tui-a_1-b2<caret>); }",
+            "--tui-a_1-b2",
+        )
+    }
+
+    @Test
+    fun `caret immediately after var opening has no taiga prefix`() {
+        assertNoContext(".demo { color: var(<caret>--tui-text); }")
+    }
+
+    @Test
     fun `rejects invalid offsets`() {
         assertNull(DesignTokenCompletionContextFinder.find("var(--tui-)", -1))
         assertNull(DesignTokenCompletionContextFinder.find("var(--tui-)", 100))

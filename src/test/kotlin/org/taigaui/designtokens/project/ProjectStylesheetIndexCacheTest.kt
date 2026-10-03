@@ -168,6 +168,66 @@ class ProjectStylesheetIndexCacheTest {
         }
     }
 
+    @Test
+    fun `clear drops cached entries`() {
+        val workspaceRoot = Path.of("build/fixtures/project-cache-clear").toAbsolutePath().normalize()
+        val request = request(workspaceRoot, "src/component.scss")
+        val cache =
+            ProjectStylesheetIndexCache { cacheRequest ->
+                buildResult(cacheRequest, emptySet())
+            }
+
+        cache.getOrBuild(request)
+        assertEquals(1, cache.size)
+
+        cache.clear()
+
+        assertEquals(0, cache.size)
+        assertFalse(cache.contains(request))
+    }
+
+    @Test
+    fun `workspace ancestors and structural files trigger broad invalidation`() {
+        val workspaceRoot = Path.of("build/fixtures/project-cache-broad").toAbsolutePath().normalize()
+        val request = request(workspaceRoot, "src/component.scss")
+        val cache =
+            ProjectStylesheetIndexCache { cacheRequest ->
+                buildResult(cacheRequest, emptySet())
+            }
+
+        listOf(
+            workspaceRoot.parent,
+            workspaceRoot.resolve("angular.json"),
+            workspaceRoot.resolve("nx.json"),
+            workspaceRoot.resolve("package.json"),
+            workspaceRoot.resolve("apps/app"),
+        ).forEach { changedPath ->
+            cache.getOrBuild(request)
+            assertEquals(changedPath.toString(), 1, cache.invalidate(listOf(changedPath)))
+            assertFalse(changedPath.toString(), cache.contains(request))
+        }
+    }
+
+    @Test
+    fun `node modules changes are not treated as broad project invalidation`() {
+        val workspaceRoot = Path.of("build/fixtures/project-cache-node-modules").toAbsolutePath().normalize()
+        val request = request(workspaceRoot, "src/component.scss")
+        val cache =
+            ProjectStylesheetIndexCache { cacheRequest ->
+                buildResult(cacheRequest, emptySet())
+            }
+
+        cache.getOrBuild(request)
+
+        assertEquals(
+            0,
+            cache.invalidate(
+                listOf(workspaceRoot.resolve("node_modules/pkg/package.json")),
+            ),
+        )
+        assertTrue(cache.contains(request))
+    }
+
     private fun request(
         workspaceRoot: Path,
         sourceFile: String,

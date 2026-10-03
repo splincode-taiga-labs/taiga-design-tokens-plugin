@@ -62,6 +62,69 @@ class DesignTokenPackageImportGraphTest {
     }
 
     @Test
+    fun `resolves direct files uppercase extensions and ignores empty external and short package imports`() {
+        val root = Files.createTempDirectory("token-import-graph-branches")
+        val core = root.resolve("node_modules/@taiga-ui/core")
+        val entry = core.resolve("styles/main.css")
+        val direct = core.resolve("styles/direct.LESS")
+
+        write(direct, ":root { --tui-direct: red; }")
+        write(
+            entry,
+            """
+            @import "./direct.LESS";
+            @import "";
+            @import "~";
+            @import "http://example.com/a.css";
+            @import "data:text/css,body{}";
+            @import "@taiga-ui/core";
+            """.trimIndent(),
+        )
+
+        val result =
+            DesignTokenPackageImportGraph().findReachableFiles(
+                entryFiles = listOf(entry),
+                sourcePackages = listOf(sourcePackage("@taiga-ui/core", core)),
+            )
+
+        assertEquals(
+            listOf(entry, direct)
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .sortedBy(Path::toString),
+            requireNotNull(result["@taiga-ui/core"]),
+        )
+    }
+
+    @Test
+    fun `resolves index scss and import options syntax`() {
+        val root = Files.createTempDirectory("token-import-graph-options")
+        val core = root.resolve("node_modules/@taiga-ui/core")
+        val entry = core.resolve("main.less")
+        val theme = core.resolve("theme/index.scss")
+
+        write(theme, ":root { --tui-theme: red; }")
+        write(
+            entry,
+            """@import (reference) url("./theme");""",
+        )
+
+        val result =
+            DesignTokenPackageImportGraph().findReachableFiles(
+                entryFiles = listOf(entry),
+                sourcePackages = listOf(sourcePackage("@taiga-ui/core", core)),
+            )
+
+        assertEquals(
+            listOf(entry, theme)
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .sortedBy(Path::toString),
+            requireNotNull(result["@taiga-ui/core"]),
+        )
+    }
+
+    @Test
     fun `prefers the deepest source package root and tolerates unreadable entry paths`() {
         val root = Files.createTempDirectory("token-import-graph-nested")
         val parent = root.resolve("packages")
