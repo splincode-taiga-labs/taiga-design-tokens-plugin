@@ -166,9 +166,11 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
         argument: Any,
     ) {
         val method =
-            target.javaClass
-                .getDeclaredMethod(methodName, argument.javaClass.interfaces.firstOrNull() ?: argument.javaClass)
-                .apply { isAccessible = true }
+            target.javaClass.declaredMethods
+                .single { candidate ->
+                    candidate.name == methodName &&
+                        candidate.parameterCount == 1
+                }.apply { isAccessible = true }
 
         runInEdtAndGet { method.invoke(target, argument) }
     }
