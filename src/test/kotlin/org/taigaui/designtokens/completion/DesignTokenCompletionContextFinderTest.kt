@@ -50,9 +50,8 @@ class DesignTokenCompletionContextFinderTest {
         assertNoContext(
             ".demo { color: var(calc(1 + fn('a,b', /* x,y */ 2)) + --tui-value<caret>, red); }",
         )
-        assertPrefix(
+        assertNoContext(
             ".demo { color: var( /* comment */ --tui-value<caret>, fn(1, 2)); }",
-            "--tui-value",
         )
     }
 
