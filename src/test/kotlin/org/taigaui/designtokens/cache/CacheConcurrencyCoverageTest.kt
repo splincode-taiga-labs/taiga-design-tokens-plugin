@@ -14,7 +14,9 @@ import java.util.concurrent.atomic.AtomicInteger
 class CacheConcurrencyCoverageTest {
     @Test
     fun `single flight coalesces concurrent builds and updates pending metadata`() {
-        data class Metadata(var requests: Int = 0)
+        data class Metadata(
+            var requests: Int = 0,
+        )
 
         val flight = GenerationAwareSingleFlight<String, String, Metadata>(::Metadata)
         val started = CountDownLatch(1)
@@ -65,7 +67,9 @@ class CacheConcurrencyCoverageTest {
 
     @Test
     fun `single flight retries stale generations after explicit invalidation`() {
-        data class Metadata(var valid: Boolean = true)
+        data class Metadata(
+            var valid: Boolean = true,
+        )
 
         val flight = GenerationAwareSingleFlight<String, Int, Metadata>(::Metadata)
         val builds = AtomicInteger()
@@ -108,7 +112,9 @@ class CacheConcurrencyCoverageTest {
 
     @Test
     fun `single flight retries values rejected by current predicate`() {
-        data class Metadata(var attempts: Int = 0)
+        data class Metadata(
+            var attempts: Int = 0,
+        )
 
         val flight = GenerationAwareSingleFlight<String, Int, Metadata>(::Metadata)
         val builds = AtomicInteger()
@@ -188,7 +194,9 @@ class CacheConcurrencyCoverageTest {
 
     @Test
     fun `coalescing callbacks replace same target and respect activity and unchanged opt in`() {
-        class Owner(var active: Boolean = true)
+        class Owner(
+            var active: Boolean = true,
+        )
 
         val owner = Owner()
         val callbacks = CoalescingRefreshCallbacks()
@@ -231,7 +239,9 @@ class CacheConcurrencyCoverageTest {
 
     @Test
     fun `inactive callback is not added and different targets are retained`() {
-        class Owner(val active: Boolean)
+        class Owner(
+            val active: Boolean,
+        )
 
         val first = Owner(false)
         val second = Owner(true)
