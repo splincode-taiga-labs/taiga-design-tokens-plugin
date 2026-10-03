@@ -6,7 +6,12 @@ internal class TaigaDocsParser {
         source: TaigaDocsSource,
         content: String,
     ): TaigaDocsIndex? {
-        val lines = content.removePrefix("\uFEFF").replace("\r\n", "\n").replace('\r', '\n').lines()
+        val lines =
+            content
+                .removePrefix("\uFEFF")
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .lines()
         val imports = parseImportMap(lines)
         val entities =
             topLevelSections(lines).map { section ->
@@ -96,9 +101,10 @@ internal class TaigaDocsParser {
                     entry.slug == slug &&
                     (metadata.packageNames.isEmpty() || entry.packageName in metadata.packageNames)
             }
-        val packageNames = metadata.packageNames.ifEmpty {
-            matchingImports.mapTo(linkedSetOf(), ImportEntry::packageName)
-        }
+        val packageNames =
+            metadata.packageNames.ifEmpty {
+                matchingImports.mapTo(linkedSetOf(), ImportEntry::packageName)
+            }
         val publicSymbols = matchingImports.flatMap(ImportEntry::symbols).toSet()
         val example = parseExample(section.body)
         val sectionId = section.route + "/" + slug
@@ -121,11 +127,12 @@ internal class TaigaDocsParser {
 
     private fun parseMetadata(body: List<String>): Metadata {
         val values =
-            body.mapNotNull { line ->
-                METADATA_LINE.matchEntire(line.trim())?.let { match ->
-                    match.groupValues[1].lowercase() to match.groupValues[2].trim().trim(BACKTICK)
-                }
-            }.toMap()
+            body
+                .mapNotNull { line ->
+                    METADATA_LINE.matchEntire(line.trim())?.let { match ->
+                        match.groupValues[1].lowercase() to match.groupValues[2].trim().trim(BACKTICK)
+                    }
+                }.toMap()
 
         return Metadata(
             packageNames = values["package"].toPackageNames(),
@@ -170,7 +177,12 @@ internal class TaigaDocsParser {
                 .takeIf(String::isNotBlank)
                 ?.let { code ->
                     TaigaExample(
-                        language = body[start].trim().removePrefix(CODE_FENCE).trim().ifEmpty { null },
+                        language =
+                            body[start]
+                                .trim()
+                                .removePrefix(CODE_FENCE)
+                                .trim()
+                                .ifEmpty { null },
                         code = code,
                     )
                 }

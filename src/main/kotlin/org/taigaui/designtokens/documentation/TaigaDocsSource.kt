@@ -8,8 +8,7 @@ internal data class TaigaDocsSource(
     val documentationBaseUri: URI,
     val cacheKey: String,
 ) {
-    fun documentationUri(sectionId: String): URI =
-        documentationBaseUri.resolve(sectionId.trimStart('/'))
+    fun documentationUri(sectionId: String): URI = documentationBaseUri.resolve(sectionId.trimStart('/'))
 }
 
 internal object TaigaDocsSources {

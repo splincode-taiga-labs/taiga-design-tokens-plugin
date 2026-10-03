@@ -11,7 +11,8 @@ internal enum class TaigaDocKind {
     TOKEN,
     UTILITY,
     CLASS,
-    UNKNOWN;
+    UNKNOWN,
+    ;
 
     companion object {
         fun from(

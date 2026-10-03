@@ -52,8 +52,7 @@ internal class TaigaDocsCache(
     fun invalidate(source: TaigaDocsSource): Boolean =
         runCatching { Files.deleteIfExists(cacheFile(source)) }.getOrDefault(false)
 
-    private fun cacheFile(source: TaigaDocsSource): Path =
-        cacheRoot.resolve("${source.cacheKey}-llms-full.txt")
+    private fun cacheFile(source: TaigaDocsSource): Path = cacheRoot.resolve("${source.cacheKey}-llms-full.txt")
 
     private fun moveIntoPlace(
         source: Path,

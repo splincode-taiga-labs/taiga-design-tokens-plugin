@@ -16,8 +16,7 @@ internal class TaigaDocsIndexStore(
     private val pendingLoads = mutableMapOf<TaigaDocsSource, Deferred<TaigaDocsIndex?>>()
     private val pendingRefreshes = mutableMapOf<TaigaDocsSource, Deferred<TaigaDocsIndex?>>()
 
-    fun cached(source: TaigaDocsSource): TaigaDocsIndex? =
-        synchronized(lock) { snapshots[source] }
+    fun cached(source: TaigaDocsSource): TaigaDocsIndex? = synchronized(lock) { snapshots[source] }
 
     suspend fun indexFor(source: TaigaDocsSource): TaigaDocsIndex? {
         cached(source)?.let { return it }

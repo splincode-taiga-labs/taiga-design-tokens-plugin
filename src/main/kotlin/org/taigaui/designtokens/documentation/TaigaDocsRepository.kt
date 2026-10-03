@@ -25,11 +25,9 @@ internal class TaigaDocsRepository(
     private val cache: TaigaDocsCache = TaigaDocsCache(),
     private val parser: TaigaDocsParser = TaigaDocsParser(),
 ) {
-    fun load(source: TaigaDocsSource): TaigaDocsLoadResult? =
-        loadCached(source) ?: loadFresh(source)
+    fun load(source: TaigaDocsSource): TaigaDocsLoadResult? = loadCached(source) ?: loadFresh(source)
 
-    fun refresh(source: TaigaDocsSource): TaigaDocsLoadResult? =
-        loadFresh(source) ?: loadCached(source)
+    fun refresh(source: TaigaDocsSource): TaigaDocsLoadResult? = loadFresh(source) ?: loadCached(source)
 
     fun loadCached(source: TaigaDocsSource): TaigaDocsLoadResult? =
         cache
