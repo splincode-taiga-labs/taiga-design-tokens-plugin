@@ -74,7 +74,7 @@ class IconCompletionAutoPopupHandlerCoverageTest : BasePlatformTestCase() {
         val item = lookup.items.first { candidate -> candidate.lookupString == "@tui.a-arrow-down" }
 
         runInEdtAndGet {
-            lookup.currentItem = item
+            myFixture.lookup.currentItem = item
         }
         myFixture.finishLookup('\n')
 
