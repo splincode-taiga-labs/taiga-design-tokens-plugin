@@ -1,6 +1,6 @@
 package org.taigaui.designtokens.documentation
 
-import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.event.EditorMouseEventArea
@@ -59,7 +59,7 @@ class DesignTokenHoverPopupControllerTest : BasePlatformTestCase() {
         assertNotNull(waitForPrivateField(controller, "activeHoverKey"))
         assertNotNull(readPrivateField(controller, "latestHoverRequest"))
 
-        runWriteAction {
+        WriteCommandAction.runWriteCommandAction(project) {
             editor.document.insertString(0, " ")
         }
         PsiDocumentManager.getInstance(project).commitDocument(editor.document)
