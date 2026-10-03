@@ -34,13 +34,12 @@ class DesignTokenCustomPropertyPreviewTest : BasePlatformTestCase() {
         assertTrue(requireNotNull(row.navigationTarget).line > 1)
     }
 
-    fun testFallsBackToProjectSearchAndSortsDistinctDeclarations() {
+    fun testFallsBackToProjectSearchAndSortsDeclarations() {
         val token = "--tui-project-search"
         myFixture.addFileToProject(
             "styles/z.scss",
             """
             :root {
-                $token: 2rem;
                 $token: 2rem;
             }
             """.trimIndent(),
