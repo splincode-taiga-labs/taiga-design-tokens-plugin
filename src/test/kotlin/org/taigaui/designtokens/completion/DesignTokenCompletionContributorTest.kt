@@ -3,9 +3,9 @@ package org.taigaui.designtokens.completion
 import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.runInEdtAndGet
 import org.taigaui.designtokens.project.DesignTokenIndexService
 import java.nio.file.Files
 import java.nio.file.Path
