@@ -78,8 +78,16 @@ class IconCompletionAutoPopupHandlerCoverageTest : BasePlatformTestCase() {
         }
         myFixture.finishLookup('\n')
 
-        assertTrue(myFixture.editor.document.text.contains("@tui.a-arrow-down"))
-        assertFalse(myFixture.editor.document.text.contains("@tui.a-arrow-down-arrow-down"))
+        assertTrue(
+            myFixture.editor.document
+                .text
+                .contains("@tui.a-arrow-down"),
+        )
+        assertFalse(
+            myFixture.editor.document
+                .text
+                .contains("@tui.a-arrow-down-arrow-down"),
+        )
     }
 
     fun testRequestWithoutResolvableTaigaScopeDoesNotOpenLookup() {
@@ -90,7 +98,10 @@ class IconCompletionAutoPopupHandlerCoverageTest : BasePlatformTestCase() {
             val file = createFile(source, """<div iconStart="@tui."></div>""")
 
             myFixture.configureFromExistingVirtualFile(file)
-            myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.text.indexOf("@tui.") + 5)
+            myFixture.editor.caretModel.moveToOffset(
+                myFixture.editor.document.text
+                    .indexOf("@tui.") + 5,
+            )
 
             requestIconCompletion(project, myFixture.editor, source)
 
