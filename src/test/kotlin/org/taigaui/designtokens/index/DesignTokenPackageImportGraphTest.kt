@@ -48,7 +48,10 @@ class DesignTokenPackageImportGraphTest {
             )
 
         assertEquals(
-            listOf(entry, local, directoryIndex).map(Path::toAbsolutePath).map(Path::normalize).sortedBy(Path::toString),
+            listOf(entry, local, directoryIndex)
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .sortedBy(Path::toString),
             requireNotNull(result["@taiga-ui/core"]),
         )
         assertEquals(
@@ -80,7 +83,10 @@ class DesignTokenPackageImportGraphTest {
             )
 
         assertEquals(
-            listOf(directoryEntry, nestedEntry).map(Path::toAbsolutePath).map(Path::normalize).sortedBy(Path::toString),
+            listOf(directoryEntry, nestedEntry)
+                .map(Path::toAbsolutePath)
+                .map(Path::normalize)
+                .sortedBy(Path::toString),
             requireNotNull(result["nested"]),
         )
         assertFalse(result.containsKey("parent"))
