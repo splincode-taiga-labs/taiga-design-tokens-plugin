@@ -137,7 +137,7 @@ class DesignTokenValueParserTest {
             "var(-x)",
             "var(--)",
             "var(--tui value)",
-            "var(--tui,value)",
+            "var(--tui value)",
             "var(--tui(value))",
         ).forEach { value ->
             assertTrue(
