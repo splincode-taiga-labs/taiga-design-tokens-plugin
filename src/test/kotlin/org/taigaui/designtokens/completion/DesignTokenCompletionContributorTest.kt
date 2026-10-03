@@ -1,9 +1,14 @@
 package org.taigaui.designtokens.completion
 
+import com.intellij.codeInsight.lookup.LookupManager
+import com.intellij.openapi.components.service
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.runInEdtAndGet
+import org.taigaui.designtokens.documentation.DesignTokenHoverPopupModel
 import org.taigaui.designtokens.project.DesignTokenIndexService
+import org.taigaui.designtokens.settings.TaigaDesignTokensSettings
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -91,6 +96,98 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         val suggestions = complete("--tui-ra")
 
         assertFalse(suggestions.contains("--tui-radius.%"))
+    }
+
+    fun testCompletionPreviewControllerBuildsPreviewForActiveLookup() {
+        val sourcePath = configureCompletion("--tui-")
+
+        indexService.completionTokenNames(sourcePath)
+        val variants = requireNotNull(myFixture.completeBasic())
+
+        assertTrue(variants.size > 1)
+
+        val controller = project.service<DesignTokenCompletionPreviewController>()
+        val lookup =
+            requireNotNull(
+                runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) },
+            )
+
+        invokePrivate(controller, "requestPreview", lookup)
+
+        assertNotNull(waitForPrivateField(controller, "previewKey"))
+        assertNotNull(waitForPrivateField(controller, "previewPanel"))
+    }
+
+    fun testCompletionPreviewControllerAttachDetachAndDisabledSetting() {
+        val sourcePath = configureCompletion("--tui-")
+
+        indexService.completionTokenNames(sourcePath)
+        val variants = requireNotNull(myFixture.completeBasic())
+
+        assertTrue(variants.size > 1)
+
+        val controller = project.service<DesignTokenCompletionPreviewController>()
+        val lookup =
+            requireNotNull(
+                runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) },
+            )
+
+        invokePrivate(controller, "attach", lookup)
+        assertSame(lookup, waitForPrivateField(controller, "activeLookup"))
+        assertNotNull(waitForPrivateField(controller, "activeListener"))
+
+        invokePrivate(controller, "attach", lookup)
+        assertSame(lookup, waitForPrivateField(controller, "activeLookup"))
+
+        invokePrivate(controller, "detach")
+        assertNull(readPrivateField(controller, "activeLookup"))
+        assertNull(readPrivateField(controller, "activeListener"))
+        assertNull(readPrivateField(controller, "previewKey"))
+
+        val settings = service<TaigaDesignTokensSettings>()
+
+        settings.showCompletionPreview = false
+
+        try {
+            invokePrivate(controller, "attach", lookup)
+
+            assertNull(readPrivateField(controller, "activeLookup"))
+            assertNull(readPrivateField(controller, "activeListener"))
+        } finally {
+            settings.showCompletionPreview = true
+        }
+    }
+
+    fun testCompletionPreviewControllerRendersModelIntoExistingPanel() {
+        val sourcePath = configureCompletion("--tui-")
+
+        indexService.completionTokenNames(sourcePath)
+        requireNotNull(myFixture.completeBasic())
+
+        val controller = project.service<DesignTokenCompletionPreviewController>()
+        val lookup =
+            requireNotNull(
+                runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) },
+            )
+
+        invokePrivate(controller, "attach", lookup)
+        assertNotNull(waitForPrivateField(controller, "previewPanel"))
+
+        invokePrivate(
+            controller,
+            "showModel",
+            lookup,
+            DesignTokenHoverPopupModel.notFound(
+                tokenName = "--tui-missing",
+                suggestions = listOf("--tui-text-primary"),
+            ),
+        )
+
+        assertNotNull(readPrivateField(controller, "previewPanel"))
+
+        invokePrivate(controller, "clearPreviewRequest")
+        assertNull(readPrivateField(controller, "previewKey"))
+        assertNull(readPrivateField(controller, "previewJob"))
     }
 
     fun testCompletesSingleInstalledTokenMatch() {
@@ -351,6 +448,55 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         myFixture.editor.caretModel.moveToOffset(caretOffset)
 
         return sourcePath
+    }
+
+    private fun invokePrivate(
+        target: Any,
+        methodName: String,
+        vararg arguments: Any?,
+    ) {
+        val method =
+            target.javaClass.declaredMethods
+                .single { candidate ->
+                    candidate.name == methodName &&
+                        candidate.parameterCount == arguments.size
+                }.apply { isAccessible = true }
+
+        runInEdtAndGet { method.invoke(target, *arguments) }
+    }
+
+    private fun readPrivateField(
+        target: Any,
+        fieldName: String,
+    ): Any? {
+        val field =
+            target.javaClass
+                .getDeclaredField(fieldName)
+                .apply { isAccessible = true }
+
+        return runInEdtAndGet { field.get(target) }
+    }
+
+    private fun waitForPrivateField(
+        target: Any,
+        fieldName: String,
+    ): Any? {
+        val field =
+            target.javaClass
+                .getDeclaredField(fieldName)
+                .apply { isAccessible = true }
+
+        repeat(200) {
+            val value = runInEdtAndGet { field.get(target) }
+
+            if (value != null) {
+                return value
+            }
+
+            Thread.sleep(10)
+        }
+
+        return runInEdtAndGet { field.get(target) }
     }
 
     private fun createFile(
