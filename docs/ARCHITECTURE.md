@@ -6,7 +6,7 @@ Keep `README.md` focused on product capabilities. Changes that introduce a new s
 
 ## Architecture overview
 
-The plugin has two largely independent project-data pipelines for design tokens and icons, plus lightweight editor-only helpers for CSS units. Editor features consume project-level services only when they need discovery or cached project data; stateless transformations stay at the editor layer.
+The plugin has independent project-data pipelines for design tokens, icons, and Taiga UI documentation, plus lightweight editor-only helpers for CSS units. Editor features consume project-level services only when they need discovery or cached project data; stateless transformations stay at the editor layer. Installed project packages remain authoritative for API availability and source-changing actions; remote documentation is enrichment only.
 
 ```mermaid
 flowchart LR
@@ -32,6 +32,7 @@ flowchart LR
         TokenResolution["Token resolution service"]
         IconCatalog["Icon catalog service"]
         IconRenderer["SVG preview renderer"]
+        DocsIndex["Version-aware docs index"]
     end
 
     subgraph Sources["Data sources"]
@@ -39,6 +40,8 @@ flowchart LR
         ProjectStyles["Project CSS / Less / SCSS"]
         LocalIcons["@taiga-ui/icons / tds-icons"]
         IconCdn["T-Bank CDN fallback"]
+        OfficialDocs["taiga-ui.dev llms-full.txt"]
+        DocsDiskCache["Last successful docs snapshot"]
     end
 
     Editor --> TokenCompletion
@@ -63,6 +66,10 @@ flowchart LR
     IconCatalog --> LocalIcons
     IconCatalog --> IconCdn
     IconCatalog --> IconRenderer
+
+    DocsIndex --> Packages
+    DocsIndex --> OfficialDocs
+    DocsIndex --> DocsDiskCache
 ```
 
 ## Design token subsystem
@@ -140,6 +147,52 @@ Project overrides are evaluated as an application layer before installed package
 The resolver keeps deterministic order only where the source graph proves it. Conflicting candidates remain ambiguous instead of inventing an order.
 
 Recursive `var(...)` references use the same context-aware candidate selection model, with cycle protection and grouped source information preserved for editor presentation.
+
+## Taiga UI documentation subsystem
+
+The documentation subsystem provides a structured, version-aware enrichment index for native IDE documentation and discovery features.
+
+The current source model is:
+
+1. detect the nearest installed Taiga UI package scope for the source file;
+2. prefer `@taiga-ui/core` as the project version source and derive the installed major version from local `package.json`;
+3. map supported majors to the official documentation source:
+    - Taiga UI 4 → `https://taiga-ui.dev/v4/llms-full.txt`;
+    - Taiga UI 5 → `https://taiga-ui.dev/llms-full.txt`;
+4. parse the import map and entity sections into an immutable index;
+5. expose lookup by public symbol, selector, and documentation section ID where the source provides enough metadata.
+
+Unsupported future majors do not fall back to the current documentation implicitly. A new source mapping must be added deliberately after its compatibility is known.
+
+### Authority and enrichment
+
+Installed project packages are the source of truth for:
+
+- whether a Taiga UI package is installed in the current project context;
+- actual public exports and API availability;
+- safe import rewrites, inspections, migrations, and other source-changing actions;
+- types whenever installed declarations/Angular metadata can provide them.
+
+Official documentation can enrich that local truth with descriptions, examples, API explanations, documentation links, and migration guidance. Remote documentation must never make a missing local API appear available or authorize a destructive/source-changing fix by itself.
+
+The docs snapshot therefore filters parsed entities against packages installed in the resolved local package scope and excludes entities introduced after the locally installed Taiga UI version. Future editor integrations should additionally intersect documented symbols/properties with local declarations when presenting API availability.
+
+### Loading and cache lifecycle
+
+Documentation network access, package discovery, disk cache IO, and parsing run off the EDT.
+
+The project-level docs store:
+
+- keeps immutable in-memory indexes keyed by versioned documentation source;
+- coalesces concurrent cold loads and concurrent refreshes for the same source;
+- persists only successfully parsed remote content as the last-known-good disk snapshot;
+- can serve that disk snapshot offline;
+- keeps the last usable snapshot when refresh returns empty, malformed, or fails;
+- performs a background refresh after publishing a disk-cached snapshot;
+- uses a generation guard so invalidated work cannot publish stale results;
+- supports targeted invalidation per documented Taiga major.
+
+Cache bookkeeping stays behind small synchronized sections; network requests and parsing remain outside cache locks.
 
 ## CSS unit helpers
 
@@ -269,7 +322,8 @@ org.taigaui.designtokens
 
 Dependencies point inward:
 
-- `completion` and `documentation` consume the project-level token service;
+- `completion` consumes the project-level token service;
+- `documentation` contains both the independent Taiga docs enrichment pipeline and token-hover UI that consumes the token service;
 - `project` orchestrates `packageinfo`, `index`, `resolution`, and `psi`;
 - `resolution` depends on immutable contracts from `index`;
 - `psi` adapts IntelliJ Platform syntax trees into index declarations;
@@ -281,7 +335,8 @@ Dependencies point inward:
 
 When extending the plugin:
 
-- keep token and icon domain models separate;
+- keep token, icon, and remote documentation domain models separate;
+- keep installed package metadata authoritative over remote documentation for API availability and source-changing actions;
 - prefer immutable indexes/snapshots at service boundaries;
 - keep IntelliJ UI integration at the outer layer;
 - keep stateless local editor transformations out of project-data services;
