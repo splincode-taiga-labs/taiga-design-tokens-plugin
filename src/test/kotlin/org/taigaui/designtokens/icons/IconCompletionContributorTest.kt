@@ -77,13 +77,15 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
         assertTrue(variants.size > 1)
 
         val controller = project.service<IconCompletionPreviewController>()
+        val lookup =
+            requireNotNull(
+                runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) },
+            )
 
-        controller.ensureAttached()
+        invokePrivate(controller, "requestPreview", lookup)
 
-        val panel = waitForPrivateField(controller, "previewPanel")
-
-        assertNotNull(panel)
-        assertNotNull(runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) })
+        assertNotNull(waitForPrivateField(controller, "previewKey"))
+        assertNotNull(waitForPrivateField(controller, "previewPanel"))
     }
 
     fun testIconCompletionDoesNotExposeNativeDocumentationTarget() {
@@ -156,6 +158,19 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
         myFixture.completeBasic()
 
         return myFixture.lookupElementStrings.orEmpty()
+    }
+
+    private fun invokePrivate(
+        target: Any,
+        methodName: String,
+        argument: Any,
+    ) {
+        val method =
+            target.javaClass
+                .getDeclaredMethod(methodName, argument.javaClass.interfaces.firstOrNull() ?: argument.javaClass)
+                .apply { isAccessible = true }
+
+        runInEdtAndGet { method.invoke(target, argument) }
     }
 
     private fun waitForPrivateField(
