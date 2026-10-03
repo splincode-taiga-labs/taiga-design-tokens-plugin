@@ -1,5 +1,6 @@
 package org.taigaui.designtokens.icons
 
+import com.intellij.codeInsight.lookup.LookupManager
 import com.intellij.lang.documentation.ide.IdeDocumentationTargetProvider
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.service
@@ -7,6 +8,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.runInEdtAndGet
 import org.junit.Assert.assertFalse
 import java.nio.file.Files
 import java.nio.file.Path
@@ -49,6 +51,39 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
 
         assertEquals(true, item.getUserData(autoPopupKey))
         assertEquals(true, item.getUserData(quickDocumentationKey))
+    }
+
+    fun testIconCompletionPreviewControllerBuildsPreviewForActiveLookup() {
+        createIcon("icons/src/a-arrow-down.svg")
+        createIcon("icons/src/a-arrow-up.svg")
+
+        val sourcePath = workspaceRoot.resolve("src/icons.html")
+        val sourceFile =
+            createFile(
+                sourcePath,
+                "<button iconStart=\"@tui.\"></button>",
+            )
+
+        myFixture.configureFromExistingVirtualFile(sourceFile)
+        val caretOffset =
+            myFixture.editor.document.text
+                .indexOf("@tui.") + "@tui.".length
+
+        myFixture.editor.caretModel.moveToOffset(caretOffset)
+        project.service<IconCompletionService>().loadNow(sourcePath)
+
+        val variants = requireNotNull(myFixture.completeBasic())
+
+        assertTrue(variants.size > 1)
+
+        val controller = project.service<IconCompletionPreviewController>()
+
+        controller.ensureAttached()
+
+        val panel = waitForPrivateField(controller, "previewPanel")
+
+        assertNotNull(panel)
+        assertNotNull(runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) })
     }
 
     fun testIconCompletionDoesNotExposeNativeDocumentationTarget() {
@@ -121,6 +156,28 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
         myFixture.completeBasic()
 
         return myFixture.lookupElementStrings.orEmpty()
+    }
+
+    private fun waitForPrivateField(
+        target: Any,
+        fieldName: String,
+    ): Any? {
+        val field =
+            target.javaClass
+                .getDeclaredField(fieldName)
+                .apply { isAccessible = true }
+
+        repeat(200) {
+            val value = runInEdtAndGet { field.get(target) }
+
+            if (value != null) {
+                return value
+            }
+
+            Thread.sleep(10)
+        }
+
+        return runInEdtAndGet { field.get(target) }
     }
 
     private fun createPackage(name: String) {
