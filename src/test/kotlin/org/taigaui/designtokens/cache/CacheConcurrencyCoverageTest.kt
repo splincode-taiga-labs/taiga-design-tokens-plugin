@@ -3,6 +3,7 @@ package org.taigaui.designtokens.cache
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
@@ -129,25 +130,24 @@ class CacheConcurrencyCoverageTest {
         val flight = GenerationAwareSingleFlight<String, String, Unit> { Unit }
         val buildFailure = IllegalStateException("build")
 
-        try {
-            flight.getOrBuild(key = "build", build = { throw buildFailure })
-            throw AssertionError("Expected failure")
-        } catch (error: IllegalStateException) {
-            assertSame(buildFailure, error)
-        }
+        val actualBuildFailure =
+            assertThrows(IllegalStateException::class.java) {
+                flight.getOrBuild(key = "build", build = { throw buildFailure })
+            }
+
+        assertSame(buildFailure, actualBuildFailure)
 
         val publishFailure = IllegalArgumentException("publish")
+        val actualPublishFailure =
+            assertThrows(IllegalArgumentException::class.java) {
+                flight.getOrBuild(
+                    key = "publish",
+                    build = { "value" },
+                    publish = { throw publishFailure },
+                )
+            }
 
-        try {
-            flight.getOrBuild(
-                key = "publish",
-                build = { "value" },
-                publish = { throw publishFailure },
-            )
-            throw AssertionError("Expected failure")
-        } catch (error: IllegalArgumentException) {
-            assertSame(publishFailure, error)
-        }
+        assertSame(publishFailure, actualPublishFailure)
     }
 
     @Test
