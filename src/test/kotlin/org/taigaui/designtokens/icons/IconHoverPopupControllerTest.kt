@@ -89,7 +89,9 @@ class IconHoverPopupControllerTest : BasePlatformTestCase() {
             content = """.demo { content: "@tui.search"; }""",
         )
         val controller = project.service<IconHoverPopupController>()
-        val offset = myFixture.editor.document.text.indexOf("@tui.search") + 3
+        val offset =
+            myFixture.editor.document.text
+                .indexOf("@tui.search") + 3
 
         controller.mouseMoved(editorMouseEvent(offset))
 
