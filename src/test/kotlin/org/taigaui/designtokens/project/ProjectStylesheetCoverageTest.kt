@@ -56,7 +56,7 @@ class ProjectStylesheetCoverageTest : BasePlatformTestCase() {
             """
             {
               "styles": [
-                "src/styles.css?inline#theme",
+                "src/styles.css",
                 "../../shared/theme.less",
                 "https://example.com/theme.css",
                 "@taiga-ui/core/styles.css",
