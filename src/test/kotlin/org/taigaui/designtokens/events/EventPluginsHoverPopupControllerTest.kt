@@ -96,7 +96,10 @@ class EventPluginsHoverPopupControllerTest : BasePlatformTestCase() {
         area: EditorMouseEventArea,
     ): EditorMouseEvent {
         val editor = myFixture.editor
-        val point = editor.offsetToXY(offset)
+        val point =
+            editor.offsetToXY(offset).apply {
+                translate(1, editor.lineHeight / 2)
+            }
         val mouseEvent =
             MouseEvent(
                 editor.contentComponent,
