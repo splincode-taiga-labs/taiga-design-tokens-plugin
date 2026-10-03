@@ -82,7 +82,7 @@ class IconCompletionContributorTest : BasePlatformTestCase() {
                 runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) },
             )
 
-        invokePrivate(controller, "requestPreview", lookup)
+        invokePrivate(controller, "attach", lookup)
 
         assertNotNull(waitForPrivateField(controller, "previewKey"))
         assertNotNull(waitForPrivateField(controller, "previewPanel"))
