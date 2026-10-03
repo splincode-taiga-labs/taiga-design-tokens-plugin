@@ -81,13 +81,25 @@ class TaigaDocsIndexStoreCoverageTest {
                 assertEquals("Cached", initial.entities.single().description)
 
                 withTimeout(5_000) {
-                    while (store.cached(source)?.entities?.single()?.description != "Fresh") {
+                    while (
+                        store
+                            .cached(source)
+                            ?.entities
+                            ?.single()
+                            ?.description != "Fresh"
+                    ) {
                         delay(10)
                     }
                 }
 
                 assertEquals(1, fetchCalls.get())
-                assertEquals("Fresh", requireNotNull(store.cached(source)).entities.single().description)
+                assertEquals(
+                    "Fresh",
+                    requireNotNull(store.cached(source))
+                        .entities
+                        .single()
+                        .description,
+                )
             } finally {
                 scope.cancel()
             }
