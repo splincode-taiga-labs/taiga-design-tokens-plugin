@@ -39,7 +39,13 @@ class TaigaDocsRepositoryTest {
         val cached = requireNotNull(offline.load(source))
 
         assertEquals(TaigaDocsLoadOrigin.DISK_CACHE, cached.origin)
-        assertEquals("components/button", cached.index.findByPublicSymbol("TuiButton").single().sectionId)
+        assertEquals(
+            "components/button",
+            cached.index
+                .findByPublicSymbol("TuiButton")
+                .single()
+                .sectionId,
+        )
     }
 
     @Test
