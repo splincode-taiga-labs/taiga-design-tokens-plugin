@@ -1,7 +1,7 @@
 package org.taigaui.designtokens.events
 
-import com.intellij.ui.components.JBLabel
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.ui.components.JBLabel
 import javax.swing.JPanel
 
 class EventPluginsHoverSupportTest : BasePlatformTestCase() {
