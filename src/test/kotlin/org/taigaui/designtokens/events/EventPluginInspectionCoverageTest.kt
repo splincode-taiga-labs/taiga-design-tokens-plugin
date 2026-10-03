@@ -98,13 +98,17 @@ class EventPluginInspectionCoverageTest : LightPlatformCodeInsightFixture4TestCa
         assertTrue(
             problems.any { info ->
                 info.description == "Unknown Taiga UI event modifier 'captre'" &&
-                    myFixture.editor.document.text.substring(info.startOffset, info.endOffset) == "captre"
+                    myFixture.editor.document
+                        .text
+                        .substring(info.startOffset, info.endOffset) == "captre"
             },
         )
         assertTrue(
             problems.any { info ->
                 info.description == "Duplicate Taiga UI event modifier 'stop'" &&
-                    myFixture.editor.document.text.substring(info.startOffset, info.endOffset) == "stop"
+                    myFixture.editor.document
+                        .text
+                        .substring(info.startOffset, info.endOffset) == "stop"
             },
         )
     }
