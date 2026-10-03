@@ -415,7 +415,12 @@ class DesignTokenValueResolverTest {
                 packageToken("@taiga-ui/styles", "styles.css", "--tui-target", "styles"),
                 packageToken("@taiga-ui/core", "core.css", "--tui-target", "core"),
                 packageToken("@taiga-ui/proprietary", "proprietary.css", "--tui-target", "proprietary"),
-                token("palette/base.css", ROOT, "var(--tui-target)"),
+                DesignTokenDeclaration(
+                    name = ROOT,
+                    value = "var(--tui-target)",
+                    sourceFile = packageRoot.resolve("palette/base.css"),
+                    line = 10,
+                ),
             )
         val index =
             DesignTokenIndex.build(
