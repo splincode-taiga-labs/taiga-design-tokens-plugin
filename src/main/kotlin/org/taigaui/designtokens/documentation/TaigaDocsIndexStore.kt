@@ -34,7 +34,7 @@ internal class TaigaDocsIndexStore(
     ) {
         val jobs =
             synchronized(lock) {
-                generations[source] = generation(source) + 1L
+                generations[source] = (generations[source] ?: 0L) + 1L
                 snapshots.remove(source)
 
                 listOfNotNull(
@@ -80,7 +80,7 @@ internal class TaigaDocsIndexStore(
         }
 
     private fun createInitialLoad(source: TaigaDocsSource): Deferred<TaigaDocsIndex?> {
-        val expectedGeneration = generation(source)
+        val expectedGeneration = generations[source] ?: 0L
 
         return coroutineScope.async(Dispatchers.IO + CoroutineName("Taiga UI documentation index load")) {
             val result = repository.load(source) ?: return@async null
@@ -116,7 +116,7 @@ internal class TaigaDocsIndexStore(
         source: TaigaDocsSource,
         allowCachedFallback: Boolean,
     ): Deferred<TaigaDocsIndex?> {
-        val expectedGeneration = generation(source)
+        val expectedGeneration = generations[source] ?: 0L
 
         return coroutineScope.async(Dispatchers.IO + CoroutineName("Taiga UI documentation index refresh")) {
             val result =
@@ -137,13 +137,11 @@ internal class TaigaDocsIndexStore(
         index: TaigaDocsIndex,
     ): Boolean =
         synchronized(lock) {
-            if (generation(source) != expectedGeneration) {
+            if ((generations[source] ?: 0L) != expectedGeneration) {
                 false
             } else {
                 snapshots[source] = index
                 true
             }
         }
-
-    private fun generation(source: TaigaDocsSource): Long = generations[source] ?: 0L
 }
