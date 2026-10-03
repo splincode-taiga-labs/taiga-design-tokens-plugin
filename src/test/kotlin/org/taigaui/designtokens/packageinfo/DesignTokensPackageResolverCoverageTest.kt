@@ -14,12 +14,13 @@ class DesignTokensPackageResolverCoverageTest {
 
         try {
             val scope = workspace.resolve("node_modules/@taiga-ui")
-            createPackage(
-                scope,
-                "@taiga-ui/design-tokens",
-                "5.2.0",
-                exports = """"./token": "./token.js"""",
-            )
+            val designTokens =
+                createPackage(
+                    scope,
+                    "@taiga-ui/design-tokens",
+                    "5.2.0",
+                    exports = """"./token": "./token.js"""",
+                )
             createPackage(
                 scope,
                 "@taiga-ui/styles",
@@ -43,7 +44,7 @@ class DesignTokensPackageResolverCoverageTest {
 
             val resolved = requireNotNull(DesignTokensPackageResolver().resolve(workspace.resolve("src/app.ts")))
 
-            assertEquals("@taiga-ui/design-tokens", resolved.sourcePackages.first().name)
+            assertEquals(designTokens.toAbsolutePath().normalize(), resolved.realRoot)
             assertEquals("5.2.0", resolved.version)
             assertEquals(
                 listOf("@taiga-ui/core", "@taiga-ui/design-tokens", "@taiga-ui/styles"),

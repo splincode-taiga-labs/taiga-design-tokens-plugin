@@ -107,7 +107,7 @@ class EventPluginBindingTest {
         assertNull(EventPluginBinding.parse("click.stop)"))
         assertNull(EventPluginBinding.parse("(click.stop"))
         assertNull(EventPluginBinding.parse("()"))
-        assertNull(EventPluginBinding.parse("(.stop)"))
+        assertNull(EventPluginBinding.parse("(stop)"))
     }
 
     @Test

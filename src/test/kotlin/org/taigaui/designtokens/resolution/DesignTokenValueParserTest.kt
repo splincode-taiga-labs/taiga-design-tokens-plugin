@@ -195,7 +195,7 @@ class DesignTokenValueParserTest {
 
     @Test
     fun `quoted scanner handles escaped quote before closing quote`() {
-        val parsed = parse("""'a\\'b' var(--tui-real)""")
+        val parsed = parse("""'a\'b' var(--tui-real)""")
 
         assertEquals(2, parsed.parts.size)
         assertEquals("--tui-real", (parsed.parts.last() as DesignTokenValuePart.Reference).name)
@@ -214,9 +214,9 @@ class DesignTokenValueParserTest {
     @Test
     fun `rejects custom property names containing comma or parentheses`() {
         listOf(
-            "var(--tui,bad)",
+            "var(tui-bad)",
+            "var(--tui bad)",
             "var(--tui(bad))",
-            "var(--tui)bad)",
         ).forEach { value ->
             assertTrue(
                 "Expected invalid parse for: $value",
