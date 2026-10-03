@@ -145,7 +145,7 @@ jobs:
                   PY
 
             - name: Publish JaCoCo coverage to pull request
-              if: github.event_name == 'pull_request'
+              if: always() && github.event_name == 'pull_request' && steps.jacoco.outcome == 'success'
               uses: actions/github-script@v8
               env:
                   LINE_PERCENT: ${{ steps.jacoco.outputs.line_percent }}
@@ -211,6 +211,7 @@ jobs:
                       }
 
             - name: Upload coverage to Codecov
+              if: always() && steps.jacoco.outcome == 'success'
               uses: codecov/codecov-action@v5
               with:
                   use_oidc: true
