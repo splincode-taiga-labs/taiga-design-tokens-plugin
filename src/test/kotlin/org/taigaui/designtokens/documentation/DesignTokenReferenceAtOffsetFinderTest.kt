@@ -150,15 +150,13 @@ class DesignTokenReferenceAtOffsetFinderTest {
                 escaped.indexOf(TOKEN) + 3,
             ),
         )
-        assertEquals(
-            "--tui-real",
-            DesignTokenReferenceAtOffsetFinder
-                .find(
-                    escaped,
-                    escaped.indexOf("--tui-real") + 3,
-                )
-                ?.name,
-        )
+        val realReference =
+            DesignTokenReferenceAtOffsetFinder.find(
+                escaped,
+                escaped.indexOf("--tui-real") + 3,
+            )
+
+        assertEquals("--tui-real", realReference?.name)
 
         val unterminated = """content: "unterminated var($TOKEN)"""
 
