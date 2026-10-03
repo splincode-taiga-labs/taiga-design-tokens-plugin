@@ -105,13 +105,15 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         assertTrue(variants.size > 1)
 
         val controller = project.service<DesignTokenCompletionPreviewController>()
+        val lookup =
+            requireNotNull(
+                runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) },
+            )
 
-        controller.ensureAttached()
+        invokePrivate(controller, "requestPreview", lookup)
 
-        val panel = waitForPrivateField(controller, "previewPanel")
-
-        assertNotNull(panel)
-        assertNotNull(runInEdtAndGet { LookupManager.getActiveLookup(myFixture.editor) })
+        assertNotNull(waitForPrivateField(controller, "previewKey"))
+        assertNotNull(waitForPrivateField(controller, "previewPanel"))
     }
 
     fun testCompletesSingleInstalledTokenMatch() {
@@ -372,6 +374,21 @@ class DesignTokenCompletionContributorTest : BasePlatformTestCase() {
         myFixture.editor.caretModel.moveToOffset(caretOffset)
 
         return sourcePath
+    }
+
+    private fun invokePrivate(
+        target: Any,
+        methodName: String,
+        argument: Any,
+    ) {
+        val method =
+            target.javaClass.declaredMethods
+                .single { candidate ->
+                    candidate.name == methodName &&
+                        candidate.parameterCount == 1
+                }.apply { isAccessible = true }
+
+        runInEdtAndGet { method.invoke(target, argument) }
     }
 
     private fun waitForPrivateField(
