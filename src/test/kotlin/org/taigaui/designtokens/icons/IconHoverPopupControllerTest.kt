@@ -139,7 +139,18 @@ class IconHoverPopupControllerTest : BasePlatformTestCase() {
                 false,
             )
 
-        return EditorMouseEvent(editor, mouseEvent, area)
+        return EditorMouseEvent(
+            editor,
+            mouseEvent,
+            area,
+            offset,
+            editor.offsetToLogicalPosition(offset),
+            editor.offsetToVisualPosition(offset),
+            true,
+            null,
+            null,
+            null,
+        )
     }
 
     private fun readPrivateField(
