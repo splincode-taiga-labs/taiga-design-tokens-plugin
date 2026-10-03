@@ -15,10 +15,30 @@ class DesignTokenColorDetectorCoverageTest {
 
     @Test
     fun `normalizes named and functional colors`() {
-        assertEquals("rebeccapurple", DesignTokenColorDetector.detect(" RebeccaPurple ")?.canonicalValue)
-        assertEquals("transparent", DesignTokenColorDetector.detect("TRANSPARENT")?.canonicalValue)
-        assertEquals("rgb(1,2,3)", DesignTokenColorDetector.detect(" RGB( 1 , 2 , 3 ) ")?.canonicalValue)
-        assertEquals("color(display-p3 1 0 0)", DesignTokenColorDetector.detect("COLOR( display-p3 1 0 0 )")?.canonicalValue)
+        assertEquals(
+            "rebeccapurple",
+            DesignTokenColorDetector
+                .detect(" RebeccaPurple ")
+                ?.canonicalValue,
+        )
+        assertEquals(
+            "transparent",
+            DesignTokenColorDetector
+                .detect("TRANSPARENT")
+                ?.canonicalValue,
+        )
+        assertEquals(
+            "rgb(1,2,3)",
+            DesignTokenColorDetector
+                .detect(" RGB( 1 , 2 , 3 ) ")
+                ?.canonicalValue,
+        )
+        assertEquals(
+            "color(display-p3 1 0 0)",
+            DesignTokenColorDetector
+                .detect("COLOR( display-p3 1 0 0 )")
+                ?.canonicalValue,
+        )
     }
 
     @Test
