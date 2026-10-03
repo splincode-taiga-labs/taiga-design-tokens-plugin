@@ -437,7 +437,12 @@ class DesignTokenValueResolverTest {
             listOf(
                 packageToken("@custom/one", "one.css", "--tui-target", "one"),
                 packageToken("@custom/two", "two.css", "--tui-target", "two"),
-                token("palette/base.css", ROOT, "var(--tui-target)"),
+                DesignTokenDeclaration(
+                    name = ROOT,
+                    value = "var(--tui-target)",
+                    sourceFile = packageRoot.resolve("palette/base.css"),
+                    line = 10,
+                ),
             )
         val index =
             DesignTokenIndex.build(
